@@ -1,0 +1,38 @@
+# Fast native Wan/VACE 1.3B smoke backend.
+# Trades temporal length and sample quality for iteration speed.
+
+[models.vace_native_1_3b_fast]
+enabled = true
+task = "video_generation"
+provider = "native_vace"
+family = "wan_vace_native"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.1-VACE-1.3B"
+code_root = "submodules/_2_generation/reference/VACE"
+wan_code_root = "submodules/_2_generation/backends/Wan2.1"
+python = "python3"
+pythonpath = ["src"]
+entrypoint = "vace/vace_wan_inference.py"
+model_name = "vace-1.3B"
+shim_annotators = true
+use_prompt_extend = "plain"
+capabilities = ["reference_conditioned_continuation", "native_wan_vace", "fast_smoke"]
+fps = 16
+height = 480
+width = 832
+frame_num = 49
+# For transition=CONTINUE chunks: how many TAIL frames of the previous chunk are kept as known
+# context (VACE V2V). We never prepend the whole chunk -- only this small tail. Per-chunk cost is
+# fixed by frame_num regardless; this only trades continuity vs wasted overlap (overlap frames are
+# regenerated then trimmed on stitch, so fewer => more new content per chunk => fewer total chunks).
+# ponytail: keep latent-aligned (VACE VAE temporal stride 4 => 4k+1: 5/9/13...); 9 was enough for
+# smooth boundaries in the A/B run, upgrade to 13 only if continuity regresses.
+continuation_cond_frames = 9
+offload_model = false
+t5_cpu = false
+sample_steps = 18
+sample_shift = 8
+sample_guide_scale = 5
+output_glob = "out_video.mp4"
+# Persistent serving (see .cursor/rules/persistent-model-serving.mdc): build the model once and reuse
+# across chunks instead of relaunching + reloading per chunk. Set false only for one-shot debugging.
+serve_persistent = true

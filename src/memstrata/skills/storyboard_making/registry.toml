@@ -1,0 +1,10 @@
+title_zh = "故事板创作与切片"
+description_zh = "负责多风格故事板 Prompt 组装（含镜头范围声明、帧间时序差、去 AI 味胶片锚点）、数学对齐尺寸计算，以及白边自适应检测切片 + 残留白边裁切 + 分辨率强制统一。"
+title_en = "Storyboard Making"
+description_en = "Assembles multi-style storyboard prompts (shot-scope declaration, inter-panel timing, de-AI film anchors), calculates video-aligned dimensions, and slices via adaptive white-gutter detection with white-border trimming and enforced uniform panel resolution."
+entry_point = "memstrata.skills.storyboard_making:StoryboardMaker"
+dependent_models = [
+    "black-forest-labs/FLUX.2-klein-9b-kv"
+]
+environment = "flux2"
+vram_required_mib = 9318  # ~9.1 GB (FP8, flux.2-klein-9b-kv-fp8, production default)

@@ -1,0 +1,32 @@
+# Fast native Wan/VACE 14B backend using one full 8xA100 node.
+# Official VACE distributed inference needs torchrun plus FSDP/context parallel.
+
+[models.vace_native_14b_480p_fast_8gpu]
+enabled = true
+task = "video_generation"
+provider = "native_vace"
+family = "wan_vace_native"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.1-VACE-14B"
+code_root = "submodules/_2_generation/reference/VACE"
+wan_code_root = "submodules/_2_generation/backends/Wan2.1"
+python = "python3"
+pythonpath = ["src"]
+entrypoint = "vace/vace_wan_inference.py"
+model_name = "vace-14B"
+shim_annotators = true
+use_prompt_extend = "plain"
+capabilities = ["reference_conditioned_continuation", "native_wan_vace", "fast_smoke", "14b", "distributed"]
+fps = 16
+height = 480
+width = 832
+frame_num = 49
+# For transition=CONTINUE chunks: tail frames of the previous chunk kept as known V2V context.
+continuation_cond_frames = 13
+offload_model = false
+t5_cpu = true
+nproc_per_node = 8
+sample_steps = 12
+sample_shift = 8
+sample_guide_scale = 5
+extra_args = ["--dit_fsdp", "--ulysses_size", "8", "--ring_size", "1"]
+output_glob = "out_video.mp4"

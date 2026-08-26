@@ -1,0 +1,8 @@
+title_zh = "特征向量去重"
+description_zh = "基于特征向量的免模型去重，包含身份归并匹配与非冗余多样性筛选。"
+title_en = "Embedding Deduplication"
+description_en = "Model-free deduplication over embeddings including identity matching and non-redundant selection."
+entry_point = "memstrata.skills.embedding_deduplication:select_non_redundant"
+dependent_models = []
+environment = "MultiShotMaster"
+vram_required_mib = 0

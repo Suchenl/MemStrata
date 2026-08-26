@@ -1,0 +1,45 @@
+# Wan2.2-I2V-A14B, LightX2V 4-step step-distilled experts, run through the SAME native_wan
+# pipeline as wan22_i2v_a14b.toml (official Wan generate.py). Only the DiT experts are swapped for
+# the distilled weights; T5 / VAE / tokenizer / config come from the original Wan2.2-I2V-A14B.
+#
+# The `model` dir is built by:
+#   bash scripts/memstrata/servers/setup_wan_distill_native_weights.sh
+# which symlinks the two distilled safetensors as high_noise_model/low_noise_model
+# `diffusion_pytorch_model.safetensors` + the base t5/vae/tokenizer/config.
+#
+# bf16 load: convert_model_dtype=true casts the (on-disk F32) experts to the config param_dtype
+# (bfloat16) at load, exactly like the base config.
+
+[models.wan22_i2v_a14b_distill4step]
+enabled = true
+task = "video_generation"
+provider = "native_wan"
+# wan_i2v_svi drives the validated I2V invocation (--task i2v-A14B --image <keyframe>) through the
+# frames-to-video generate.py — same as svi_wan22_i2v_a14b_pro, but with NO LoRA (the distilled
+# experts already ARE the full DiT; we swap experts wholesale, not via LoRA).
+family = "wan_i2v_svi"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B-distill4step-native"
+model_name = "i2v-A14B"
+python = "python3"
+code_root = "./submodules/_2_generation/backends/frames-to-video"
+capabilities = ["image_to_video", "reference_conditioned_continuation"]
+serve_persistent = false
+
+# Same geometry as the proven base run (fast to validate). The distilled release is 720p-native;
+# bump to 1280*720 for full quality once the 4-step pipeline is confirmed.
+height = 480
+width = 832
+frame_num = 81
+fps = 16
+
+# 4-step distilled: 2 high-noise + 2 low-noise, CFG-free (guide=1.0 => no negative pass), shift 5.0.
+sample_steps = 4
+sample_shift = 5.0
+sample_guide_scale = 1.0
+
+# Speed-first (run on h800 / any 80GB card; we have spare GPUs): keep BOTH experts + T5 resident on
+# GPU, no CPU<->GPU offload swaps. bf16 dual-expert (~56GB) + T5 (~11GB) + VAE fits in 80GB.
+# convert_model_dtype casts to config param_dtype = bfloat16 (no-op once the on-disk experts are bf16).
+offload_model = false
+t5_cpu = false
+convert_model_dtype = true

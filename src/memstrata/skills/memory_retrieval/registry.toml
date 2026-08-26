@@ -1,0 +1,19 @@
+title_zh = "记忆检索"
+description_zh = "MemStrata 的记忆召回技能：给定当前提示，把相关的历史记忆召回。包含两种独立机制：(1) 名字/别名检索（name_match）——对已存资产的 name/alias 做 model-free 确定性匹配，是 intent_understanding 的 FAST 读路径锚点、0 模型调用的正式能力，非消融；(2) 帧/段级相似检索（retrievers）——对历史 segment/frame 做相似检索，提供 seg_uniform/seg_dinokey/seg_framererank/frame_text 变体与 recency/bm25_desc/random 对照。与 composition（确定性解引用）解耦；name_match 被 intent_understanding 复用。"
+title_en = "Memory Retrieval"
+description_en = "MemStrata's memory-recall skill: given the current prompt, recall relevant remembered material. Two independent mechanisms: (1) name/alias retrieval (name_match) — model-free deterministic matching over stored asset names/aliases; a first-class 0-model-call capability that is the FAST read-path anchor for intent_understanding (NOT an ablation); (2) frame/segment similarity retrieval (retrievers) — similarity search over historical segment/frame memory, offering seg_uniform/seg_dinokey/seg_framererank/frame_text variants and recency/bm25_desc/random controls. Decoupled from composition (deterministic dereference); name_match is consumed by intent_understanding."
+entry_point = "memstrata.skills.memory_retrieval:build_retriever"
+name_match_fn = "memstrata.skills.memory_retrieval:name_match"
+dependent_models = ["Qwen3-Embedding-4B (text-text)", "SigLIP2 (text-frame)", "DINOv3 ViT-B/16 (keyframe diversity)"]
+environment = "vace"
+vram_required_mib = 0
+
+[knobs]
+variant = "seg_uniform | seg_dinokey | seg_framererank | frame_text | recency | bm25_desc | random"
+budget = "runner-level top-B; supported B={1,2,4,8,16}"
+uniform_fps = "uniform frame sampling fps, planned sweep {0.5,1,2}"
+topk_segment = "coarse segment recall depth"
+key_per_segment = "DINO diversity keyframes per selected segment"
+text_provider = "hash | qwen3_embedding | siglip2"
+frame_provider = "hash | siglip2"
+keyframe_provider = "hash | dinov3"

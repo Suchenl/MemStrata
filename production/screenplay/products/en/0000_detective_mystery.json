@@ -1,0 +1,719 @@
+{
+  "story_id": "0000_detective_mystery",
+  "language": "en",
+  "story_name": "The Clockwork Alibi",
+  "story_overview": "A brilliant detective, Arthur Vance, is called to solve the murder of a wealthy clockmaker, Alistair Sterling, inside his locked workshop. The main clue is a broken pocket watch found in the victim's hand. The suspect is Alistair's estranged apprentice, Julian, who claims he was miles away, but Arthur suspects Julian used a clockwork automaton to fake his alibi.",
+  "global_plan": {
+    "title": "The Clockwork Alibi",
+    "synopsis": "A locked-room mystery where a brilliant detective uses physical evidence and mechanical reconstruction to break a perfect clockwork alibi.",
+    "theme": "The precision of truth vs. the illusion of perfection",
+    "narrative_arc": [
+      "Setup: Arthur Vance arrives at the locked workshop and discovers the victim and the broken pocket watch.",
+      "Rising Action: Arthur interrogates Julian, who presents a seemingly airtight alibi verified by a distant town clock.",
+      "Climax: Arthur discovers and activates the clockwork automaton, demonstrating how it mechanically triggered the crime and the pocket watch at a distance.",
+      "Resolution: Julian confesses as his alibi is shattered by the laws of mechanics."
+    ],
+    "constraints": [
+      "Maintain consistent Victorian-steampunk aesthetic across all shots.",
+      "Arthur Vance must wear his signature tweed coat and carry a brass magnifying glass.",
+      "The workshop must be filled with ticking clocks, gears, and warm, dusty shafts of light.",
+      "The pocket watch (E4) must have its glass cracked with hands frozen at exactly 10:15."
+    ]
+  },
+  "creative_intent": {
+    "genre": "Victorian steampunk detective mystery",
+    "theme": "The precision of truth vs. the illusion of perfection",
+    "tone": "tense, cerebral, atmospheric",
+    "target_duration_sec": 80.0,
+    "visual_style": "Warm dusty Victorian interiors, brass clockwork machinery, low-key mystery lighting"
+  },
+  "optional_asset_intent": [],
+  "cast_and_assets": [
+    {
+      "entity_id": "E1",
+      "name": "Arthur Vance",
+      "entity_type": "character",
+      "creative_description": "A calm, sharp-eyed detective whose careful observation and restraint contrast with the workshop's mechanical chaos.",
+      "state_notes": [
+        "Keeps his brown tweed coat and brass magnifying glass throughout the story."
+      ]
+    },
+    {
+      "entity_id": "E2",
+      "name": "Julian Sterling",
+      "entity_type": "character",
+      "creative_description": "A young apprentice trying to preserve a false alibi while panic slowly breaks through his composure.",
+      "state_notes": [
+        "Begins defensive and anxious, then visibly collapses after the reconstruction."
+      ]
+    },
+    {
+      "entity_id": "E3",
+      "name": "Clockwork Automaton",
+      "entity_type": "object",
+      "creative_description": "A life-sized brass machine that appears decorative until Arthur reveals it as the physical mechanism behind the murder.",
+      "state_notes": [
+        "Starts dormant in the corner, then transforms into an active moving mechanism."
+      ]
+    },
+    {
+      "entity_id": "E4",
+      "name": "Broken Pocket Watch",
+      "entity_type": "object",
+      "creative_description": "The victim's ornate silver pocket watch, cracked and frozen at 10:15, anchoring the mystery's timeline.",
+      "state_notes": [
+        "Must remain cracked with hands frozen at exactly 10:15 whenever visible."
+      ]
+    },
+    {
+      "entity_id": "E5",
+      "name": "The Clock Workshop",
+      "entity_type": "location",
+      "creative_description": "A dusty Victorian workshop packed with clocks, gears, workbenches, tools, and golden shafts of light.",
+      "state_notes": [
+        "Functions as both the crime scene and the stage for the mechanical reconstruction."
+      ]
+    }
+  ],
+  "human_readable_screenplay": {
+    "scenes": [
+      {
+        "scene_id": "S1",
+        "slugline": "INT. CLOCK WORKSHOP - DAY",
+        "scene_purpose": "Introduce the locked-room crime scene and the physical clue that anchors the mystery.",
+        "beats": [
+          {
+            "beat_id": "B001",
+            "action": "Arthur Vance eases open the heavy workshop door and steps into a room of dust, brass gears, and restless ticking.",
+            "dialogue": [],
+            "referenced_entities": ["E1", "E5"]
+          },
+          {
+            "beat_id": "B002",
+            "action": "Near the workbench, Arthur kneels and lifts the broken pocket watch into a shaft of golden light, studying the cracked glass and frozen hands.",
+            "dialogue": [],
+            "referenced_entities": ["E1", "E4", "E5"]
+          }
+        ]
+      },
+      {
+        "scene_id": "S2",
+        "slugline": "INT. CLOCK WORKSHOP - LATER",
+        "scene_purpose": "Confront Julian with the clue and establish his apparently airtight alibi.",
+        "beats": [
+          {
+            "beat_id": "B003",
+            "action": "Julian sits rigidly on a wooden stool under the lamp while Arthur stands opposite him with the pocket watch in hand.",
+            "dialogue": [
+              {
+                "character": "JULIAN",
+                "entity_id": "E2",
+                "parenthetical": "anxious, defensive, voice trembling",
+                "line": "I was at the tavern across town, sir! The church clock struck ten when I arrived."
+              }
+            ],
+            "referenced_entities": ["E1", "E2", "E4", "E5"]
+          }
+        ]
+      },
+      {
+        "scene_id": "S3",
+        "slugline": "INT. CLOCK WORKSHOP - AUTOMATON CORNER",
+        "scene_purpose": "Shift the investigation from testimony to mechanism.",
+        "beats": [
+          {
+            "beat_id": "B004",
+            "action": "Arthur leaves Julian behind and studies the brass automaton in the corner, letting his magnifying glass catch the glint of exposed gears.",
+            "dialogue": [],
+            "referenced_entities": ["E1", "E3", "E5"]
+          },
+          {
+            "beat_id": "B005",
+            "action": "Arthur traces a thin copper wire from the automaton along the wall, then turns back with the first trace of a smile.",
+            "dialogue": [
+              {
+                "character": "ARTHUR",
+                "entity_id": "E1",
+                "parenthetical": "calm, precise",
+                "line": "A perfect alibi, Julian. Except that machines, unlike men, leave a precise trail."
+              }
+            ],
+            "referenced_entities": ["E1", "E2", "E3", "E5"]
+          }
+        ]
+      },
+      {
+        "scene_id": "S4",
+        "slugline": "INT. CLOCK WORKSHOP - CENTER FLOOR",
+        "scene_purpose": "Reconstruct the mechanism of the crime and break Julian's alibi.",
+        "beats": [
+          {
+            "beat_id": "B006",
+            "action": "Arthur winds the automaton with a brass key; gears begin to spin, and Julian rises from his stool with horror spreading across his face.",
+            "dialogue": [],
+            "referenced_entities": ["E1", "E2", "E3", "E5"]
+          },
+          {
+            "beat_id": "B007",
+            "action": "The automaton strikes a lever, the copper wire pulls, and a pulley-weight system smashes a replica watch as Julian collapses under the proof.",
+            "dialogue": [
+              {
+                "character": "JULIAN",
+                "entity_id": "E2",
+                "parenthetical": "broken, sobbing",
+                "line": "Stop... please, stop! I didn't mean to kill him... it was supposed to be an accident!"
+              }
+            ],
+            "referenced_entities": ["E2", "E3", "E5"]
+          }
+        ]
+      }
+    ]
+  },
+  "main_entities": [
+    {
+      "entity_id": "E1",
+      "name": "Arthur Vance",
+      "entity_type": "character",
+      "appearance": "A sharp-eyed detective in his late 30s, wearing a brown tweed coat, a dark vest, and holding a brass magnifying glass. Calm and highly observant."
+    },
+    {
+      "entity_id": "E2",
+      "name": "Julian Sterling",
+      "entity_type": "character",
+      "appearance": "A young, nervous apprentice in his early 20s, wearing a stained leather apron over a rolled-up white shirt. His hands are smudged with grease."
+    },
+    {
+      "entity_id": "E3",
+      "name": "Clockwork Automaton",
+      "entity_type": "object",
+      "appearance": "A life-sized brass mechanical figure standing in the corner of the workshop. It has intricate gears visible in its chest and a blank, metallic face."
+    },
+    {
+      "entity_id": "E4",
+      "name": "Broken Pocket Watch",
+      "entity_type": "object",
+      "appearance": "An ornate silver pocket watch with a cracked glass face. The hands are frozen precisely at 10:15."
+    },
+    {
+      "entity_id": "E5",
+      "name": "The Clock Workshop",
+      "entity_type": "location",
+      "appearance": "A dusty, cluttered Victorian workshop filled with grandfather clocks, hanging gears, workbenches with tools, and warm light filtering through high windows."
+    }
+  ],
+  "production_screenplay": {
+    "scenes": [
+    {
+      "scene_id": "S1",
+      "source_scene_id": "S1",
+      "scene_title": "The Locked Workshop",
+      "t_start": 0.0,
+      "t_end": 15.0,
+      "entities_present": ["E1", "E4", "E5"],
+      "visual_track": {
+        "background": "The Clock Workshop (E5) is silent except for the ticking of dozens of clocks. Shafts of golden sunlight illuminate floating dust motes."
+      },
+      "audio_track": {
+        "ambience": "The continuous ticking and chiming of dozens of clocks, dust drifting silently.",
+        "bgm": "A tense, ticking clockwork soundtrack, low cello drone setting a mysterious tone."
+      }
+    },
+    {
+      "scene_id": "S2",
+      "source_scene_id": "S2",
+      "scene_title": "The Interrogation",
+      "t_start": 15.0,
+      "t_end": 35.0,
+      "entities_present": ["E1", "E2", "E4", "E5"],
+      "visual_track": {
+        "background": "Arthur Vance (E1) stands near the workbench, while Julian (E2) sits on a wooden stool, looking anxious under the warm lamp light."
+      },
+      "audio_track": {
+        "ambience": "Distant town church clock chimes faintly, ticking clocks from the workshop floor.",
+        "bgm": "A slow, psychological thriller score, subtle violin tremolo."
+      }
+    },
+    {
+      "scene_id": "S3",
+      "source_scene_id": "S3",
+      "scene_title": "The Mechanical Clue",
+      "t_start": 35.0,
+      "t_end": 55.0,
+      "entities_present": ["E1", "E3", "E5"],
+      "visual_track": {
+        "background": "Arthur Vance (E1) approaches the Clockwork Automaton (E3) standing in the shadows of the workshop corner."
+      },
+      "audio_track": {
+        "ambience": "Low metallic whirring, quiet gear clicks from the automaton.",
+        "bgm": "An inquisitive, mechanical-themed music track, slow piano chords."
+      }
+    },
+    {
+      "scene_id": "S4",
+      "source_scene_id": "S4",
+      "scene_title": "The Reconstruction",
+      "t_start": 55.0,
+      "t_end": 80.0,
+      "entities_present": ["E1", "E2", "E3", "E4", "E5"],
+      "visual_track": {
+        "background": "The center of the workshop. Arthur Vance (E1) activates the Automaton (E3), which moves in a slow, mechanical sequence. Julian (E2) watches in horror."
+      },
+      "audio_track": {
+        "ambience": "Loud, rhythmic clanking of gears, steam hissing from the mechanical valves.",
+        "bgm": "A dramatic, orchestral climax, rising brass and heavy percussion."
+      }
+    }
+  ],
+    "shots": [
+    {
+      "shot_id": "shot_0001",
+      "scene_id": "S1",
+      "source_beat_ids": ["B001"],
+      "transition": "cut",
+      "duration_sec": 5.0,
+      "visual_track": {
+        "actions": [
+          "Arthur Vance (E1) slowly pushes open the heavy wooden door of the Clock Workshop (E5).",
+          "He steps inside, pausing as he looks around the dusty room filled with ticking clocks."
+        ],
+        "cinematography": {
+          "shot_type": "Wide establishing shot",
+          "camera_movement": "Slow dolly-in following Arthur's entry",
+          "lighting": "Low-key lighting with warm golden shafts filtering through high windows"
+        }
+      },
+      "audio_track": {
+        "dialogue": [],
+        "foley": "Creaking of a heavy wooden door, slow footsteps on dusty floorboards, clock ticking.",
+        "voiceover": ""
+      },
+      "active_characters": ["E1"],
+      "continuity_requirements": [
+        "Arthur Vance must wear his tweed coat.",
+        "The workshop must have warm, dusty golden lighting."
+      ],
+      "planned_assets": [
+        {
+          "planned_asset_id": "E1",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E5",
+          "asset_kind": "location",
+          "intended_uses": ["scene"],
+          "operation": "preserve",
+          "required": true
+        }
+      ],
+      "video_prompts": [
+        "TODO: Web-AI will generate detailed video prompts here."
+      ],
+      "first_frame_prompts": [
+        "TODO: Web-AI will generate detailed first frame prompts here."
+      ]
+    },
+    {
+      "shot_id": "shot_0002",
+      "scene_id": "S1",
+      "source_beat_ids": ["B002"],
+      "transition": "continue",
+      "duration_sec": 4.5,
+      "visual_track": {
+        "actions": [
+          "Arthur (E1) kneels by the workbench, using his brass magnifying glass to inspect the floor.",
+          "He picks up the Broken Pocket Watch (E4) from the floor, holding it up to the light."
+        ],
+        "cinematography": {
+          "shot_type": "Medium close-up on Arthur kneeling",
+          "camera_movement": "Slow tilt down to the floor, then panning up to his hand",
+          "lighting": "Warm side-lighting highlighting dust motes and the silver pocket watch"
+        }
+      },
+      "audio_track": {
+        "dialogue": [],
+        "foley": "Rustle of Arthur's tweed coat, soft metal clink as he picks up the pocket watch.",
+        "voiceover": ""
+      },
+      "active_characters": ["E1"],
+      "continuity_requirements": [
+        "Arthur's tweed coat and magnifying glass must remain identical to shot_0001.",
+        "The pocket watch (E4) must be silver and show cracked glass."
+      ],
+      "planned_assets": [
+        {
+          "planned_asset_id": "E1",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E4",
+          "asset_kind": "object",
+          "intended_uses": ["identity", "state"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E5",
+          "asset_kind": "location",
+          "intended_uses": ["scene"],
+          "operation": "preserve",
+          "required": true
+        }
+      ],
+      "video_prompts": [
+        "TODO: Web-AI will generate detailed video prompts here."
+      ],
+      "first_frame_prompts": [
+        "TODO: Web-AI will generate detailed first frame prompts here."
+      ]
+    },
+    {
+      "shot_id": "shot_0003",
+      "scene_id": "S2",
+      "source_beat_ids": ["B003"],
+      "transition": "cut",
+      "duration_sec": 6.0,
+      "visual_track": {
+        "actions": [
+          "Julian Sterling (E2) sits on a wooden stool, wringing his grease-stained hands nervously.",
+          "Arthur (E1) stands opposite him, holding the pocket watch (E4) in his hand, watching him intently."
+        ],
+        "cinematography": {
+          "shot_type": "Medium two-shot",
+          "camera_movement": "Static locked-off camera",
+          "lighting": "Warm, direct lamp light casting harsh shadows on Julian's face"
+        }
+      },
+      "audio_track": {
+        "dialogue": [
+          {
+            "entity_id": "E2",
+            "text": "I was at the tavern across town, sir! The church clock struck ten when I arrived.",
+            "expression": "anxious, defensive, voice trembling"
+          }
+        ],
+        "foley": "Squeak of the wooden stool, nervous breathing.",
+        "voiceover": ""
+      },
+      "active_characters": ["E1", "E2"],
+      "continuity_requirements": [
+        "Julian must wear a stained leather apron and look visibly nervous.",
+        "Arthur's tweed coat and the pocket watch must be consistent."
+      ],
+      "planned_assets": [
+        {
+          "planned_asset_id": "E1",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E2",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E4",
+          "asset_kind": "object",
+          "intended_uses": ["identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E5",
+          "asset_kind": "location",
+          "intended_uses": ["scene"],
+          "operation": "preserve",
+          "required": true
+        }
+      ],
+      "video_prompts": [
+        "TODO: Web-AI will generate detailed video prompts here."
+      ],
+      "first_frame_prompts": [
+        "TODO: Web-AI will generate detailed first frame prompts here."
+      ]
+    },
+    {
+      "shot_id": "shot_0004",
+      "scene_id": "S3",
+      "source_beat_ids": ["B004"],
+      "transition": "cut",
+      "duration_sec": 5.0,
+      "visual_track": {
+        "actions": [
+          "Arthur (E1) turns away from Julian and walks toward the Clockwork Automaton (E3) in the corner.",
+          "He shines his magnifying glass on the automaton's brass chest, studying the intricate gears."
+        ],
+        "cinematography": {
+          "shot_type": "Medium shot on the automaton",
+          "camera_movement": "Slow pan following Arthur's walk to the corner",
+          "lighting": "Dim corner lighting with a bright spotlight reflecting off the brass automaton"
+        }
+      },
+      "audio_track": {
+        "dialogue": [],
+        "foley": "Footsteps on floorboards, soft metallic scraping of Arthur's magnifying glass.",
+        "voiceover": ""
+      },
+      "active_characters": ["E1"],
+      "continuity_requirements": [
+        "The automaton (E3) must be life-sized, brass, and have visible chest gears.",
+        "The pocket watch (E4) is no longer in active focus but is kept in Arthur's pocket."
+      ],
+      "planned_assets": [
+        {
+          "planned_asset_id": "E1",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E3",
+          "asset_kind": "object",
+          "intended_uses": ["identity", "appearance"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E4",
+          "asset_kind": "object",
+          "intended_uses": ["identity"],
+          "operation": "avoid",
+          "required": false
+        },
+        {
+          "planned_asset_id": "E5",
+          "asset_kind": "location",
+          "intended_uses": ["scene"],
+          "operation": "preserve",
+          "required": true
+        }
+      ],
+      "video_prompts": [
+        "TODO: Web-AI will generate detailed video prompts here."
+      ],
+      "first_frame_prompts": [
+        "TODO: Web-AI will generate detailed first frame prompts here."
+      ]
+    },
+    {
+      "shot_id": "shot_0005",
+      "scene_id": "S3",
+      "source_beat_ids": ["B005"],
+      "transition": "continue",
+      "duration_sec": 5.5,
+      "visual_track": {
+        "actions": [
+          "Arthur's finger gently traces a thin, hidden copper wire running from the back of the Automaton (E3) along the wall.",
+          "He looks back at Julian with a knowing, sharp smile."
+        ],
+        "cinematography": {
+          "shot_type": "Extreme close-up on Arthur's finger and the wire",
+          "camera_movement": "Slow tracking shot following his finger along the wire",
+          "lighting": "High-contrast lighting highlighting the thin copper wire against the dusty wall"
+        }
+      },
+      "audio_track": {
+        "dialogue": [
+          {
+            "entity_id": "E1",
+            "text": "A perfect alibi, Julian. Except that machines, unlike men, leave a precise trail.",
+            "expression": "confident, intellectual, calm tone"
+          }
+        ],
+        "foley": "Faint metallic scraping, rustle of Arthur's coat.",
+        "voiceover": ""
+      },
+      "active_characters": ["E1", "E2"],
+      "continuity_requirements": [
+        "The copper wire must be thin and metallic.",
+        "Julian's anxious expression must intensify."
+      ],
+      "planned_assets": [
+        {
+          "planned_asset_id": "E1",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E2",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E3",
+          "asset_kind": "object",
+          "intended_uses": ["identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E5",
+          "asset_kind": "location",
+          "intended_uses": ["scene"],
+          "operation": "preserve",
+          "required": true
+        }
+      ],
+      "video_prompts": [
+        "TODO: Web-AI will generate detailed video prompts here."
+      ],
+      "first_frame_prompts": [
+        "TODO: Web-AI will generate detailed first frame prompts here."
+      ]
+    },
+    {
+      "shot_id": "shot_0006",
+      "scene_id": "S4",
+      "source_beat_ids": ["B006"],
+      "transition": "cut",
+      "duration_sec": 6.0,
+      "visual_track": {
+        "actions": [
+          "Arthur (E1) inserts a brass key into the Automaton's (E3) back and winds it up.",
+          "The Automaton's gears begin to spin, and its brass arm moves in a slow, mechanical arc.",
+          "Julian (E2) stands up from his stool, his face pale with horror."
+        ],
+        "cinematography": {
+          "shot_type": "Medium shot focusing on the automaton's movement",
+          "camera_movement": "Slow push-in on the spinning gears",
+          "lighting": "Harsh, flickering shadows from the moving mechanical parts"
+        }
+      },
+      "audio_track": {
+        "dialogue": [],
+        "foley": "Loud winding of a spring key, sharp metallic click, heavy whirring of brass gears.",
+        "voiceover": ""
+      },
+      "active_characters": ["E1", "E2", "E3"],
+      "continuity_requirements": [
+        "The automaton's gears must be seen rotating.",
+        "Julian must look terrified."
+      ],
+      "planned_assets": [
+        {
+          "planned_asset_id": "E1",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E2",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E3",
+          "asset_kind": "object",
+          "intended_uses": ["identity", "motion"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E5",
+          "asset_kind": "location",
+          "intended_uses": ["scene"],
+          "operation": "preserve",
+          "required": true
+        }
+      ],
+      "video_prompts": [
+        "TODO: Web-AI will generate detailed video prompts here."
+      ],
+      "first_frame_prompts": [
+        "TODO: Web-AI will generate detailed first frame prompts here."
+      ]
+    },
+    {
+      "shot_id": "shot_0007",
+      "scene_id": "S4",
+      "source_beat_ids": ["B007"],
+      "transition": "continue",
+      "duration_sec": 7.0,
+      "visual_track": {
+        "actions": [
+          "The Automaton's (E3) brass hand strikes a lever on the workbench, which pulls the copper wire.",
+          "Across the room, a heavy weights-and-pulley system drops, smashing a replica pocket watch on the desk.",
+          "Julian (E2) collapses back onto his stool, burying his face in his hands."
+        ],
+        "cinematography": {
+          "shot_type": "Medium wide shot tracking the mechanical sequence",
+          "camera_movement": "Rapid pan from the workbench to the falling weights, then slow push-in on Julian",
+          "lighting": "Dramatic high-contrast lighting, shadows stretching long across the room"
+        }
+      },
+      "audio_track": {
+        "dialogue": [
+          {
+            "entity_id": "E2",
+            "text": "Stop... please, stop! I didn't mean to kill him... it was supposed to be an accident!",
+            "expression": "broken, sobbing, emotionally intense"
+          }
+        ],
+        "foley": "Sharp metallic snap, heavy thud of a falling weight, loud smash of glass and metal, Julian's sobbing.",
+        "voiceover": ""
+      },
+      "active_characters": ["E2", "E3"],
+      "continuity_requirements": [
+        "The mechanical trigger sequence must be clear and logical.",
+        "Julian's breakdown must be emotionally intense."
+      ],
+      "planned_assets": [
+        {
+          "planned_asset_id": "E2",
+          "asset_kind": "character",
+          "intended_uses": ["appearance", "identity"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E3",
+          "asset_kind": "object",
+          "intended_uses": ["identity", "motion"],
+          "operation": "preserve",
+          "required": true
+        },
+        {
+          "planned_asset_id": "E5",
+          "asset_kind": "location",
+          "intended_uses": ["scene"],
+          "operation": "preserve",
+          "required": true
+        }
+      ],
+      "video_prompts": [
+        "TODO: Web-AI will generate detailed video prompts here."
+      ],
+      "first_frame_prompts": [
+        "TODO: Web-AI will generate detailed first frame prompts here."
+      ]
+    }
+  ]
+  },
+  "traceability": {
+    "human_layer_source": "human_readable_screenplay",
+    "conversion_status": "example_hand_derived",
+    "conversion_notes": [
+      "Each production shot maps to one human-readable beat through source_beat_ids.",
+      "The production layer preserves the approved story while adding AV tracks, planned assets, durations, and transitions."
+    ]
+  }
+}

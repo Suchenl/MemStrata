@@ -1,0 +1,526 @@
+{
+  "story_id": "0000_detective_mystery",
+  "language": "cn",
+  "story_name": "发条不在场证明",
+  "story_overview": "才华横溢的侦探亚瑟·万斯受邀调查富有钟表匠阿利斯泰尔·斯特林在其上锁工坊内被谋杀的案件。关键线索是死者手中一只破损的怀表。嫌疑人是阿利斯泰尔疏远的学徒朱利安，他声称案发时身在数英里之外，但亚瑟怀疑朱利安用一台发条自动机伪造了不在场证明。",
+  "global_plan": {
+    "title": "发条不在场证明",
+    "synopsis": "一桩密室谜案：才华横溢的侦探用物证与机械重演，击破一个看似完美的发条不在场证明。",
+    "theme": "真相的精确 对 完美的假象",
+    "narrative_arc": [
+      "开端：亚瑟·万斯抵达上锁的工坊，发现死者与破损的怀表。",
+      "上升：亚瑟审问朱利安，后者给出一个由远处镇钟佐证、看似无懈可击的不在场证明。",
+      "高潮：亚瑟发现并启动发条自动机，演示它如何在远处以机械方式触发凶案与怀表。",
+      "结局：不在场证明被力学定律粉碎，朱利安认罪。"
+    ],
+    "constraints": [
+      "所有镜头保持一致的维多利亚蒸汽朋克美学。",
+      "亚瑟·万斯必须身穿标志性的粗花呢外套，并携带黄铜放大镜。",
+      "工坊必须充满滴答作响的钟表、齿轮，以及温暖多尘的光束。",
+      "怀表（E4）的玻璃必须开裂，指针精确定格在 10:15。"
+    ]
+  },
+  "creative_intent": {
+    "genre": "维多利亚蒸汽朋克侦探悬疑",
+    "theme": "真相的精确 对 完美的假象",
+    "tone": "紧张、烧脑、富有氛围",
+    "target_duration_sec": 80.0,
+    "visual_style": "温暖多尘的维多利亚室内、黄铜发条机械、低调的悬疑光线"
+  },
+  "optional_asset_intent": [],
+  "cast_and_assets": [
+    {
+      "entity_id": "E1",
+      "name": "亚瑟·万斯",
+      "entity_type": "character",
+      "creative_description": "一位沉着、目光锐利的侦探，其审慎的观察与克制，与工坊的机械混乱形成对照。",
+      "state_notes": ["全片保持棕色粗花呢外套与黄铜放大镜。"]
+    },
+    {
+      "entity_id": "E2",
+      "name": "朱利安·斯特林",
+      "entity_type": "character",
+      "creative_description": "一名年轻学徒，竭力维持虚假的不在场证明，恐慌逐渐冲破他的镇定。",
+      "state_notes": ["起初戒备而焦虑，机械重演后明显崩溃。"]
+    },
+    {
+      "entity_id": "E3",
+      "name": "发条自动机",
+      "entity_type": "object",
+      "creative_description": "一台真人大小的黄铜机器，起初似为装饰，直到亚瑟揭示它才是凶案背后的物理机制。",
+      "state_notes": ["起初在角落里休眠，随后转为运转的活动机构。"]
+    },
+    {
+      "entity_id": "E4",
+      "name": "破损的怀表",
+      "entity_type": "object",
+      "creative_description": "死者华丽的银质怀表，玻璃开裂，指针定格在 10:15，锚定谜案的时间线。",
+      "state_notes": ["只要可见，必须保持玻璃开裂、指针定格于 10:15。"]
+    },
+    {
+      "entity_id": "E5",
+      "name": "钟表工坊",
+      "entity_type": "location",
+      "creative_description": "一间多尘杂乱的维多利亚工坊，满是座钟、齿轮、工作台、工具与金色光束。",
+      "state_notes": ["既是案发现场，也是机械重演的舞台。"]
+    }
+  ],
+  "human_readable_screenplay": {
+    "scenes": [
+      {
+        "scene_id": "S1",
+        "slugline": "内景. 钟表工坊 - 日",
+        "scene_purpose": "引入密室案发现场，以及锚定谜案的物证。",
+        "beats": [
+          {
+            "beat_id": "B001",
+            "action": "亚瑟·万斯推开沉重的工坊木门，走进一个满是尘埃、黄铜齿轮与不停滴答声的房间。",
+            "dialogue": [],
+            "referenced_entities": ["E1", "E5"]
+          },
+          {
+            "beat_id": "B002",
+            "action": "在工作台旁，亚瑟蹲下，将破损的怀表举到金色光束中，端详开裂的玻璃与定格的指针。",
+            "dialogue": [],
+            "referenced_entities": ["E1", "E4", "E5"]
+          }
+        ]
+      },
+      {
+        "scene_id": "S2",
+        "slugline": "内景. 钟表工坊 - 稍后",
+        "scene_purpose": "以线索对峙朱利安，并建立他看似无懈可击的不在场证明。",
+        "beats": [
+          {
+            "beat_id": "B003",
+            "action": "朱利安僵直地坐在灯下的木凳上，亚瑟手持怀表站在他对面。",
+            "dialogue": [
+              {
+                "character": "JULIAN",
+                "entity_id": "E2",
+                "parenthetical": "焦虑、戒备、声音颤抖",
+                "line": "先生，我当时在城另一头的酒馆！我到的时候教堂的钟正敲十点。"
+              }
+            ],
+            "referenced_entities": ["E1", "E2", "E4", "E5"]
+          }
+        ]
+      },
+      {
+        "scene_id": "S3",
+        "slugline": "内景. 钟表工坊 - 自动机角落",
+        "scene_purpose": "把调查从证词转向机制。",
+        "beats": [
+          {
+            "beat_id": "B004",
+            "action": "亚瑟离开朱利安，走近角落里的黄铜自动机，用放大镜照出裸露齿轮的反光。",
+            "dialogue": [],
+            "referenced_entities": ["E1", "E3", "E5"]
+          },
+          {
+            "beat_id": "B005",
+            "action": "亚瑟沿墙追踪一根从自动机延伸出的细铜丝，随后转过身，唇角浮现一丝笑意。",
+            "dialogue": [
+              {
+                "character": "ARTHUR",
+                "entity_id": "E1",
+                "parenthetical": "沉着、精准",
+                "line": "完美的不在场证明，朱利安。只是机器不像人，它会留下精确的痕迹。"
+              }
+            ],
+            "referenced_entities": ["E1", "E2", "E3", "E5"]
+          }
+        ]
+      },
+      {
+        "scene_id": "S4",
+        "slugline": "内景. 钟表工坊 - 中央地面",
+        "scene_purpose": "重演凶案机制，击破朱利安的不在场证明。",
+        "beats": [
+          {
+            "beat_id": "B006",
+            "action": "亚瑟用黄铜钥匙为自动机上弦；齿轮开始转动，朱利安从凳上站起，脸上蔓延恐惧。",
+            "dialogue": [],
+            "referenced_entities": ["E1", "E2", "E3", "E5"]
+          },
+          {
+            "beat_id": "B007",
+            "action": "自动机拨动一根杠杆，铜丝被拉动，滑轮配重系统砸碎一只复制怀表，朱利安在铁证下瘫倒。",
+            "dialogue": [
+              {
+                "character": "JULIAN",
+                "entity_id": "E2",
+                "parenthetical": "崩溃、抽泣",
+                "line": "停下……求你，停下！我不是有意杀他的……那本该是场意外！"
+              }
+            ],
+            "referenced_entities": ["E2", "E3", "E5"]
+          }
+        ]
+      }
+    ]
+  },
+  "main_entities": [
+    {
+      "entity_id": "E1",
+      "name": "亚瑟·万斯",
+      "entity_type": "character",
+      "appearance": "一位三十多岁、目光锐利的侦探，身穿棕色粗花呢外套与深色马甲，手持黄铜放大镜。沉着而极具观察力。"
+    },
+    {
+      "entity_id": "E2",
+      "name": "朱利安·斯特林",
+      "entity_type": "character",
+      "appearance": "一名二十出头、神情紧张的年轻学徒，在卷起袖子的白衬衫外系着沾污的皮革围裙，双手沾满油污。"
+    },
+    {
+      "entity_id": "E3",
+      "name": "发条自动机",
+      "entity_type": "object",
+      "appearance": "一台真人大小的黄铜机械人偶，立于工坊角落，胸腔可见精密齿轮，面部空白而具金属质感。"
+    },
+    {
+      "entity_id": "E4",
+      "name": "破损的怀表",
+      "entity_type": "object",
+      "appearance": "一只华丽的银质怀表，表面玻璃开裂，指针精确定格在 10:15。"
+    },
+    {
+      "entity_id": "E5",
+      "name": "钟表工坊",
+      "entity_type": "location",
+      "appearance": "一间多尘杂乱的维多利亚工坊，满是落地钟、悬挂齿轮、摆放工具的工作台，温暖光线从高窗透入。"
+    }
+  ],
+  "production_screenplay": {
+    "scenes": [
+      {
+        "scene_id": "S1",
+        "source_scene_id": "S1",
+        "scene_title": "上锁的工坊",
+        "t_start": 0.0,
+        "t_end": 15.0,
+        "entities_present": ["E1", "E4", "E5"],
+        "visual_track": {
+          "background": "钟表工坊（E5）除了数十座钟的滴答声外一片寂静。金色阳光束照亮漂浮的尘埃。"
+        },
+        "audio_track": {
+          "ambience": "数十座钟持续的滴答与报时，尘埃无声飘动。",
+          "bgm": "紧张的发条滴答配乐，低沉大提琴长音铺陈神秘氛围。"
+        }
+      },
+      {
+        "scene_id": "S2",
+        "source_scene_id": "S2",
+        "scene_title": "审问",
+        "t_start": 15.0,
+        "t_end": 35.0,
+        "entities_present": ["E1", "E2", "E4", "E5"],
+        "visual_track": {
+          "background": "亚瑟·万斯（E1）站在工作台旁，朱利安（E2）坐在木凳上，在温暖的灯光下显得焦虑。"
+        },
+        "audio_track": {
+          "ambience": "远处镇上教堂钟声隐约传来，工坊地面钟表滴答。",
+          "bgm": "缓慢的心理惊悚配乐，细微的小提琴颤音。"
+        }
+      },
+      {
+        "scene_id": "S3",
+        "source_scene_id": "S3",
+        "scene_title": "机械线索",
+        "t_start": 35.0,
+        "t_end": 55.0,
+        "entities_present": ["E1", "E3", "E5"],
+        "visual_track": {
+          "background": "亚瑟·万斯（E1）走近立于工坊角落阴影中的发条自动机（E3）。"
+        },
+        "audio_track": {
+          "ambience": "低沉的金属嗡鸣，自动机安静的齿轮咔哒声。",
+          "bgm": "带探究感的机械主题音乐，缓慢的钢琴和弦。"
+        }
+      },
+      {
+        "scene_id": "S4",
+        "source_scene_id": "S4",
+        "scene_title": "重演",
+        "t_start": 55.0,
+        "t_end": 80.0,
+        "entities_present": ["E1", "E2", "E3", "E4", "E5"],
+        "visual_track": {
+          "background": "工坊中央。亚瑟·万斯（E1）启动自动机（E3），它以缓慢的机械序列运转。朱利安（E2）惊恐旁观。"
+        },
+        "audio_track": {
+          "ambience": "响亮而有节奏的齿轮咣当声，机械阀门嘶嘶喷气。",
+          "bgm": "戏剧性的管弦高潮，铜管上扬与沉重打击乐。"
+        }
+      }
+    ],
+    "shots": [
+      {
+        "shot_id": "shot_0001",
+        "scene_id": "S1",
+        "source_beat_ids": ["B001"],
+        "transition": "cut",
+        "duration_sec": 5.0,
+        "visual_track": {
+          "actions": [
+            "亚瑟·万斯（E1）缓缓推开钟表工坊（E5）沉重的木门。",
+            "他走进屋内，停步环顾这间满是滴答钟表的多尘房间。"
+          ],
+          "cinematography": {
+            "shot_type": "大远景定场镜头",
+            "camera_movement": "随亚瑟入场的缓慢推轨",
+            "lighting": "低调布光，温暖金色光束从高窗透入"
+          }
+        },
+        "audio_track": {
+          "dialogue": [],
+          "foley": "沉重木门的吱呀声、多尘地板上的缓慢脚步、钟表滴答。",
+          "voiceover": ""
+        },
+        "active_characters": ["E1"],
+        "continuity_requirements": [
+          "亚瑟·万斯必须身穿粗花呢外套。",
+          "工坊必须为温暖多尘的金色光线。"
+        ],
+        "planned_assets": [
+          {"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E5", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}
+        ],
+        "video_prompts": ["TODO: Web-AI 将在此生成详细的视频提示词。"],
+        "first_frame_prompts": ["TODO: Web-AI 将在此生成详细的首帧提示词。"]
+      },
+      {
+        "shot_id": "shot_0002",
+        "scene_id": "S1",
+        "source_beat_ids": ["B002"],
+        "transition": "continue",
+        "duration_sec": 4.5,
+        "visual_track": {
+          "actions": [
+            "亚瑟（E1）在工作台旁蹲下，用黄铜放大镜检视地面。",
+            "他从地上拾起破损的怀表（E4），举到光线中。"
+          ],
+          "cinematography": {
+            "shot_type": "亚瑟蹲身的中近景",
+            "camera_movement": "缓慢下摇至地面，再上摇到他的手",
+            "lighting": "温暖侧光，突出尘埃与银质怀表"
+          }
+        },
+        "audio_track": {
+          "dialogue": [],
+          "foley": "亚瑟粗花呢外套的窸窣声、拾起怀表时轻微的金属叮当。",
+          "voiceover": ""
+        },
+        "active_characters": ["E1"],
+        "continuity_requirements": [
+          "亚瑟的粗花呢外套与放大镜须与 shot_0001 一致。",
+          "怀表（E4）须为银质且玻璃开裂。"
+        ],
+        "planned_assets": [
+          {"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E5", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}
+        ],
+        "video_prompts": ["TODO: Web-AI 将在此生成详细的视频提示词。"],
+        "first_frame_prompts": ["TODO: Web-AI 将在此生成详细的首帧提示词。"]
+      },
+      {
+        "shot_id": "shot_0003",
+        "scene_id": "S2",
+        "source_beat_ids": ["B003"],
+        "transition": "cut",
+        "duration_sec": 6.0,
+        "visual_track": {
+          "actions": [
+            "朱利安·斯特林（E2）坐在木凳上，紧张地绞着沾满油污的双手。",
+            "亚瑟（E1）站在他对面，手持怀表（E4），专注地注视着他。"
+          ],
+          "cinematography": {
+            "shot_type": "中景双人镜头",
+            "camera_movement": "锁定的静态机位",
+            "lighting": "温暖直射的灯光，在朱利安脸上投下硬阴影"
+          }
+        },
+        "audio_track": {
+          "dialogue": [
+            {"entity_id": "E2", "text": "先生，我当时在城另一头的酒馆！我到的时候教堂的钟正敲十点。", "expression": "焦虑、戒备、声音颤抖"}
+          ],
+          "foley": "木凳的吱嘎声、紧张的呼吸。",
+          "voiceover": ""
+        },
+        "active_characters": ["E1", "E2"],
+        "continuity_requirements": [
+          "朱利安须系沾污的皮革围裙并显得明显紧张。",
+          "亚瑟的粗花呢外套与怀表须保持一致。"
+        ],
+        "planned_assets": [
+          {"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E5", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}
+        ],
+        "video_prompts": ["TODO: Web-AI 将在此生成详细的视频提示词。"],
+        "first_frame_prompts": ["TODO: Web-AI 将在此生成详细的首帧提示词。"]
+      },
+      {
+        "shot_id": "shot_0004",
+        "scene_id": "S3",
+        "source_beat_ids": ["B004"],
+        "transition": "cut",
+        "duration_sec": 5.0,
+        "visual_track": {
+          "actions": [
+            "亚瑟（E1）从朱利安身边转身，走向角落里的发条自动机（E3）。",
+            "他用放大镜照向自动机的黄铜胸腔，端详其中精密的齿轮。"
+          ],
+          "cinematography": {
+            "shot_type": "自动机的中景",
+            "camera_movement": "随亚瑟走向角落的缓慢横摇",
+            "lighting": "昏暗的角落光，一束亮光在黄铜自动机上反射"
+          }
+        },
+        "audio_track": {
+          "dialogue": [],
+          "foley": "地板上的脚步、放大镜轻微的金属刮擦。",
+          "voiceover": ""
+        },
+        "active_characters": ["E1"],
+        "continuity_requirements": [
+          "自动机（E3）须为真人大小、黄铜材质、胸腔齿轮可见。",
+          "怀表（E4）不再是焦点，收在亚瑟口袋中。"
+        ],
+        "planned_assets": [
+          {"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "appearance"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity"], "operation": "avoid", "required": false},
+          {"planned_asset_id": "E5", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}
+        ],
+        "video_prompts": ["TODO: Web-AI 将在此生成详细的视频提示词。"],
+        "first_frame_prompts": ["TODO: Web-AI 将在此生成详细的首帧提示词。"]
+      },
+      {
+        "shot_id": "shot_0005",
+        "scene_id": "S3",
+        "source_beat_ids": ["B005"],
+        "transition": "continue",
+        "duration_sec": 5.5,
+        "visual_track": {
+          "actions": [
+            "亚瑟的手指轻轻沿墙追踪一根从自动机（E3）背后延伸出的细铜丝。",
+            "他回头望向朱利安，露出一个了然而锐利的微笑。"
+          ],
+          "cinematography": {
+            "shot_type": "亚瑟手指与铜丝的极特写",
+            "camera_movement": "沿铜丝跟随手指的缓慢跟拍",
+            "lighting": "高对比布光，突出多尘墙面上的细铜丝"
+          }
+        },
+        "audio_track": {
+          "dialogue": [
+            {"entity_id": "E1", "text": "完美的不在场证明，朱利安。只是机器不像人，它会留下精确的痕迹。", "expression": "自信、睿智、平静"}
+          ],
+          "foley": "微弱的金属刮擦、亚瑟外套的窸窣。",
+          "voiceover": ""
+        },
+        "active_characters": ["E1", "E2"],
+        "continuity_requirements": [
+          "铜丝须纤细且具金属质感。",
+          "朱利安的焦虑神情须加剧。"
+        ],
+        "planned_assets": [
+          {"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E5", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}
+        ],
+        "video_prompts": ["TODO: Web-AI 将在此生成详细的视频提示词。"],
+        "first_frame_prompts": ["TODO: Web-AI 将在此生成详细的首帧提示词。"]
+      },
+      {
+        "shot_id": "shot_0006",
+        "scene_id": "S4",
+        "source_beat_ids": ["B006"],
+        "transition": "cut",
+        "duration_sec": 6.0,
+        "visual_track": {
+          "actions": [
+            "亚瑟（E1）将黄铜钥匙插入自动机（E3）背部，为其上弦。",
+            "自动机的齿轮开始旋转，黄铜手臂以缓慢的机械弧线摆动。",
+            "朱利安（E2）从凳上站起，脸色因恐惧而苍白。"
+          ],
+          "cinematography": {
+            "shot_type": "聚焦自动机运动的中景",
+            "camera_movement": "对旋转齿轮的缓慢推入",
+            "lighting": "运动机械部件投下的刺眼跳动阴影"
+          }
+        },
+        "audio_track": {
+          "dialogue": [],
+          "foley": "响亮的上弦声、尖锐的金属咔哒、黄铜齿轮沉重的嗡鸣。",
+          "voiceover": ""
+        },
+        "active_characters": ["E1", "E2", "E3"],
+        "continuity_requirements": [
+          "须见到自动机齿轮转动。",
+          "朱利安须显得惊恐。"
+        ],
+        "planned_assets": [
+          {"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "motion"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E5", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}
+        ],
+        "video_prompts": ["TODO: Web-AI 将在此生成详细的视频提示词。"],
+        "first_frame_prompts": ["TODO: Web-AI 将在此生成详细的首帧提示词。"]
+      },
+      {
+        "shot_id": "shot_0007",
+        "scene_id": "S4",
+        "source_beat_ids": ["B007"],
+        "transition": "continue",
+        "duration_sec": 7.0,
+        "visual_track": {
+          "actions": [
+            "自动机（E3）的黄铜手拨动工作台上的杠杆，杠杆拉动铜丝。",
+            "房间另一头，沉重的配重滑轮系统落下，砸碎桌上一只复制怀表。",
+            "朱利安（E2）瘫回凳上，双手掩面。"
+          ],
+          "cinematography": {
+            "shot_type": "跟拍机械序列的中宽景",
+            "camera_movement": "从工作台快速横摇到坠落的配重，再缓慢推入朱利安",
+            "lighting": "戏剧性高对比布光，阴影在房间里拉得很长"
+          }
+        },
+        "audio_track": {
+          "dialogue": [
+            {"entity_id": "E2", "text": "停下……求你，停下！我不是有意杀他的……那本该是场意外！", "expression": "崩溃、抽泣、情绪强烈"}
+          ],
+          "foley": "尖锐的金属弹响、配重坠落的沉重撞击、玻璃与金属的巨大碎裂、朱利安的抽泣。",
+          "voiceover": ""
+        },
+        "active_characters": ["E2", "E3"],
+        "continuity_requirements": [
+          "机械触发序列须清晰且合乎逻辑。",
+          "朱利安的崩溃须情绪强烈。"
+        ],
+        "planned_assets": [
+          {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "motion"], "operation": "preserve", "required": true},
+          {"planned_asset_id": "E5", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}
+        ],
+        "video_prompts": ["TODO: Web-AI 将在此生成详细的视频提示词。"],
+        "first_frame_prompts": ["TODO: Web-AI 将在此生成详细的首帧提示词。"]
+      }
+    ]
+  },
+  "traceability": {
+    "human_layer_source": "human_readable_screenplay",
+    "conversion_status": "example_hand_derived",
+    "conversion_notes": [
+      "每个 production shot 通过 source_beat_ids 对应一个 human-readable beat。",
+      "生产层保留已确认剧情，并补充音画轨、planned assets、时长与转场。",
+      "与 products/en/0000_detective_mystery.json 通过 story_id/scene_id/beat_id/shot_id/entity_id 严格对齐。"
+    ]
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "schema": "memstrata-memory-1.0",
+  "movie_id": "example_lighthouse",
+  "fps": 24.0,
+  "updated_sec": 312.0,
+  "video": {
+    "path": "long_video.mp4",
+    "duration_sec": 312.0
+  },
+  "entities": {
+    "char_elias": {
+      "name": "Elias",
+      "kind": "character",
+      "description": "an older lighthouse keeper with a grey beard and a dark wool coat",
+      "aliases": [
+        "the keeper",
+        "old man"
+      ],
+      "lifecycle": "reusable",
+      "initial_state": "default",
+      "first_seen_sec": 12.0,
+      "states": {
+        "default": {
+          "description": "dry and composed, standing in the lamp room in a buttoned wool coat",
+          "first_seen_sec": 12.0,
+          "appearances": [
+            {
+              "sec": 12.0,
+              "segment": 0
+            },
+            {
+              "sec": 48.5,
+              "segment": 3
+            }
+          ],
+          "images": [
+            "visual/characters/char_elias/states/default/char_elias@s000.png"
+          ]
+        },
+        "soaked": {
+          "description": "drenched by the storm, hair matted, coat dripping wet",
+          "first_seen_sec": 300.0,
+          "appearances": [
+            {
+              "sec": 300.0,
+              "segment": 12
+            }
+          ],
+          "images": [
+            "visual/characters/char_elias/states/soaked/char_elias@s012.png"
+          ]
+        }
+      }
+    },
+    "prop_brass_lantern": {
+      "name": "brass lantern",
+      "kind": "prop",
+      "description": "a battered brass hurricane lantern with a cracked glass pane",
+      "aliases": [],
+      "lifecycle": "used",
+      "initial_state": "default",
+      "first_seen_sec": 30.0,
+      "states": {
+        "default": {
+          "description": "unlit, hanging on a hook by the door",
+          "first_seen_sec": 30.0,
+          "appearances": [
+            {
+              "sec": 30.0,
+              "segment": 1
+            }
+          ],
+          "images": [
+            "visual/props/prop_brass_lantern/states/default/prop_brass_lantern@s001.png"
+          ]
+        }
+      }
+    },
+    "loc_lamp_room": {
+      "name": "lamp room",
+      "kind": "location",
+      "description": "the circular glass-walled room at the top of the lighthouse housing the lamp",
+      "aliases": [
+        "the lantern room"
+      ],
+      "lifecycle": "reusable",
+      "initial_state": "night",
+      "first_seen_sec": 0.0,
+      "states": {
+        "night": {
+          "description": "dark interior lit only by the rotating beam, rain streaking the glass",
+          "first_seen_sec": 0.0,
+          "appearances": [
+            {
+              "sec": 0.0,
+              "segment": 0
+            }
+          ],
+          "images": [
+            "visual/locations/loc_lamp_room/states/night/loc_lamp_room@s000.png"
+          ]
+        }
+      }
+    }
+  }
+}

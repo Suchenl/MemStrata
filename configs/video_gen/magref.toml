@@ -1,0 +1,18 @@
+# MAGREF-Video/MAGREF multi-reference video generation backend.
+
+[models.magref]
+enabled = true
+task = "video_generation"
+provider = "magref"
+family = "magref"
+model = "${PUBLIC_MODELS_ROOT}/MAGREF-Video/MAGREF"
+code_root = "submodules/_2_generation/reference/MAGREF"
+python = "python3"
+entrypoint = "generate.py"
+model_name = "MAGREF"
+capabilities = ["multi_reference_consistency", "identity_preserving"]
+fps = 16
+height = 480
+width = 832
+frame_num = 81
+offload_model = true

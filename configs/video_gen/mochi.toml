@@ -1,0 +1,16 @@
+# Mochi-1 text-to-video (no reference conditioning; Composed-Context references are ignored with
+# a degradation note, so use a reference-capable family when identity anchoring matters).
+
+[models.mochi]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "mochi"
+model = "genmo/mochi-1-preview"
+capabilities = ["text_to_video"]
+num_frames = 61
+fps = 30
+height = 480
+width = 848
+steps = 64
+guidance_scale = 4.5

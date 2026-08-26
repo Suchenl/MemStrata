@@ -1,0 +1,15 @@
+# Wan2.2 TI2V-5B Diffusers smoke backend. Supports text-to-video and single-image I2V.
+
+[models.wan22_ti2v5b]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "wan_t2v"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+capabilities = ["text_to_video", "image_to_video"]
+num_frames = 49
+fps = 16
+height = 480
+width = 832
+steps = 50
+guidance_scale = 5.0

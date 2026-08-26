@@ -1,0 +1,54 @@
+{
+  "story_id": "0003_desert_archaeologist",
+  "language": "cn",
+  "story_name": "沙海残碑",
+  "story_overview": "一部黄沙落日下的考古探险短剧，刻意制造记忆硬样本：一块楔形文字泥碑随剧情由完好→碎裂→拼合残片（状态变化）；一张后被证伪的伪造羊皮地图在揭穿后必须规避（废弃证据）；向导哈桑在沙暴中失散、多镜缺席后于绿洲回归（长时缺席）；两名同披沙色斗篷的身影（向导哈桑与劫匪）面容体态相近，易错认。",
+  "creative_intent": {
+    "genre": "沙漠考古探险 / 历史悬疑",
+    "theme": "真相在碎片中拼合",
+    "tone": "苍凉、炽热、悬疑",
+    "target_duration_sec": 140.0,
+    "visual_style": "黄沙、落日金光、扬尘、斗篷剪影、古物特写"
+  },
+  "main_entities": [
+    {"entity_id": "E1", "name": "艾拉", "entity_type": "character", "appearance": "三十岁出头的女考古学家，戴宽檐帆布帽与护目镜，穿卡其探险装，脖挂放大镜，手上常沾沙尘。"},
+    {"entity_id": "E2", "name": "楔形泥碑", "entity_type": "object", "appearance": "一块砖红色泥板，正面刻满楔形文字，边缘有古老磕痕，约两掌大。"},
+    {"entity_id": "E3", "name": "伪造羊皮地图", "entity_type": "object", "appearance": "一张做旧的浅黄羊皮地图，墨线标注绿洲与遗址，右下角有一枚可疑的红蜡伪印。"},
+    {"entity_id": "E4", "name": "向导哈桑", "entity_type": "character", "appearance": "沉稳的沙漠向导，披沙色粗布斗篷，缠深蓝头巾，左颊有风沙刻出的皱纹，牵一峰骆驼。"},
+    {"entity_id": "E5", "name": "蒙面劫匪", "entity_type": "character", "appearance": "同披沙色斗篷的蒙面人，体态与哈桑相近，但缠赭红头巾、腰间别弯刀，眼神凶悍。"},
+    {"entity_id": "E6", "name": "遗址石门", "entity_type": "location", "appearance": "半埋于沙丘的古遗址石门，门楣刻浮雕，两侧断柱，落日把阴影拉长。"},
+    {"entity_id": "E7", "name": "沙暴荒漠", "entity_type": "location", "appearance": "无垠的赭黄沙丘，风起时黄沙蔽日、能见度极低。"},
+    {"entity_id": "E8", "name": "绿洲营地", "entity_type": "location", "appearance": "棕榈环绕的小绿洲，几顶米色帐篷、一汪浅水、拴着骆驼。"}
+  ],
+  "production_screenplay": {
+    "scenes": [
+      {"scene_id": "S1", "scene_title": "石门发现", "t_start": 0.0, "t_end": 24.0, "entities_present": ["E1", "E2", "E6"]},
+      {"scene_id": "S2", "scene_title": "伪图", "t_start": 24.0, "t_end": 44.0, "entities_present": ["E1", "E3", "E4", "E6"]},
+      {"scene_id": "S3", "scene_title": "沙暴失散", "t_start": 44.0, "t_end": 68.0, "entities_present": ["E1", "E5", "E7"]},
+      {"scene_id": "S4", "scene_title": "碑碎", "t_start": 68.0, "t_end": 92.0, "entities_present": ["E1", "E2", "E7"]},
+      {"scene_id": "S5", "scene_title": "揭伪", "t_start": 92.0, "t_end": 114.0, "entities_present": ["E1", "E3", "E8"]},
+      {"scene_id": "S6", "scene_title": "拼合归来", "t_start": 114.0, "t_end": 140.0, "entities_present": ["E1", "E2", "E4", "E8"]}
+    ],
+    "shots": [
+      {"shot_id": "shot_0001", "scene_id": "S1", "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["落日下的遗址石门（E6），考古学家艾拉（E1）拂去门楣浮雕上的黄沙，护目镜反着金光。"], "cinematography": {"shot_type": "全景转中景", "camera_movement": "缓慢推入", "lighting": "落日金色逆光"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E6", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0002", "scene_id": "S1", "transition": "continue", "duration_sec": 5.5, "visual_track": {"actions": ["艾拉（E1）从石门（E6）缝隙捧出一块完好的楔形泥碑（E2），砖红碑面楔形文字清晰。"], "cinematography": {"shot_type": "手部特写切中景", "camera_movement": "上托展示", "lighting": "暖金侧光"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E6", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0003", "scene_id": "S2", "transition": "cut", "duration_sec": 5.5, "visual_track": {"actions": ["石门（E6）前，向导哈桑（E4）披沙色斗篷、缠深蓝头巾，摊开一张浅黄的羊皮地图（E3），指向远处沙丘。"], "cinematography": {"shot_type": "双人中景", "camera_movement": "横移带出地图", "lighting": "落日平光"}}, "active_characters": ["E1", "E4"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E6", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0004", "scene_id": "S3", "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["黄沙蔽日的沙暴荒漠（E7）里，一个同披沙色斗篷的蒙面劫匪（E5）缠赭红头巾、腰别弯刀，逼近艾拉（E1）。"], "cinematography": {"shot_type": "剪影中景", "camera_movement": "剧烈手持", "lighting": "扬尘漫射，高对比"}}, "active_characters": ["E1", "E5"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0005", "scene_id": "S3", "transition": "continue", "duration_sec": 5.5, "visual_track": {"actions": ["艾拉（E1）在沙暴荒漠（E7）中抱紧泥碑（E2）逃窜，赭红头巾的劫匪（E5）身影在黄沙里忽隐忽现，向导已失散。"], "cinematography": {"shot_type": "跟拍全景", "camera_movement": "高速手持", "lighting": "黄沙漫射"}}, "active_characters": ["E1", "E5"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "object", "intended_uses": ["identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0006", "scene_id": "S4", "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["风势稍歇的沙丘（E7）背风处，泥碑（E2）从艾拉（E1）手中跌落岩石，砖红碑面迸裂成数块残片。"], "cinematography": {"shot_type": "泥碑特写", "camera_movement": "急推裂纹", "lighting": "冷调余光"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "transform", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0007", "scene_id": "S4", "transition": "continue", "duration_sec": 5.0, "visual_track": {"actions": ["艾拉（E1）跪在沙丘（E7）上，小心把楔形泥碑（E2）的碎裂残片一块块拢进帆布包，完好之姿不再。"], "cinematography": {"shot_type": "俯拍近景", "camera_movement": "缓慢下压", "lighting": "落日残光"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0008", "scene_id": "S5", "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["绿洲营地（E8）的帐篷里，艾拉（E1）借放大镜识破羊皮地图（E3）右下角的红蜡伪印——地图是伪造的。"], "cinematography": {"shot_type": "过肩近景", "camera_movement": "缓推伪印", "lighting": "帐篷暖光"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "transform", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0009", "scene_id": "S5", "transition": "continue", "duration_sec": 5.5, "visual_track": {"actions": ["艾拉（E1）把被证伪的羊皮地图（E3）丢进绿洲营地（E8）的火盆，火舌卷起——它此后不再作为可信线索。"], "cinematography": {"shot_type": "火光中景", "camera_movement": "轻微手持", "lighting": "跳动火光"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0010", "scene_id": "S6", "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["晨光里的绿洲营地（E8），失散多时的向导哈桑（E4）牵着骆驼归来，沙色斗篷与深蓝头巾一如从前。"], "cinematography": {"shot_type": "全景转中景", "camera_movement": "缓慢推入", "lighting": "清晨柔光"}}, "active_characters": ["E4"], "planned_assets": [{"planned_asset_id": "E4", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "character", "intended_uses": ["identity"], "operation": "avoid", "required": false}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity"], "operation": "avoid", "required": false}]},
+      {"shot_id": "shot_0011", "scene_id": "S6", "transition": "continue", "duration_sec": 6.0, "visual_track": {"actions": ["艾拉（E1）与哈桑（E4）在绿洲营地（E8）的木桌上，把楔形泥碑（E2）的碎裂残片一块块拼合，砖红碑面重现完整的楔形文字。"], "cinematography": {"shot_type": "俯拍桌面切双人", "camera_movement": "从残片拉起到人脸", "lighting": "晨光暖调"}}, "active_characters": ["E1", "E4"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "operation": "preserve", "required": true}]}
+    ]
+  },
+  "traceability": {
+    "hard_cases": [
+      "状态变化：E2 泥碑 完好(S1)→碎裂(transform, S4)→拼合残片(S6)；旧完好之姿在 S4 后规避。",
+      "废弃证据：E3 羊皮地图 S5 被证伪并焚毁(transform)，S6 标 operation=avoid（不应再作为可信线索召回）。",
+      "长时缺席回归：E4 向导哈桑 S2 出现后 S3–S5 失散缺席，S6 回归。",
+      "错认：E4 哈桑（深蓝头巾）与 E5 劫匪（赭红头巾）同披沙色斗篷、体态相近；S6 对 E5 标 avoid，避免把劫匪误召回为归来的向导。"
+    ]
+  }
+}

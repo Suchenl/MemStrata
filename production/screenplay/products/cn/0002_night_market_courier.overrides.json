@@ -1,0 +1,24 @@
+{
+  "story_id": "0002_night_market_courier",
+  "_doc": "MoVE-Bench Track B hard-case annotation sidecar. Hand-authored; merged by scoring/trackb_gt.py. Schema: see that module's docstring.",
+  "lookalike_pairs": [
+    {
+      "pair": ["E1", "E2"],
+      "features": {
+        "E1": "林：二十多岁的女信使，短发，穿亮红连帽雨衣，左肩背黑色防水邮包；下巴无疤、右手不戴戒指，眼神机警。",
+        "E2": "阿豹：男性劲敌信使，与林同穿亮红连帽雨衣、体态相近，但下巴有一道疤、右手戴银戒，神情桀骜。"
+      },
+      "note": "红雨衣错认硬样本：E1 与 E2 同穿亮红连帽雨衣、体态相近，仅靠下巴疤/右手银戒/黑色邮包区分。shot_0004 二人擦肩最易混淆；shot_0001 只有林、shot_0003 只有阿豹，考验单人在场时不要把对方也画出来；shot_0010 结尾只有林与买家，阿豹已被标 avoid，不得误召回劲敌。"
+    }
+  ],
+  "state_changes": [
+    {"eid": "E3", "from_shot": "shot_0007", "label": "pried", "desc": "封蜡木盒被阿豹用小刀撬开，暗红封蜡印崩裂剥落、盒盖被撬起；此后不得再以完好封蜡之姿出现。"},
+    {"eid": "E3", "from_shot": "shot_0008", "label": "empty", "desc": "木盒盒盖大开、内里空空，成为封蜡碎裂的空盒；此后始终为空盒状态，完好封蜡的旧态不再出现。"}
+  ],
+  "present_add": {},
+  "allowed_add": {},
+  "decoy_force": {
+    "shot_0001": ["E2"],
+    "shot_0003": ["E1"]
+  }
+}

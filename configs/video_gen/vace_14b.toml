@@ -1,0 +1,16 @@
+# Wan2.1-VACE 14B reference-conditioned continuation (higher quality, larger VRAM than vace.toml).
+# Same `wan_vace` family as vace.toml; only the weights differ.
+
+[models.vace_14b]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "wan_vace"
+model = "Wan-AI/Wan2.1-VACE-14B-diffusers"
+capabilities = ["reference_conditioned_continuation", "negative_reference", "mask_control"]
+num_frames = 81
+fps = 16
+height = 720
+width = 1280
+steps = 40
+guidance_scale = 5.0

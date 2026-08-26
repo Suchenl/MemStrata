@@ -1,0 +1,9 @@
+# Video generators (reference-conditioned continuation backends).
+
+# Perfect generator used by Oracle Replay (ground-truth media generator).
+[models.oracle]
+enabled = true
+task = "video_generation"
+provider = "oracle"
+model = "oracle-media-generator"
+capabilities = ["video_chunk_from_ground_truth"]

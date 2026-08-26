@@ -1,0 +1,15 @@
+# Wan2.1 text/image-to-video (14B). Same `wan_t2v` family as wan_t2v.toml; larger weights.
+
+[models.wan_t2v_14b]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "wan_t2v"
+model = "Wan-AI/Wan2.1-T2V-14B-Diffusers"
+capabilities = ["text_to_video", "image_to_video"]
+num_frames = 81
+fps = 16
+height = 720
+width = 1280
+steps = 40
+guidance_scale = 5.0

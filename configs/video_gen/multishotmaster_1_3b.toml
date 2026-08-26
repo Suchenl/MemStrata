@@ -1,0 +1,21 @@
+# Fast KlingAI MultiShotMaster 1.3B video consistency backend.
+
+[models.multishotmaster_1_3b]
+enabled = true
+task = "video_generation"
+provider = "multishotmaster"
+family = "multishotmaster"
+model = "public/_public_models/KlingTeam/MultiShotMaster"
+code_root = "submodules/_2_generation/consistency/MultiShotMaster"
+python = "MultiShotMaster/bin/python"
+pythonpath = ["src"]
+entrypoint = "infer_multishot.py"
+model_name = "multishotmaster-1.3B"
+capabilities = ["multi_shot_consistency"]
+fps = 15
+height = 480
+width = 832
+frame_num = 49
+model_path_json = "checkpoints/model_configs/model_path_1.3B.json"
+use_usp = false
+nproc_per_node = 1

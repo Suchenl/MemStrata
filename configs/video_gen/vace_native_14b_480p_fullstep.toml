@@ -1,0 +1,33 @@
+# Native Wan/VACE 14B full-step 480p reference backend.
+# Same spatial/temporal size as the fast/distilled configs; uses official T2V defaults for quality.
+
+[models.vace_native_14b_480p_fullstep]
+enabled = true
+task = "video_generation"
+provider = "native_vace"
+family = "wan_vace_native"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.1-VACE-14B"
+code_root = "submodules/_2_generation/reference/VACE"
+wan_code_root = "submodules/_2_generation/backends/Wan2.1"
+python = "python3"
+pythonpath = ["src"]
+entrypoint = "vace/vace_wan_inference.py"
+model_name = "vace-14B"
+shim_annotators = true
+use_prompt_extend = "plain"
+capabilities = ["reference_conditioned_continuation", "native_wan_vace", "14b", "fullstep"]
+fps = 16
+height = 480
+width = 832
+frame_num = 49
+offload_model = true
+t5_cpu = true
+sample_solver = "unipc"
+sample_steps = 50
+sample_shift = 16
+sample_guide_scale = 5
+continuation_cond_frames = 9
+serve_persistent = true
+# BDY/shared-storage cold loads can exceed the default 20min ready wait; KML stays ~5min.
+server_ready_timeout = 3600
+output_glob = "out_video.mp4"

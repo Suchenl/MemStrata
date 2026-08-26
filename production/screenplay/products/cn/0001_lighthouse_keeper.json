@@ -1,0 +1,139 @@
+{
+  "story_id": "0001_lighthouse_keeper",
+  "language": "cn",
+  "story_name": "灯塔守望录",
+  "story_overview": "一部跨越数十年的海岸传奇。老守塔人伊莱亚斯将毕生所学与那本黄铜包角的航海日志托付给年轻学徒玛拉；一场暴风雨击碎了灯塔的菲涅尔透镜、也吞没了渔船海燕号。多年后，长大的玛拉带着风化的日志归来，接管灯塔——而伊莱亚斯只剩下一块纪念铜牌。本剧本刻意制造长程记忆的硬样本：长时缺席后回归、双胞胎的错认、状态变化、以及被废弃证据的规避。",
+  "global_plan": {
+    "title": "灯塔守望录",
+    "synopsis": "传承、海与记忆：一位守塔人把灯与账本交给学徒，风暴夺走旧物，多年后学徒归来接续灯火。",
+    "theme": "传承的重量 对 遗忘的潮汐",
+    "narrative_arc": [
+      "开端：伊莱亚斯在灯室点亮菲涅尔透镜，翻开黄铜包角的航海日志。",
+      "上升：他在礁石海岸收玛拉为徒，海燕号是他们的渔船；集市上玛拉与双胞胎姐姐莉娜擦肩。",
+      "转折：暴风雨之夜，透镜开裂，海燕号沉没。",
+      "沉降：风暴次日，年迈的伊莱亚斯守着开裂的透镜，独自出海不再。",
+      "多年后：长大的玛拉带着风化的旧日志归来，接管灯塔。",
+      "结局：墓前的纪念铜牌上刻着伊莱亚斯之名，玛拉独自点亮灯火。"
+    ],
+    "constraints": [
+      "全片保持清冷、潮湿的北方海岸美学：花岗岩、黄铜、盐雾与冷光。",
+      "伊莱亚斯（E1）随剧情明显衰老：中年→年迈→更老；玛拉（E2）从少年成长为成年守塔人。",
+      "航海日志（E3）必须保持黄铜包角；暴风雨后转为盐渍风化、封皮卷曲。",
+      "菲涅尔透镜（E4）暴风雨后必须开裂，此后不得再出现完好状态。",
+      "海燕号（E5）沉没后不得再以完好之姿出现。",
+      "玛拉（E2）与其双胞胎姐姐莉娜（E6）面容相似，但玛拉系深蓝头巾、莉娜系赭红披肩，不得混淆。"
+    ]
+  },
+  "creative_intent": {
+    "genre": "海岸年代传奇 / 文艺剧情",
+    "theme": "传承的重量 对 遗忘的潮汐",
+    "tone": "沉静、辽阔、略带哀伤",
+    "target_duration_sec": 165.0,
+    "visual_style": "冷调海岸、花岗岩灯塔、黄铜机械、盐雾与低照度冷光，偶有暖色灯火对比"
+  },
+  "optional_asset_intent": [],
+  "cast_and_assets": [
+    {"entity_id": "E1", "name": "伊莱亚斯", "entity_type": "character", "creative_description": "沉默寡言的老守塔人，双手粗糙，眼神被海风磨得辽远。", "state_notes": ["中年登场，历经风暴后年迈，多年后更为苍老佝偻。"]},
+    {"entity_id": "E2", "name": "玛拉", "entity_type": "character", "creative_description": "灵巧而倔强的学徒，对灯与海有天生的敬畏。", "state_notes": ["少年登场，系深蓝头巾；多年后成长为沉稳的成年守塔人。"]},
+    {"entity_id": "E3", "name": "航海日志", "entity_type": "object", "creative_description": "一本黄铜包角的厚重旧账本，记满潮汐、灯次与船名。", "state_notes": ["初为整洁黄铜包角；暴风雨后盐渍风化、封皮卷曲。"]},
+    {"entity_id": "E4", "name": "菲涅尔透镜", "entity_type": "object", "creative_description": "灯室核心的旋转菲涅尔透镜，同心玻璃环折射出锋利的光束。", "state_notes": ["初为完好旋转；暴风雨中开裂，此后始终带裂痕。"]},
+    {"entity_id": "E5", "name": "海燕号", "entity_type": "object", "creative_description": "一艘漆成靛蓝的小渔船，船首漆着白色海燕。", "state_notes": ["初为完好；暴风雨中沉没，之后仅以残骸或缺席出现。"]},
+    {"entity_id": "E6", "name": "莉娜", "entity_type": "character", "creative_description": "玛拉的双胞胎姐姐，面容极似玛拉，却系赭红披肩、神情更张扬。", "state_notes": ["仅在渔村集市出现，用于制造错认硬样本。"]},
+    {"entity_id": "E7", "name": "灯塔", "entity_type": "location", "creative_description": "矗立于礁岬的白色花岗岩灯塔，塔身有螺旋铁梯。", "state_notes": ["跨越天气与年代反复出现。"]},
+    {"entity_id": "E8", "name": "灯室", "entity_type": "location", "creative_description": "灯塔顶层的玻璃灯室，环绕黄铜栏杆，中央是菲涅尔透镜。", "state_notes": ["核心内景，多次回访。"]},
+    {"entity_id": "E9", "name": "礁石海岸", "entity_type": "location", "creative_description": "灯塔脚下的黑色礁石与碎浪海岸，散落旧渔网与浮标。", "state_notes": ["收徒与日常之地。"]},
+    {"entity_id": "E10", "name": "渔村集市", "entity_type": "location", "creative_description": "海湾对岸的小渔村集市，木棚、鱼篓与晾晒的渔网。", "state_notes": ["莉娜出现之地。"]},
+    {"entity_id": "E11", "name": "纪念铜牌", "entity_type": "object", "creative_description": "钉在灯塔基座的黄铜纪念牌，刻着守塔人之名与年份。", "state_notes": ["仅在结尾出现，指代已故的伊莱亚斯。"]}
+  ],
+  "main_entities": [
+    {"entity_id": "E1", "name": "伊莱亚斯", "entity_type": "character", "appearance": "一位五十余岁的守塔人，灰白胡须，穿厚重的深绿防水外套与高筒胶靴，双手粗糙布满老茧，眼神辽远而疲惫。"},
+    {"entity_id": "E2", "name": "玛拉", "entity_type": "character", "appearance": "一名十四五岁的少女学徒，系深蓝头巾，穿粗棉渔装，眉眼清亮而倔强。"},
+    {"entity_id": "E3", "name": "航海日志", "entity_type": "object", "appearance": "一本厚重的旧账本，四角包着磨亮的黄铜，深棕皮封面，书页泛黄写满墨迹。"},
+    {"entity_id": "E4", "name": "菲涅尔透镜", "entity_type": "object", "appearance": "一具真人高的旋转菲涅尔透镜，由同心玻璃棱环组成，折射出锋利的白色光束。"},
+    {"entity_id": "E5", "name": "海燕号", "entity_type": "object", "appearance": "一艘靛蓝色小木渔船，船首漆着一只展翅的白色海燕，舷侧挂着旧轮胎护舷。"},
+    {"entity_id": "E6", "name": "莉娜", "entity_type": "character", "appearance": "与玛拉面容极为相似的双胞胎姐姐，系赭红色羊毛披肩，神情张扬，鬓角别一枚贝壳发夹。"},
+    {"entity_id": "E7", "name": "灯塔", "entity_type": "location", "appearance": "一座矗立在黑色礁岬上的白色花岗岩灯塔，塔身细高，顶部是玻璃灯室，海雾常年缭绕。"},
+    {"entity_id": "E8", "name": "灯室", "entity_type": "location", "appearance": "灯塔顶层的环形玻璃灯室，黄铜栏杆环绕，中央矗立菲涅尔透镜，窗外是无尽的海。"},
+    {"entity_id": "E9", "name": "礁石海岸", "entity_type": "location", "appearance": "灯塔脚下的黑色礁石海岸，碎浪拍打，散落着旧渔网、玻璃浮标与漂木。"},
+    {"entity_id": "E10", "name": "渔村集市", "entity_type": "location", "appearance": "海湾对岸的小渔村露天集市，木棚下摆满鱼篓与咸鱼，晾绳上挂着渔网，人来人往。"},
+    {"entity_id": "E11", "name": "纪念铜牌", "entity_type": "object", "appearance": "一块钉在花岗岩基座上的黄铜纪念牌，表面刻着守塔人之名与年份，边缘已生铜绿。"}
+  ],
+  "human_readable_screenplay": {
+    "scenes": [
+      {"scene_id": "S1", "slugline": "内景. 灯室 - 黄昏", "scene_purpose": "引入伊莱亚斯、菲涅尔透镜与航海日志。", "beats": [
+        {"beat_id": "B001", "action": "伊莱亚斯登上螺旋铁梯，走进灯室，点亮旋转的菲涅尔透镜。", "dialogue": [], "referenced_entities": ["E1", "E4", "E8"]},
+        {"beat_id": "B002", "action": "他在黄铜栏杆旁翻开黄铜包角的航海日志，就着光记下今日的潮汐。", "dialogue": [], "referenced_entities": ["E1", "E3", "E8"]}
+      ]},
+      {"scene_id": "S2", "slugline": "外景. 礁石海岸 - 日", "scene_purpose": "收玛拉为徒，引入海燕号。", "beats": [
+        {"beat_id": "B003", "action": "伊莱亚斯在礁石海岸迎接少女玛拉，靛蓝色的海燕号泊在浅水里。", "dialogue": [{"character": "ELIAS", "entity_id": "E1", "parenthetical": "低沉", "line": "灯会认得守它的人。跟紧了。"}], "referenced_entities": ["E1", "E2", "E5", "E9"]}
+      ]},
+      {"scene_id": "S3", "slugline": "外景. 渔村集市 - 日", "scene_purpose": "以双胞胎莉娜制造错认硬样本。", "beats": [
+        {"beat_id": "B004", "action": "玛拉在渔村集市穿行；她的双胞胎姐姐莉娜系着赭红披肩，从鱼棚后回头张望。", "dialogue": [], "referenced_entities": ["E2", "E6", "E10"]}
+      ]},
+      {"scene_id": "S4", "slugline": "内景. 灯室 - 夜", "scene_purpose": "传承：以日志与透镜教导玛拉。", "beats": [
+        {"beat_id": "B005", "action": "夜里，伊莱亚斯把航海日志推到玛拉面前，指着透镜讲解灯次。", "dialogue": [{"character": "ELIAS", "entity_id": "E1", "parenthetical": "郑重", "line": "有一天，这盏灯和这本册子都归你。"}], "referenced_entities": ["E1", "E2", "E3", "E4", "E8"]}
+      ]},
+      {"scene_id": "S5", "slugline": "外景. 海上 海燕号 - 日", "scene_purpose": "伊莱亚斯独自出海（玛拉长时缺席起点）。", "beats": [
+        {"beat_id": "B006", "action": "伊莱亚斯独自驾着海燕号驶向灰蓝的外海，天边云层压低。", "dialogue": [], "referenced_entities": ["E1", "E5"]}
+      ]},
+      {"scene_id": "S6", "slugline": "外景. 暴风雨中的灯塔 - 夜", "scene_purpose": "灾变：透镜开裂、海燕号沉没。", "beats": [
+        {"beat_id": "B007", "action": "暴风雨中，灯塔在闪电里颤抖；菲涅尔透镜迸出裂纹，海燕号被巨浪掀翻。", "dialogue": [], "referenced_entities": ["E4", "E5", "E7"]}
+      ]},
+      {"scene_id": "S7", "slugline": "内景. 灯室 - 暴风次日", "scene_purpose": "废弃证据：此后透镜带裂、海燕号不再完好。", "beats": [
+        {"beat_id": "B008", "action": "年迈的伊莱亚斯独自站在开裂的透镜前，把航海日志按在胸口。", "dialogue": [], "referenced_entities": ["E1", "E3", "E4", "E8"]}
+      ]},
+      {"scene_id": "S8", "slugline": "外景. 灯塔 - 多年后 日", "scene_purpose": "长时缺席后回归：长大的玛拉归来。", "beats": [
+        {"beat_id": "B009", "action": "多年后，成年的玛拉沿海岸走向灯塔；更加苍老的伊莱亚斯在塔门口等她。", "dialogue": [{"character": "MARA", "entity_id": "E2", "parenthetical": "轻声", "line": "我回来接灯了。"}], "referenced_entities": ["E1", "E2", "E7"]}
+      ]},
+      {"scene_id": "S9", "slugline": "内景. 灯室 - 多年后 夜", "scene_purpose": "接续：风化的日志归位，玛拉成为守塔人。", "beats": [
+        {"beat_id": "B010", "action": "玛拉把盐渍风化的航海日志摊在开裂的透镜下，点亮灯火。", "dialogue": [], "referenced_entities": ["E2", "E3", "E4", "E8"]}
+      ]},
+      {"scene_id": "S10", "slugline": "外景. 灯塔基座 - 日", "scene_purpose": "尾声：纪念铜牌，伊莱亚斯已逝。", "beats": [
+        {"beat_id": "B011", "action": "灯塔基座上钉着一块黄铜纪念牌；玛拉独自伫立，指尖抚过刻着伊莱亚斯之名的字迹。", "dialogue": [], "referenced_entities": ["E2", "E7", "E11"]}
+      ]}
+    ]
+  },
+  "production_screenplay": {
+    "scenes": [
+      {"scene_id": "S1", "source_scene_id": "S1", "scene_title": "点灯", "t_start": 0.0, "t_end": 15.0, "entities_present": ["E1", "E3", "E4", "E8"], "visual_track": {"background": "黄昏的灯室（E8），菲涅尔透镜（E4）缓缓旋转，冷光扫过海面。"}, "audio_track": {"ambience": "海风穿过玻璃缝隙的低鸣，透镜旋转的机械嗡响。", "bgm": "低沉的弦乐长音。"}},
+      {"scene_id": "S2", "source_scene_id": "S2", "scene_title": "收徒", "t_start": 15.0, "t_end": 30.0, "entities_present": ["E1", "E2", "E5", "E9"], "visual_track": {"background": "白日的礁石海岸（E9），海燕号（E5）泊在浅水，旧渔网散落。"}, "audio_track": {"ambience": "碎浪拍岩、海鸥鸣叫。", "bgm": "带希望感的木吉他分解和弦。"}},
+      {"scene_id": "S3", "source_scene_id": "S3", "scene_title": "集市错认", "t_start": 30.0, "t_end": 42.0, "entities_present": ["E2", "E6", "E10"], "visual_track": {"background": "喧闹的渔村集市（E10），木棚与晾晒的渔网间人来人往。"}, "audio_track": {"ambience": "人声、叫卖、海鸥。", "bgm": "轻快而略显嘈杂的民谣。"}},
+      {"scene_id": "S4", "source_scene_id": "S4", "scene_title": "传承", "t_start": 42.0, "t_end": 58.0, "entities_present": ["E1", "E2", "E3", "E4", "E8"], "visual_track": {"background": "夜晚的灯室（E8），透镜（E4）的光束与桌上摊开的航海日志（E3）。"}, "audio_track": {"ambience": "透镜旋转声、纸页翻动。", "bgm": "温暖内敛的钢琴。"}},
+      {"scene_id": "S5", "source_scene_id": "S5", "scene_title": "独航", "t_start": 58.0, "t_end": 72.0, "entities_present": ["E1", "E5"], "visual_track": {"background": "灰蓝外海，海燕号（E5）独自驶向压低的云层。"}, "audio_track": {"ambience": "引擎突突声、渐起的风。", "bgm": "不安的低音提琴。"}},
+      {"scene_id": "S6", "source_scene_id": "S6", "scene_title": "风暴", "t_start": 72.0, "t_end": 92.0, "entities_present": ["E4", "E5", "E7"], "visual_track": {"background": "暴风雨之夜，灯塔（E7）在闪电中矗立，透镜（E4）迸裂，海燕号（E5）倾覆。"}, "audio_track": {"ambience": "雷鸣、巨浪、玻璃碎裂。", "bgm": "管弦风暴高潮。"}},
+      {"scene_id": "S7", "source_scene_id": "S7", "scene_title": "裂痕", "t_start": 92.0, "t_end": 108.0, "entities_present": ["E1", "E3", "E4", "E8"], "visual_track": {"background": "暴风次日的灯室（E8），开裂的透镜（E4）静止，冷光透过裂纹。"}, "audio_track": {"ambience": "滴水声、余风。", "bgm": "哀伤的大提琴独奏。"}},
+      {"scene_id": "S8", "source_scene_id": "S8", "scene_title": "归来", "t_start": 108.0, "t_end": 128.0, "entities_present": ["E1", "E2", "E7"], "visual_track": {"background": "多年后的白日，灯塔（E7）矗立海岬，成年玛拉（E2）沿岸走来。"}, "audio_track": {"ambience": "海浪、脚步、海鸥。", "bgm": "回归主题，弦乐渐强。"}},
+      {"scene_id": "S9", "source_scene_id": "S9", "scene_title": "接灯", "t_start": 128.0, "t_end": 148.0, "entities_present": ["E2", "E3", "E4", "E8"], "visual_track": {"background": "多年后的夜晚灯室（E8），风化的航海日志（E3）摊在开裂透镜（E4）下。"}, "audio_track": {"ambience": "透镜旋转、纸页翻动。", "bgm": "钢琴主题变奏，温暖而坚定。"}},
+      {"scene_id": "S10", "source_scene_id": "S10", "scene_title": "铜牌", "t_start": 148.0, "t_end": 165.0, "entities_present": ["E2", "E7", "E11"], "visual_track": {"background": "白日的灯塔（E7）基座，黄铜纪念牌（E11）钉在花岗岩上。"}, "audio_track": {"ambience": "海风、远处灯塔钟声。", "bgm": "收束的弦乐长音。"}}
+    ],
+    "shots": [
+      {"shot_id": "shot_0001", "scene_id": "S1", "source_beat_ids": ["B001"], "transition": "cut", "duration_sec": 5.0, "visual_track": {"actions": ["守塔人伊莱亚斯（E1）登上螺旋铁梯，走进黄昏的灯室（E8）。", "他伸手点亮中央的菲涅尔透镜（E4），冷光束缓缓扫过海面。"], "cinematography": {"shot_type": "仰角中景", "camera_movement": "随人物上升的缓慢跟摇", "lighting": "冷调逆光，透镜光束切开暮色"}}, "audio_track": {"dialogue": [], "foley": "铁梯回响、透镜启动的机械声。", "voiceover": ""}, "active_characters": ["E1"], "continuity_requirements": ["伊莱亚斯为灰白胡须、深绿防水外套。", "菲涅尔透镜完好并旋转。"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0002", "scene_id": "S1", "source_beat_ids": ["B002"], "transition": "continue", "duration_sec": 5.0, "visual_track": {"actions": ["伊莱亚斯（E1）在黄铜栏杆旁翻开黄铜包角的航海日志（E3）。", "他就着透镜的光，低头记下今日的潮汐与灯次。"], "cinematography": {"shot_type": "过肩近景", "camera_movement": "缓慢推入到书页", "lighting": "暖黄台灯与冷白透镜光交叠"}}, "audio_track": {"dialogue": [], "foley": "纸页翻动、钢笔刮擦。", "voiceover": ""}, "active_characters": ["E1"], "continuity_requirements": ["航海日志为黄铜包角、深棕皮封面（完好状态）。"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0003", "scene_id": "S2", "source_beat_ids": ["B003"], "transition": "cut", "duration_sec": 5.5, "visual_track": {"actions": ["白日的礁石海岸（E9），伊莱亚斯（E1）迎向走来的少女玛拉（E2）。", "靛蓝色的海燕号（E5）泊在浅水，船首白色海燕清晰可见。"], "cinematography": {"shot_type": "海岸全景转中景", "camera_movement": "缓慢横摇带出渔船", "lighting": "明亮自然光，海面反光"}}, "audio_track": {"dialogue": [{"entity_id": "E1", "text": "灯会认得守它的人。跟紧了。", "expression": "低沉、克制"}], "foley": "碎浪、海鸥、脚踩砾石。", "voiceover": ""}, "active_characters": ["E1", "E2"], "continuity_requirements": ["玛拉系深蓝头巾。", "海燕号为靛蓝、船首白色海燕（完好）。"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E9", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0004", "scene_id": "S2", "source_beat_ids": ["B003"], "transition": "continue", "duration_sec": 5.0, "visual_track": {"actions": ["玛拉（E2）蹲在礁石海岸（E9）边，好奇地拨弄搁浅的旧渔网与玻璃浮标。", "伊莱亚斯（E1）在她身后望向海面。"], "cinematography": {"shot_type": "低角中近景", "camera_movement": "轻微手持", "lighting": "顺光，海风扬起头巾"}}, "audio_track": {"dialogue": [], "foley": "渔网摩擦、浮标碰撞。", "voiceover": ""}, "active_characters": ["E1", "E2"], "continuity_requirements": ["玛拉深蓝头巾、粗棉渔装保持一致。"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E9", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0005", "scene_id": "S3", "source_beat_ids": ["B004"], "transition": "cut", "duration_sec": 5.0, "visual_track": {"actions": ["玛拉（E2）系着深蓝头巾，在喧闹的渔村集市（E10）木棚间穿行。"], "cinematography": {"shot_type": "跟拍中景", "camera_movement": "稳定器跟随", "lighting": "正午强光，木棚投下条纹阴影"}}, "audio_track": {"dialogue": [], "foley": "人声鼎沸、叫卖、鱼篓碰撞。", "voiceover": ""}, "active_characters": ["E2"], "continuity_requirements": ["玛拉必须系深蓝头巾（区别于莉娜）。"], "planned_assets": [{"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E10", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0006", "scene_id": "S3", "source_beat_ids": ["B004"], "transition": "cut", "duration_sec": 5.0, "visual_track": {"actions": ["双胞胎姐姐莉娜（E6）系着赭红披肩，从鱼棚后回头张望，鬓角别着贝壳发夹。"], "cinematography": {"shot_type": "半身中景", "camera_movement": "锁定机位", "lighting": "侧光，赭红披肩醒目"}}, "audio_track": {"dialogue": [], "foley": "集市嘈杂、木棚吱呀。", "voiceover": ""}, "active_characters": ["E6"], "continuity_requirements": ["莉娜面容与玛拉相似，但必须系赭红披肩、别贝壳发夹，不得与玛拉混淆。"], "planned_assets": [{"planned_asset_id": "E6", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E10", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0007", "scene_id": "S4", "source_beat_ids": ["B005"], "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["夜晚的灯室（E8），伊莱亚斯（E1）把黄铜包角的航海日志（E3）推到玛拉（E2）面前。", "他抬手指向旋转的菲涅尔透镜（E4），讲解灯次的节律。"], "cinematography": {"shot_type": "三人构图中景（含透镜）", "camera_movement": "缓慢环绕", "lighting": "暖台灯与冷透镜光交错"}}, "audio_track": {"dialogue": [{"entity_id": "E1", "text": "有一天，这盏灯和这本册子都归你。", "expression": "郑重、温和"}], "foley": "透镜旋转、纸页翻动。", "voiceover": ""}, "active_characters": ["E1", "E2"], "continuity_requirements": ["日志仍为完好黄铜包角。", "透镜仍完好旋转。", "玛拉仍系深蓝头巾。"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0008", "scene_id": "S5", "source_beat_ids": ["B006"], "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["伊莱亚斯（E1）独自驾着靛蓝的海燕号（E5）驶向灰蓝外海。", "天边云层压低，海面泛起碎白。"], "cinematography": {"shot_type": "海上远景", "camera_movement": "低空跟拍", "lighting": "阴沉平光，冷调"}}, "audio_track": {"dialogue": [], "foley": "引擎突突、船身拍浪。", "voiceover": ""}, "active_characters": ["E1"], "continuity_requirements": ["海燕号仍为完好靛蓝、船首白色海燕。"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0009", "scene_id": "S6", "source_beat_ids": ["B007"], "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["暴风雨之夜，白色灯塔（E7）在闪电中矗立，狂浪拍击礁岬。"], "cinematography": {"shot_type": "大远景", "camera_movement": "剧烈手持", "lighting": "闪电高对比，瞬时惨白"}}, "audio_track": {"dialogue": [], "foley": "雷鸣、狂风、巨浪。", "voiceover": ""}, "active_characters": ["E7"], "continuity_requirements": ["灯塔为白色花岗岩塔身。"], "planned_assets": [{"planned_asset_id": "E7", "asset_kind": "location", "intended_uses": ["scene", "identity"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0010", "scene_id": "S6", "source_beat_ids": ["B007"], "transition": "continue", "duration_sec": 6.0, "visual_track": {"actions": ["灯室内，菲涅尔透镜（E4）在震动中迸出一道刺目的裂纹。", "远处海面上，海燕号（E5）被巨浪掀翻、桅杆折断。"], "cinematography": {"shot_type": "透镜特写切海面中景", "camera_movement": "急推与甩摇", "lighting": "闪电频闪"}}, "audio_track": {"dialogue": [], "foley": "玻璃碎裂、木船断裂、雷鸣。", "voiceover": ""}, "active_characters": ["E4", "E5"], "continuity_requirements": ["透镜从此刻起开裂，后续不得再完好。", "海燕号从此刻起损毁/沉没。"], "planned_assets": [{"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "transform", "required": true}, {"planned_asset_id": "E5", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "transform", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0011", "scene_id": "S7", "source_beat_ids": ["B008"], "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["暴风次日，年迈的伊莱亚斯（E1）独自站在开裂的菲涅尔透镜（E4）前。", "他把黄铜包角的航海日志（E3）紧紧按在胸口。"], "cinematography": {"shot_type": "中近景", "camera_movement": "极缓推入", "lighting": "透过裂纹的冷光，尘埃浮动"}}, "audio_track": {"dialogue": [], "foley": "滴水、余风、透镜停摆。", "voiceover": ""}, "active_characters": ["E1"], "continuity_requirements": ["伊莱亚斯明显更苍老。", "透镜必须带裂纹（不得完好）。", "海燕号已沉没，不得出现完好之姿。"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "object", "intended_uses": ["identity"], "operation": "avoid", "required": false}, {"planned_asset_id": "E8", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0012", "scene_id": "S8", "source_beat_ids": ["B009"], "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["多年后的白日，成年的玛拉（E2）沿礁石海岸走向白色灯塔（E7）。"], "cinematography": {"shot_type": "背身跟拍全景", "camera_movement": "稳定跟随", "lighting": "明亮自然光，海风"}}, "audio_track": {"dialogue": [{"entity_id": "E2", "text": "我回来接灯了。", "expression": "轻声、坚定"}], "foley": "海浪、脚步、海鸥。", "voiceover": ""}, "active_characters": ["E2"], "continuity_requirements": ["玛拉已长大为成年守塔人，仍可辨深蓝头巾的传承。", "灯塔为白色花岗岩塔身。"], "planned_assets": [{"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "intended_uses": ["scene", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "object", "intended_uses": ["identity"], "operation": "avoid", "required": false}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0013", "scene_id": "S8", "source_beat_ids": ["B009"], "transition": "continue", "duration_sec": 6.0, "visual_track": {"actions": ["更加苍老佝偻的伊莱亚斯（E1）在灯塔（E7）门口等候，与成年玛拉（E2）相认。"], "cinematography": {"shot_type": "双人中景", "camera_movement": "缓慢合围", "lighting": "暖侧光，海雾柔化"}}, "audio_track": {"dialogue": [], "foley": "海风、门轴吱呀。", "voiceover": ""}, "active_characters": ["E1", "E2"], "continuity_requirements": ["伊莱亚斯为最苍老状态。", "成年玛拉与前一镜一致。"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["appearance", "identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0014", "scene_id": "S9", "source_beat_ids": ["B010"], "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["多年后的夜晚灯室（E8），成年玛拉（E2）把盐渍风化、封皮卷曲的航海日志（E3）摊在开裂的菲涅尔透镜（E4）下。"], "cinematography": {"shot_type": "过肩近景", "camera_movement": "缓慢下摇到书页", "lighting": "冷透镜光透过裂纹，暖灯补光"}}, "audio_track": {"dialogue": [], "foley": "纸页翻动、透镜低鸣。", "voiceover": ""}, "active_characters": ["E2"], "continuity_requirements": ["航海日志必须为风化状态（区别于开场的完好日志）。", "透镜必须带裂纹。"], "planned_assets": [{"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0015", "scene_id": "S9", "source_beat_ids": ["B010"], "transition": "continue", "duration_sec": 5.5, "visual_track": {"actions": ["成年玛拉（E2）抬手点亮开裂的菲涅尔透镜（E4），一道略带残缺的光束重新扫过夜海。"], "cinematography": {"shot_type": "仰角中景", "camera_movement": "缓慢上摇至透镜", "lighting": "冷光束穿过裂纹形成断口"}}, "audio_track": {"dialogue": [], "foley": "透镜启动、机械咔哒。", "voiceover": ""}, "active_characters": ["E2"], "continuity_requirements": ["透镜光束因裂纹而略有缺口，透镜不得完好。"], "planned_assets": [{"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E8", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]},
+      {"shot_id": "shot_0016", "scene_id": "S10", "source_beat_ids": ["B011"], "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["白日的灯塔（E7）基座，一块生了铜绿的黄铜纪念牌（E11）钉在花岗岩上。", "成年玛拉（E2）伫立牌前，指尖抚过刻着伊莱亚斯之名的字迹。"], "cinematography": {"shot_type": "特写切中景", "camera_movement": "从铜牌缓慢拉开到玛拉", "lighting": "柔和白日，海雾弥漫"}}, "audio_track": {"dialogue": [], "foley": "海风、远处钟声。", "voiceover": ""}, "active_characters": ["E2"], "continuity_requirements": ["纪念铜牌指代已故的伊莱亚斯；伊莱亚斯本人不再出现。", "玛拉与前场一致。"], "planned_assets": [{"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E11", "asset_kind": "object", "intended_uses": ["identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "intended_uses": ["scene"], "operation": "preserve", "required": true}, {"planned_asset_id": "E1", "asset_kind": "character", "intended_uses": ["identity"], "operation": "avoid", "required": false}], "video_prompts": ["TODO"], "first_frame_prompts": ["TODO"]}
+    ]
+  },
+  "traceability": {
+    "human_layer_source": "human_readable_screenplay",
+    "conversion_status": "example_hand_derived",
+    "conversion_notes": [
+      "每个 production shot 通过 source_beat_ids 对应 human-readable beat。",
+      "长程记忆硬样本：E2 玛拉在 S5–S7 长时缺席后于 S8 回归；E3 日志在 S5–S8 缺席后于 S9 以风化状态回归。",
+      "错认硬样本：E2 玛拉（深蓝头巾）与其双胞胎 E6 莉娜（赭红披肩）面容相似，仅 S3 出现莉娜。",
+      "状态变化：E1 伊莱亚斯逐步衰老；E3 日志由完好→风化；E4 透镜由完好→开裂（S6 transform）。",
+      "废弃证据规避：E5 海燕号 S6 沉没后在 S7/S8 标记 operation=avoid；E1 在 S10 标记 avoid（已故，仅由 E11 铜牌指代）。"
+    ]
+  }
+}

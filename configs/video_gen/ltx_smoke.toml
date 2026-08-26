@@ -1,0 +1,15 @@
+# LTX-Video tiny smoke backend for real (non-oracle) production-loop validation.
+# This is intentionally low quality: it verifies wiring without spending minutes per chunk.
+
+[models.ltx_smoke]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "ltx"
+model = "Lightricks/LTX-Video"
+capabilities = ["text_to_video", "image_to_video"]
+fps = 9
+height = 256
+width = 384
+steps = 2
+guidance_scale = 1.5

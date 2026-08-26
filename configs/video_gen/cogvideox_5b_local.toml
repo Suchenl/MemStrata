@@ -1,0 +1,16 @@
+# Local CogVideoX-5B smoke backend.
+# Uses the shared public model root recorded in models/model_weights/local_paths.md.
+
+[models.cogvideox_5b_local]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "cogvideox"
+model = "${PUBLIC_MODELS_ROOT}/ZhipuAI/CogVideoX-5b"
+capabilities = ["text_to_video", "image_to_video"]
+num_frames = 9
+fps = 8
+height = 480
+width = 720
+steps = 2
+guidance_scale = 3.0

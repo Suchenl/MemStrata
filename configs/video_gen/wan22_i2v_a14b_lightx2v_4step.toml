@@ -1,0 +1,71 @@
+# Wan2.2-I2V-A14B MoE, 4-step step-distilled (LightX2V) — fast, high-fidelity i2v.
+#
+# Dual 14B experts (2 high-noise steps + 2 low-noise steps), CFG-free (guidance=1.0),
+# Euler scheduler, sample_shift=5.0. Served persistently (see wan22_lightx2v_server.py) so
+# both experts load only once. Selected via provider = "wan_lightx2v".
+#
+# SETUP (one-time, blocked on the distilled weights the user is downloading):
+#   1. Install LightX2V into an env (see README_wan22_lightx2v.md) and set `python` below.
+#   2. Build the LightX2V-layout model dir from the two distilled safetensors + base
+#      Wan2.2-I2V-A14B components:
+#        bash benchmarks/MemStrata/src/memstrata/steps/generate/backends/setup_lightx2v_weights.sh \
+#          <high_noise.safetensors> <low_noise.safetensors>
+#      That writes `model` below (a dir with high_noise_model/ + low_noise_model/ + base t5/vae).
+#   3. `montage`/run.py: pass --backend wan22_i2v_a14b_lightx2v_4step.
+
+[models.wan22_i2v_a14b_lightx2v_4step]
+enabled = true
+task = "video_generation"
+provider = "wan_lightx2v"
+family = "wan_i2v"
+
+# LightX2V runner class: the 4-step CFG-free step-distilled dual-expert path. It auto-discovers
+# high_noise_model/ + low_noise_model/ from `model` below (our setup_lightx2v_weights.sh layout).
+model_cls = "wan2.2_moe_distill"
+
+# LightX2V-layout dir produced by setup_lightx2v_weights.sh (TODO: created once weights land).
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step"
+model_name = "i2v-A14B-moe-distill-4step"
+
+# LightX2V is installed (editable, --no-deps) INTO the vace env: vace already has torch 2.5.1+cu124
+# and flash_attn2 (LightX2V pins torch<=2.8, so helios' torch 2.10 is too new). This keeps one env
+# and does not disturb the native_wan path (which runs generate.py in a subprocess, never imports
+# lightx2v). A conda --clone of vace on this Ceph FS was abandoned (too slow).
+python = "python3"
+
+capabilities = ["image_to_video"]
+
+# 4-step distill: 2 high-noise + 2 low-noise, no CFG.
+infer_steps = 4
+guidance_high = 1.0
+guidance_low = 1.0
+sample_shift = 5.0
+# flash_attn2 is present in the cloned lightx2v env (from vace); flash_attn3 is NOT installed and
+# sage_attn2 would need a source build on torch2.5/cu124. torch_sdpa is the zero-dep fallback.
+attn_mode = "flash_attn2"
+
+# 480p production (user directive: don't run large sizes). Output is PINNED to exactly 832x480
+# (W×H, landscape: height 480, width 832) via resize_mode=fixed_shape in the config_json — every
+# chunk is identical size so stitching is safe, regardless of the FLUX keyframe's aspect.
+# num_frames 81 @ ~16fps ≈ 5s/chunk.
+height = 480
+width = 832
+num_frames = 81
+base_seed = 2026
+
+# Persistent server (two 14B experts stay resident).
+serve_persistent = true
+server_job_timeout = 3600
+server_ready_timeout = 1800
+server_idle_timeout = 1800
+auto_pick_gpu = true
+min_free_mib = 70000          # BF16 dual-expert is heavy; drop + set offload=true on smaller cards
+offload = false
+
+# diffusers/imageio export borrows vace's ffmpeg (mirrors the helios config).
+ffmpeg = "ffmpeg"
+
+# Hand-authored LightX2V distill config (vendored from upstream wan_moe_i2v_distill_model.json):
+# pins 4-step 2+2 boundary + denoising_step_list, CFG off, flash_attn2, no offload. It does NOT
+# override the expert ckpt paths, so the two experts are auto-discovered from `model` above.
+config_json = "./configs/video_gen/lightx2v/wan22_i2v_distill_4step.json"

@@ -1,0 +1,86 @@
+{
+  "cinematic": {
+    "name_zh": "电影写实风",
+    "name_en": "Cinematic Photorealistic",
+    "description": "高电影感、胶片质感的写实剧照风格，适合电影、电视剧、写实短片等。",
+    "prompt_template": "A cinematic movie grid of {panel_count} film stills arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the stills. Each panel must have an identical aspect ratio and resolution.\nShot on 35mm anamorphic camera, Kodak Vision3 500T film stock.\nSame character identity, same outfit, same realistic art style.\n\n{panels_description}\n\nStyle: realistic movie keyframes, photorealistic film stills, natural volumetric lighting, realistic skin texture, cinematic composition.",
+    "negative_prompt": "drawings, sketches, comic book style, cartoon style, outlines, speech bubbles, text labels inside panels, amateur, low quality, distorted anatomy, page numbers, page numbering, page count, pagination"
+  },
+  "anime": {
+    "name_zh": "日系动漫风",
+    "name_en": "Japanese Anime / Illustration",
+    "description": "精美的手绘数码插画风格，色彩鲜艳，具有吉卜力或新海诚动画的质感。",
+    "prompt_template": "A beautiful anime storyboard of {panel_count} keyframes arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the keyframes. Each panel must have an identical aspect ratio and resolution.\nStudio Ghibli style, detailed hand-drawn digital illustration, vibrant anime color palette.\nSame character identity, same outfit, same consistent anime art style.\n\n{panels_description}\n\nStyle: high-quality anime keyframes, clean digital illustration, beautiful anime lighting, soft shadows, scenic composition.",
+    "negative_prompt": "comic book style, outlines, speech bubbles, text labels inside panels, photorealistic, 3d render, low quality, sketch, draft, page numbers, page numbering, page count, pagination"
+  },
+  "3d_render": {
+    "name_zh": "3D 动画/游戏 CG 风",
+    "name_en": "3D Render / Game CGI",
+    "description": "皮克斯/迪士尼风格的3D动画或虚幻5引擎渲染的游戏CG风格，具有极高的材质和光影细节。",
+    "prompt_template": "A high-end 3D animated storyboard of {panel_count} keyframes arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the keyframes. Each panel must have an identical aspect ratio and resolution.\nPixar / Disney style, 3D CGI render, Unreal Engine 5 cinematic render, Ray-traced global illumination.\nSame character identity, same outfit, same consistent 3D art style.\n\n{panels_description}\n\nStyle: high-end 3D animation keyframes, subsurface scattering, realistic fabric shaders, cinematic lighting, volumetric fog.",
+    "negative_prompt": "drawings, sketches, comic book style, outlines, speech bubbles, text labels inside panels, photorealistic, 2d illustration, low quality, page numbers, page numbering, page count, pagination"
+  },
+  "cyberpunk": {
+    "name_zh": "赛博朋克科幻风",
+    "name_en": "Cyberpunk / Sci-Fi",
+    "description": "未来主义、霓虹闪烁的科幻风格，充满高科技与低生活的对比，适合科幻、赛博朋克题材。",
+    "prompt_template": "A futuristic cyberpunk storyboard of {panel_count} keyframes arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the keyframes. Each panel must have an identical aspect ratio and resolution.\nBlade Runner aesthetic, neon-drenched sci-fi atmosphere, futuristic cityscape, high-tech details.\nSame character identity, same outfit, same consistent sci-fi art style.\n\n{panels_description}\n\nStyle: cyberpunk film keyframes, vibrant neon colors, dramatic volumetric lighting, high-tech elements, cinematic sci-fi composition.",
+    "negative_prompt": "drawings, sketches, classic comic style, cartoon style, outlines, speech bubbles, text labels inside panels, historical, fantasy, low quality, page numbers, page numbering, page count, pagination"
+  },
+  "watercolor": {
+    "name_zh": "水彩插画风",
+    "name_en": "Watercolor / Concept Art",
+    "description": "优雅、写意的水彩晕染插画风格，具有极强的艺术感和氛围感，适合文艺、唯美题材。",
+    "prompt_template": "An artistic watercolor storyboard of {panel_count} keyframes arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the keyframes. Each panel must have an identical aspect ratio and resolution.\nBeautiful watercolor wash, hand-painted texture, soft atmospheric lighting, artistic concept art.\nSame character identity, same outfit, same consistent watercolor art style.\n\n{panels_description}\n\nStyle: high-quality watercolor illustration, hand-painted watercolor textures, soft color blending, artistic and atmospheric composition.",
+    "negative_prompt": "photorealistic, 3d render, sharp digital lines, comic book style, outlines, speech bubbles, text labels inside panels, low quality, messy, page numbers, page numbering, page count, pagination"
+  },
+  "retro_comic": {
+    "name_zh": "复古波普美漫风",
+    "name_en": "Classic Retro Comic / Pop Art",
+    "description": "经典的复古美式漫画或波普艺术风格，具有网点纸（halftone）和复古印刷质感，但无文字干扰。",
+    "prompt_template": "A vintage retro comic-style storyboard of {panel_count} panels arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the panels. Each panel must have an identical aspect ratio and resolution.\n1970s American comic book aesthetic, vintage halftone dot texture, retro color palette, classic ink lines.\nSame character identity, same outfit, same consistent retro comic art style.\n\n{panels_description}\n\nStyle: high-quality retro comic art, vintage halftone textures, classic hand-inked details, pop art aesthetic.",
+    "negative_prompt": "photorealistic, 3d render, modern digital illustration, speech bubbles, text labels inside panels, dialog boxes, sound effects text, low quality, page numbers, page numbering, page count, pagination"
+  },
+  "chinese_ink": {
+    "name_zh": "国风水墨意境风",
+    "name_en": "Chinese Ink Painting / Shan Shui",
+    "description": "传统中国水墨画风格，讲究留白与意境，墨色浓淡相宜，适合古风、武侠、禅意题材。",
+    "prompt_template": "An elegant Chinese ink painting storyboard of {panel_count} keyframes arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the keyframes. Each panel must have an identical aspect ratio and resolution.\nTraditional Chinese Shan Shui ink wash painting style, artistic ink brush strokes, poetic atmosphere, elegant ink gradients.\nSame character identity, same outfit, same consistent ink art style.\n\n{panels_description}\n\nStyle: high-quality Chinese ink wash painting, traditional brushwork, poetic and minimalist composition, beautiful ink gradients.",
+    "negative_prompt": "photorealistic, 3d render, vibrant neon colors, modern digital illustration, comic book style, outlines, speech bubbles, text labels inside panels, low quality, page numbers, page numbering, page count, pagination"
+  },
+  "line_art": {
+    "name_zh": "极简线稿风",
+    "name_en": "Minimalist Line Art / Sketch",
+    "description": "干净利落的黑白线条稿 or 手绘草图，适合早期概念创作、极简风或概念性故事板。",
+    "prompt_template": "A minimalist line art storyboard of {panel_count} panels arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the panels. Each panel must have an identical aspect ratio and resolution.\nClean black and white line art, elegant ink outlines, minimalist sketch aesthetic, high contrast.\nSame character identity, same outfit, same consistent line art style.\n\n{panels_description}\n\nStyle: high-quality minimalist line art, clean vector-like lines, elegant black ink on white background, high-contrast sketch.",
+    "negative_prompt": "photorealistic, 3d render, color, grayscale gradients, shading, speech bubbles, text labels inside panels, messy scribbles, low quality, page numbers, page numbering, page count, pagination"
+  },
+  "oil_painting": {
+    "name_zh": "古典油画风",
+    "name_en": "Classical Oil Painting",
+    "description": "具有浓郁古典艺术气息的油画风格，纹理丰富，笔触明显，光影戏剧化，适合史诗、古典题材。",
+    "prompt_template": "A classical oil painting storyboard of {panel_count} keyframes arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the keyframes. Each panel must have an identical aspect ratio and resolution.\nImpressionist oil painting technique, rich impasto canvas texture, visible artistic brushstrokes, dramatic chiaroscuro lighting.\nSame character identity, same outfit, same consistent oil painting style.\n\n{panels_description}\n\nStyle: high-quality classical oil painting, rich canvas textures, visible artistic brushwork, dramatic and warm lighting.",
+    "negative_prompt": "photorealistic, 3d render, sharp digital lines, flat vector, comic book style, outlines, speech bubbles, text labels inside panels, low quality, page numbers, page numbering, page count, pagination"
+  },
+  "pixel_art": {
+    "name_zh": "像素艺术风",
+    "name_en": "Retro Pixel Art / 16-Bit",
+    "description": "复古16位游戏像素艺术风格，具有独特的网格颗粒感和鲜明色彩，适合游戏、复古科幻题材。",
+    "prompt_template": "A retro 16-bit pixel art storyboard of {panel_count} keyframes arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the keyframes. Each panel must have an identical aspect ratio and resolution.\nClassic pixel art aesthetic, detailed dithered shading, vibrant retro color palette, blocky grid textures.\nSame character identity, same outfit, same consistent pixel art style.\n\n{panels_description}\n\nStyle: high-quality 16-bit pixel art, detailed pixel-level shading, vibrant retro gaming aesthetic, clean pixel grids.",
+    "negative_prompt": "photorealistic, 3d render, smooth digital painting, watercolor, blurry pixels, speech bubbles, text labels inside panels, low quality, page numbers, page numbering, page count, pagination"
+  },
+  "claymation": {
+    "name_zh": "黏土定格动画风",
+    "name_en": "Claymation / Stop-Motion",
+    "description": "可爱、温润的黏土定格动画风格，具有手作黏土的指纹质感和定格动画的微距光影。",
+    "prompt_template": "A cute claymation storyboard of {panel_count} keyframes arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the keyframes. Each panel must have an identical aspect ratio and resolution.\nStop-motion animation style, handmade clay models with subtle fingerprint textures, soft macro lens photography, warm studio lighting.\nSame character identity, same outfit, same consistent claymation style.\n\n{panels_description}\n\nStyle: high-quality claymation keyframes, tactile clay textures, stop-motion studio lighting, soft depth of field.",
+    "negative_prompt": "photorealistic, 2d illustration, drawings, sketches, sharp digital lines, comic book style, outlines, speech bubbles, text labels inside panels, low quality, page numbers, page numbering, page count, pagination"
+  },
+  "flat_vector": {
+    "name_zh": "扁平矢量插画风",
+    "name_en": "Flat Vector Illustration",
+    "description": "现代、简约的扁平化矢量插画风格，色彩干净，几何感强，适合商业广告、MG动画、现代短片。",
+    "prompt_template": "A modern flat vector storyboard of {panel_count} panels arranged in a perfectly symmetrical {cols}x{rows} grid.\nNarrow white gutters separating the panels. Each panel must have an identical aspect ratio and resolution.\nMinimalist flat vector illustration, clean geometric shapes, solid color blocks, modern corporate aesthetic.\nSame character identity, same outfit, same consistent vector art style.\n\n{panels_description}\n\nStyle: high-quality flat vector art, clean geometric compositions, solid colors, modern minimalist graphic design.",
+    "negative_prompt": "photorealistic, 3d render, realistic textures, shading, gradients, drawings, sketches, outlines, speech bubbles, text labels inside panels, low quality, page numbers, page numbering, page count, pagination"
+  }
+}

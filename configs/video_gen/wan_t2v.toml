@@ -1,0 +1,15 @@
+# Wan2.1 text/image-to-video (1.3B). Reference image (if any) drives the image-to-video variant.
+
+[models.wan_t2v]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "wan_t2v"
+model = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
+capabilities = ["text_to_video", "image_to_video"]
+num_frames = 49
+fps = 16
+height = 480
+width = 832
+steps = 30
+guidance_scale = 5.0

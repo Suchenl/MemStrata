@@ -1,0 +1,43 @@
+# VACE 14B @ 480p, 4-step step/CFG-distilled (fast + quality).
+#
+# 目标：拿到 14B 质量但只跑 ~4 步、无 CFG（省一半前向），解决「1.3B 少步糊 / 14B 满步慢」。
+#
+# 落地方式（A 方案，已完成）：把 Wan2.1-14B StepDistill/LCM LoRA 合并进 VACE-14B DiT
+#   （二者共享 Wan2.1-14B DiT 主干；LoRA 只改 self/cross-attn + FFN，VACE context blocks 不动）。
+#   已用 Blyss/BlissfulModels wan_lcm (rank16, comfy 格式) 合并：scripts/merge_vace_distill_lora.py
+#   → 产物落在下面的 model 路径（400/400 delta 应用，抽样校验只动目标层）。
+#   如需调强度：重跑 merge 脚本 --strength（LCM LoRA 默认 1.0）。
+#
+# 已验证：2026-07-01 A100 480p single-chunk smoke 通过（有运动，质量接近 14B full-step）。
+
+[models.vace_native_14b_480p_distill4step]
+enabled = true
+task = "video_generation"
+provider = "native_vace"
+family = "wan_vace_native"
+# 合并后的蒸馏权重目录（占位；A 方案合并产物）：
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.1-VACE-14B-StepDistill-CfgDistill"
+code_root = "submodules/_2_generation/reference/VACE"
+wan_code_root = "submodules/_2_generation/backends/Wan2.1"
+python = "python3"
+pythonpath = ["src"]
+entrypoint = "vace/vace_wan_inference.py"
+model_name = "vace-14B"
+shim_annotators = true
+use_prompt_extend = "plain"
+capabilities = ["reference_conditioned_continuation", "native_wan_vace", "14b", "distilled", "4step"]
+fps = 16
+height = 480
+width = 832
+frame_num = 49
+offload_model = true
+t5_cpu = true
+sample_solver = "unipc"
+sample_steps = 4          # step-distilled
+sample_guide_scale = 1    # CFG-distilled => 关掉 guidance，省一半前向
+sample_shift = 5
+continuation_cond_frames = 9
+serve_persistent = true   # 常驻后台，见 .cursor/rules/persistent-model-serving.mdc
+# BDY/shared-storage cold loads can exceed the default 20min ready wait; KML stays ~5min.
+server_ready_timeout = 3600
+output_glob = "out_video.mp4"

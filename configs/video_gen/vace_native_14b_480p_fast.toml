@@ -1,0 +1,34 @@
+# Fast native Wan/VACE 14B backend at the lowest official VACE resolution.
+# Official VACE does not support 240p; 480p (832x480 landscape) is the minimum.
+
+[models.vace_native_14b_480p_fast]
+enabled = true
+task = "video_generation"
+provider = "native_vace"
+family = "wan_vace_native"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.1-VACE-14B"
+code_root = "submodules/_2_generation/reference/VACE"
+wan_code_root = "submodules/_2_generation/backends/Wan2.1"
+python = "python3"
+pythonpath = ["src"]
+entrypoint = "vace/vace_wan_inference.py"
+model_name = "vace-14B"
+shim_annotators = true
+use_prompt_extend = "plain"
+capabilities = ["reference_conditioned_continuation", "native_wan_vace", "fast_smoke", "14b"]
+fps = 16
+height = 480
+width = 832
+frame_num = 49
+offload_model = true
+t5_cpu = true
+sample_steps = 12
+sample_shift = 8
+sample_guide_scale = 5
+output_glob = "out_video.mp4"
+# Tail frames kept as known V2V context on transition=CONTINUE chunks (latent-aligned 4k+1).
+continuation_cond_frames = 9
+# Persistent serving (.cursor/rules/persistent-model-serving.mdc): build the 14B once, reuse per chunk.
+serve_persistent = true
+# BDY/shared-storage cold loads can exceed the default 20min ready wait; KML stays ~5min.
+server_ready_timeout = 3600

@@ -1,0 +1,38 @@
+# SAGE variant of wan22_i2v_a14b_lightx2v_4step.toml — identical except self-attn uses
+# SageAttention v2 (sage_attn2). SageAttention 1.0.6 (Triton, zero-compile) is installed in the
+# vace env and works on both A800 (sm80) and H800 (sm90). Used ONLY for a same-keyframe A/B speed
+# test against the flash_attn2 lightx2v backend; the flash one stays the stable default.
+
+[models.wan22_i2v_a14b_lightx2v_4step_sage]
+enabled = true
+task = "video_generation"
+provider = "wan_lightx2v"
+family = "wan_i2v"
+model_cls = "wan2.2_moe_distill"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step"
+model_name = "i2v-A14B-moe-distill-4step"
+python = "python3"
+capabilities = ["image_to_video"]
+
+infer_steps = 4
+guidance_high = 1.0
+guidance_low = 1.0
+sample_shift = 5.0
+attn_mode = "sage_attn2"
+
+height = 480
+width = 832
+num_frames = 81
+base_seed = 2026
+
+serve_persistent = true
+server_job_timeout = 3600
+server_ready_timeout = 1800
+server_idle_timeout = 1800
+auto_pick_gpu = true
+min_free_mib = 70000
+offload = false
+
+ffmpeg = "ffmpeg"
+
+config_json = "./configs/video_gen/lightx2v/wan22_i2v_distill_4step_sage.json"

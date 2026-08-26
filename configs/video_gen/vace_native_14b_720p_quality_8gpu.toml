@@ -1,0 +1,36 @@
+# Quality native Wan/VACE 14B on one full 8xA100 node: 720p, higher steps.
+# Use this for the "real" deliverable after the fast 480p configs validate the mechanism.
+# Distributed inference uses torchrun + FSDP + Ulysses context parallel (only vace-14B supports 720p).
+
+[models.vace_native_14b_720p_quality_8gpu]
+enabled = true
+task = "video_generation"
+provider = "native_vace"
+family = "wan_vace_native"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.1-VACE-14B"
+code_root = "submodules/_2_generation/reference/VACE"
+wan_code_root = "submodules/_2_generation/backends/Wan2.1"
+python = "python3"
+pythonpath = ["src"]
+entrypoint = "vace/vace_wan_inference.py"
+model_name = "vace-14B"
+shim_annotators = true
+use_prompt_extend = "plain"
+capabilities = ["reference_conditioned_continuation", "native_wan_vace", "14b", "distributed", "720p", "quality"]
+fps = 16
+height = 720
+width = 1280
+frame_num = 81
+# For transition=CONTINUE chunks: only the TAIL of the previous chunk is kept as known V2V context
+# (never the whole chunk). ponytail: latent-aligned (4k+1) and kept lean so most of the 81 frames are
+# new content; raise toward 21 only if 720p boundaries show drift.
+continuation_cond_frames = 13
+offload_model = false
+t5_cpu = true
+nproc_per_node = 8
+# 720p uses Wan's recommended lower shift; more steps for quality than the fast 480p smoke.
+sample_steps = 40
+sample_shift = 5
+sample_guide_scale = 5
+extra_args = ["--dit_fsdp", "--ulysses_size", "8", "--ring_size", "1"]
+output_glob = "out_video.mp4"

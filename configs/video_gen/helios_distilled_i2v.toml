@@ -1,0 +1,48 @@
+# Helios-Distilled i2v backend (fast CFG-distilled continuation from a FLUX keyframe).
+# Talks to the official Helios checkout through a MemStrata persistent file-queue server.
+# Env quirks (HF `kernels` FA2 alias, offline caches, deferred kernel load) are handled by
+# HeliosBackend._env; see .agents/rules/... 20260703-helios-a800-kernel notes.
+
+[models.helios_distilled_i2v]
+enabled = true
+task = "video_generation"
+provider = "helios"
+family = "helios"
+model = "${PUBLIC_MODELS_ROOT}/BestWishYsh/Helios-Distilled"
+code_root = "/data/USER/MODELS/VideoGen/Streaming/Helios"
+python = "helios/bin/python"
+# diffusers export_to_video -> imageio-ffmpeg; helios env has no ffmpeg, borrow vace's.
+ffmpeg = "ffmpeg"
+# HF/kernels caches that hold the Helios weights + the shimmed FA2 kernel snapshot.
+# MUST be the Montage repo cache (not the MemStrata-local one, which lacks the FA2 kernel).
+hf_home = "./models/model_weights"
+kernels_cache = "./models/model_weights/hub"
+capabilities = ["image_to_video", "distilled"]
+
+# Generation params (defaults proven by experiments/probe/helios_distilled_i2v_from_flux).
+# NOTE: Helios latent-grid alignment — 640x384 is validated; 832x480 fails with a
+# "tensor a(15) vs b(14) at dim 3" mismatch in the scheduler (chunk/resolution alignment).
+# The FLUX keyframe (832x480) is resized to (width,height) at load, so this is lossless enough.
+fps = 24
+height = 384
+width = 640
+num_frames = 121
+num_inference_steps = 6
+pyramid = [2, 2, 2]
+guidance_scale = 1.0
+base_seed = 2026
+# Motion vs. anchor-fidelity knobs (image latent noise); prompt is the real motion lever.
+sigma_min = 0.25
+sigma_max = 0.4
+is_skip_first_chunk = false   # true frees global motion at the cost of first-frame identity
+is_amplify_first_chunk = true
+
+serve_persistent = true
+server_ready_timeout = 1200
+server_idle_timeout = 1800
+server_job_timeout = 3600
+nproc_per_node = 1
+# Helios-Distilled ~43GB resident on A800. Lowered so it can co-reside on the same
+# card as the FLUX keyframe server (FLUX ~25GB + Helios ~47GB < 80GB) during the
+# 3-model closed loop; Qwen keeps the other card.
+min_free_mib = 45000

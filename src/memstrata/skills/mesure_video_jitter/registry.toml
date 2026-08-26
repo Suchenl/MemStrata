@@ -1,0 +1,8 @@
+title_zh = "视频抖动度量"
+description_zh = "测量视频的段内微抖动:用相位相关追踪逐帧全局位移,以加速度中位数与加速度/速度比给出 steady|jittery|noise-dominated 判定,并检出内容突变以避免把切镜当抖动。verdict 仅用于同镜头同提示词的 A/B 排序,不是真假闸门。"
+title_en = "Measure Video Jitter"
+description_en = "Measures within-shot micro-jitter: phase-correlation per-frame global translation, summarised as median acceleration and acceleration/speed ratio with a steady|jittery|noise-dominated verdict, plus content-jump detection so cuts are not read as shake. The verdict ranks arms of the same shot and prompt; it is not an absolute realism gate."
+entry_point = "memstrata.skills.mesure_video_jitter:measure_jitter"
+dependent_models = []
+environment = "helios"
+vram_required_mib = 0

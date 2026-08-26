@@ -1,0 +1,27 @@
+# Native Wan/VACE 1.3B backend.
+# Uses the official VACE checkout synced by `scripts/sync_submodules.py VACE`.
+
+[models.vace_native_1_3b_local]
+enabled = true
+task = "video_generation"
+provider = "native_vace"
+family = "wan_vace_native"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.1-VACE-1.3B"
+code_root = "submodules/_2_generation/reference/VACE"
+wan_code_root = "submodules/_2_generation/backends/Wan2.1"
+python = "python3"
+pythonpath = ["src"]
+entrypoint = "vace/vace_wan_inference.py"
+model_name = "vace-1.3B"
+shim_annotators = true
+use_prompt_extend = "plain"
+capabilities = ["reference_conditioned_continuation", "native_wan_vace"]
+fps = 16
+height = 480
+width = 832
+frame_num = 81
+offload_model = true
+t5_cpu = true
+sample_shift = 8
+sample_guide_scale = 6
+output_glob = "out_video.mp4"

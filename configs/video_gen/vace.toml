@@ -1,0 +1,17 @@
+# Wan2.1-VACE reference-conditioned continuation backend (the project's PRIMARY real generator).
+# Consumes Composed-Context still-image references as `reference_images`, supports negative
+# references and mask control. Needs a CUDA GPU + the `generation` extra (see scripts/install.sh).
+
+[models.vace]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "wan_vace"
+model = "Wan-AI/Wan2.1-VACE-1.3B-diffusers"
+capabilities = ["reference_conditioned_continuation", "negative_reference", "mask_control"]
+num_frames = 49
+fps = 16
+height = 480
+width = 832
+steps = 30
+guidance_scale = 5.0

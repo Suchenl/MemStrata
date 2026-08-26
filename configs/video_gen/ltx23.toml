@@ -1,0 +1,30 @@
+# LTX-2.3 22B Distilled v1.1 video generation backend.
+#
+# Uses the official LTX-2.3 inference code synced at submodules/_2_generation/reference/LTX-2.
+# Distilled checkpoint is optimized for 8-step inference with CFG=1.0.
+
+[models.ltx23]
+enabled = true
+task = "video_generation"
+provider = "ltx23"
+family = "ltx23"
+model = "${PUBLIC_MODELS_ROOT}/Lightricks/LTX-2.3/ltx-2.3-22b-distilled-1.1.safetensors"
+gemma_root = "/data/public_datasets/pretrained_model/gemma-3-12b-it-qat-q4_0-unquantized"
+python = "submodules/_2_generation/reference/LTX-2/.venv/bin/python"
+entrypoint = "submodules/_2_generation/reference/LTX-2/packages/ltx-pipelines/src/ltx_pipelines/ti2vid_one_stage.py"
+capabilities = ["reference_conditioned_continuation", "ltx23", "distilled"]
+fps = 16
+height = 480
+width = 832
+frame_num = 49
+num_inference_steps = 8
+video_cfg_guidance_scale = 1.0
+video_stg_guidance_scale = 0.0
+# Preserve reference/continuation frames before LTX VAE encoding.
+# Official LTX defaults image conditioning to H.264 CRF 33; CRF 0 avoids
+# amplifying face/skin compression artifacts in our production path.
+image_conditioning_crf = 0
+image_conditioning_resize_interpolation = "nearest_exact"
+serve_persistent = true
+server_ready_timeout = 1200
+server_idle_timeout = 1800

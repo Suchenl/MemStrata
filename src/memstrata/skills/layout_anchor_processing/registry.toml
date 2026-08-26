@@ -1,0 +1,12 @@
+title_zh = "构图锚点处理 + Crop2Image"
+description_zh = "通过 MLLM（默认单一 Qwen3.5-9B，R3 角色）规划 2D 归一化布局，解析并自适应缩放坐标，由 ColorBlockProcessor（配合 FLUX.2 Klein 色块控制）与 LineArtProcessor（配合 Qwen-Image-Edit 线稿控制）渲染构图底图；并提供 Crop2Image：R4（视觉 MLLM）决定真实记忆 crop 放入哪个区域，贴成拼图后交 FLUX I2I 融合成关键帧。"
+title_en = "Layout Anchor Processing + Crop2Image"
+description_en = "Plans 2D normalized layouts via a single multimodal MLLM (default Qwen3.5-9B, role R3), parses/scales coordinates, and renders anchors with ColorBlockProcessor (FLUX.2 Klein) / LineArtProcessor (Qwen-Image-Edit). Adds Crop2Image: role R4 (vision MLLM) assigns real memory crops to layout regions, composites a collage, and FLUX.2 Klein I2I fuses it into a coherent keyframe."
+entry_point = "memstrata.skills.layout_anchor_processing:ColorBlockProcessor"
+dependent_models = [
+    "Qwen/Qwen3.5-9B",
+    "black-forest-labs/FLUX.2-klein-9b-kv"
+]
+environment = "vace"  # planning/compositing (CPU + urllib); FLUX I2I fusion needs MultiShotMaster env
+vram_required_mib = 0  # CPU rendering; planning/vision via resident vLLM server; FLUX runs separately
+mllm_roles = ["R3", "R4"]

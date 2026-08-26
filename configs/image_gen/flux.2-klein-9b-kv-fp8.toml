@@ -1,0 +1,24 @@
+# FLUX.2 [klein] 9B-KV FP8 image generation and editing backend.
+# The primary image (keyframe / Layout Anchor) generator for the keyframe-first main
+# pipeline: FLUX synthesises start/end/mid keyframes, then Wan2.2-I2V-A14B (+ SVI /
+# Morphic LoRA) expands them into video. Vendored self-contained from Montage
+# models/model_configs/image_gen/flux_klein.toml.
+
+[models."flux.2-klein-9b-kv-fp8"]
+enabled = true
+task = "image_generation"
+provider = "diffusers"
+family = "flux"
+model = "FLUX.2-klein-9b-kv-fp8"
+weights = "${PUBLIC_MODELS_ROOT}/black-forest-labs/FLUX.2-klein-9b-kv-fp8/flux-2-klein-9b-kv-fp8.safetensors"
+config = "${PUBLIC_MODELS_ROOT}/black-forest-labs/FLUX.2-klein-9b-kv"
+python = "MultiShotMaster/bin/python"
+capabilities = ["text_to_image", "image_to_image", "multi_image_to_image", "layout_anchor_control"]
+height = 1024
+width = 1024
+steps = 4
+guidance_scale = 0.0
+# Load once in the MultiShotMaster env and serve via file-based job queue so the
+# pipeline (vace env) can drive FLUX I2I keyframe fusion without importing it in-process.
+serve_persistent = true
+auto_pick_gpu = true

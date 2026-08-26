@@ -1,0 +1,18 @@
+title_zh = "组合（读路径）"
+description_zh = "论文 Compose 步（读路径）：把外部意图 g_n + 可寻址资产空间 A_n 解为结构化组合请求 q_n（IntentInterpreter，默认 model-free 的名字/别名匹配，无名可寻址时退化为描述重叠匹配，可选 slow MLLM resolver），再 O(1) 解引用为 Composed Context C_n（compose，无相似检索、读路径 0 模型调用）。含分层 rep 选择（spatial/state 角度优先，再按用途质量+recency）、按关系的有界结构扩展、最小充分预算裁剪、废弃 rep 排除。这是记忆的读侧，与 decomposition/memory_update（写侧）对称。"
+title_en = "Composition (read path)"
+description_en = "Paper Compose step (read path): resolve external intent g_n + addressable asset space A_n into a structured request q_n (IntentInterpreter — model-free name/alias match by default, description-overlap fallback when no resolvable name, optional slow MLLM resolver), then dereference to a Composed Context C_n (compose — no similarity search, 0 model calls on the read path). Includes stratified rep selection (spatial/state angle first, then per-purpose quality + recency), bounded relation expansion, minimal-sufficient budget trimming, and deprecated-rep exclusion. This is the read side of memory, symmetric to decomposition/memory_update (the write side)."
+entry_point = "memstrata.skills.composition:IntentInterpreter"
+compose_fn = "memstrata.skills.composition:compose"
+dependent_models = ["Qwen3.5-9B-Instruct (slow mode only; FAST default is model-free)"]
+environment = "vace"
+vram_required_mib = 0
+
+# Read-path tuning knobs (surfaced to skills/optimization for the context_not_read signal).
+[knobs]
+mode = "fast (model-free name/alias match) | slow (MLLM resolver). FAST is the default read path."
+disable_name_anchor = "ablation: drop name anchoring -> recency proxy selection"
+recency_cap = "K assets kept when falling back to recency / description match (default 5)"
+max_reps_per_asset = "reps a named asset may contribute to C_n (default 1)"
+context_rep_budget = "hard cap on total reps in C_n (None = uncapped)"
+relation_hops = "bounded structural expansion (PART_OF / LOCATED_IN), default 0"

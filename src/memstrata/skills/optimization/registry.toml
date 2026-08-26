@@ -1,0 +1,43 @@
+title_zh = "生产自优化（agent-in-the-loop）"
+description_zh = "长视频生产过程中的自优化闭环：agent 每跑 N 段就用 monitor.py 从 progress.json/bank.json/review/ 提取确定性健康信号（每段新观测数、记忆增长、去重是否失衡、compose 是否真的读到记忆、continue_ar 连跑导致的 AR 漂移、router 回退率、关键帧缺失、跳段），给出 verdict 与「症状→技能→registry 旋钮」映射，再由 agent 决定 continue / 调参 / 回滚重跑 / 中止。脚本只产证据不改东西；决策与旋钮改动是 agent 的职责。规则见 SKILL.md。"
+title_en = "Production Self-Optimization (agent-in-the-loop)"
+description_en = "Closed-loop self-optimization during long video production: every N segments the agent runs monitor.py to extract deterministic health signals from progress.json/bank.json/review/ (new observations per chunk, memory growth, dedup balance, whether Compose actually reads memory, AR drift from long continue_ar runs, router fallback rate, missing keyframes, skipped chunks), emits a verdict plus a symptom->skill->registry-knob map, and the agent decides continue / tune / rollback-and-rerun / abort. The script only produces evidence; the decision and knob edits are the agent's job. Protocol in SKILL.md."
+entry_point = "memstrata.skills.optimization.monitor:analyze"
+cli = "python -m memstrata.skills.optimization.monitor --run-dir <RUN_DIR> --window 5"
+dependent_models = []
+environment = "vace"
+vram_required_mib = 0
+
+# Symptom -> skill -> knob lookup (mirrors monitor.py:SKILL_KNOBS). Lets the agent see, in one
+# place, which other skills' registry.toml / implementation to touch for each flagged signal.
+[knobs.no_new_observations]
+skill = "crop_acquisition / entity_grounding / decomposition"
+knob = "crop_acquisition.identity_threshold (lower); entity_grounding box confidence"
+
+[knobs.memory_stagnant]
+skill = "memory_update / embedding_deduplication"
+knob = "embedding_deduplication.dedup_threshold (raise); curation admission/novelty gate"
+
+[knobs.memory_explosion]
+skill = "embedding_deduplication / memory_update"
+knob = "embedding_deduplication.dedup_threshold (lower); per-asset representation cap"
+
+[knobs.context_not_read]
+skill = "compose (steps/compose.py) / bank selection"
+knob = "reference selection: name/alias match + identifier dereference"
+
+[knobs.ar_drift_risk]
+skill = "generation_routing"
+knob = "prefer recompose_keyframe sooner; or run with --force-recompose"
+
+[knobs.router_infeasible]
+skill = "generation_routing"
+knob = "rule feasibility layer (restrict modes before the MLLM picks)"
+
+[knobs.keyframe_missing]
+skill = "layout_anchor_processing / flux backend"
+knob = "R3 layout / R4 crop2image health; flux server"
+
+[knobs.high_skip]
+skill = "generate backend / services"
+knob = "video backend config (OOM/resolution); restart dead server"

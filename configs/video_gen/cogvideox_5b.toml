@@ -1,0 +1,15 @@
+# CogVideoX-5B text/image-to-video. Same `cogvideox` family as the 2B default; larger weights.
+
+[models.cogvideox_5b]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "cogvideox"
+model = "THUDM/CogVideoX-5b"
+capabilities = ["text_to_video", "image_to_video"]
+num_frames = 49
+fps = 8
+height = 480
+width = 720
+steps = 50
+guidance_scale = 6.0

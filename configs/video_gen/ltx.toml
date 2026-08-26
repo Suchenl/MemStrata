@@ -1,0 +1,17 @@
+# LTX-Video text/image-to-video backend (fast "frozen smoke" generator for first viewable runs).
+# Fastest path to a real chunk; uses the first Composed-Context reference image as an anchor.
+# Needs a CUDA GPU + the `generation` extra (see scripts/install.sh).
+
+[models.ltx]
+enabled = true
+task = "video_generation"
+provider = "diffusers"
+family = "ltx"
+model = "Lightricks/LTX-Video"
+capabilities = ["text_to_video", "image_to_video"]
+num_frames = 97
+fps = 24
+height = 480
+width = 704
+steps = 40
+guidance_scale = 3.0

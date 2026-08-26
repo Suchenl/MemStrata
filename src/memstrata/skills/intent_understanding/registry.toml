@@ -1,0 +1,14 @@
+title_zh = "意图理解（读路径 Stage 3）"
+description_zh = "论文 Stage 3 意图解析：把外部意图 g_n + 可寻址资产空间 A_n 解析为结构化组合请求 q_n（选中哪些已存在的资产 id、以及角度/状态偏好），并产出轻量增强提示 p̃_n。FAST（默认，0 模型调用）走名字/别名匹配（复用 skills.memory_retrieval.name_match），无名可寻址时退化为描述重叠匹配，再退化为 recency；SLOW（可选）用 MllmIntentResolver 让 MLLM 在 bank 清单上推理，但同样不会臆造 A_n 之外的 id。只做读路径的意图解析，不负责解引用（那是 skills.composition/Compose）。"
+title_en = "Intent Understanding (read path, Stage 3)"
+description_en = "Paper Stage 3 intent interpretation: resolve external intent g_n + addressable asset space A_n into a structured request q_n (which existing asset ids + angle/state preferences) plus a light enhanced prompt p̃_n. FAST (default, 0 model calls) uses name/alias match (reusing skills.memory_retrieval.name_match), falling back to description-overlap then recency; SLOW (opt-in) adds an MllmIntentResolver reasoning over the bank listing but never invents ids outside A_n. This skill only parses intent; dereferencing q_n is the separate skills.composition (Compose) stage."
+entry_point = "memstrata.skills.intent_understanding:IntentInterpreter"
+dependent_models = ["Qwen3.5-9B-Instruct (SLOW mode only; FAST default is model-free)"]
+environment = "vace"
+vram_required_mib = 0
+
+# Read-path tuning knobs (surfaced to skills/optimization for the context_not_read signal).
+[knobs]
+mode = "fast (model-free name/alias + description match) | slow (MLLM resolver). FAST is the default."
+disable_name_anchor = "ablation: drop name anchoring -> recency proxy selection"
+recency_cap = "K assets kept when falling back to recency / description match (default 5)"

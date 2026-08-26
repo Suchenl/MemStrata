@@ -1,0 +1,33 @@
+# LongCat-Video 13.6B distilled 480p backend.
+# Uses the official checkout with a Montage persistent file-queue server.
+
+[models.longcat_13b_480p_distill]
+enabled = true
+task = "video_generation"
+provider = "longcat"
+family = "longcat"
+model = "${PUBLIC_MODELS_ROOT}/meituan-longcat/LongCat-Video"
+code_root = "submodules/_2_generation/reference/LongCat-Video"
+python = "longcat-video/bin/python"
+capabilities = ["text_to_video", "image_to_video", "video_continuation", "distilled"]
+fps = 15
+height = 480
+width = 832
+frame_num = 49
+num_cond_frames = 15
+min_condition_duration_sec = 1.0
+num_inference_steps = 16
+guidance_scale = 1.0
+base_seed = 42
+use_distill = true
+use_kv_cache = true
+offload_kv_cache = false
+enhance_hf = false
+serve_persistent = true
+server_ready_timeout = 1200
+server_idle_timeout = 1800
+server_job_timeout = 3600
+nproc_per_node = 1
+# LongCat 13.6B 480p distilled loaded on 80GB A800, then OOMed when sharing a
+# card with ~40GB resident memory. Treat it as a near-empty-card service.
+min_free_mib = 76000

@@ -1,0 +1,19 @@
+# Wan2.1-I2V-14B-480P official Image-to-Video generation model.
+# Used for real-world production in tandem with flux_klein.
+
+[models.wan21_i2v_14b_480p]
+enabled = true
+task = "video_generation"
+provider = "native_wan"
+family = "wan_i2v"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.1-I2V-14B-480P"
+model_name = "i2v-14B"
+python = "python3"
+capabilities = ["image_to_video", "reference_conditioned_continuation"]
+height = 480
+width = 832
+frame_num = 81
+fps = 16
+sample_steps = 40
+sample_shift = 3.0
+sample_guide_scale = 5.0

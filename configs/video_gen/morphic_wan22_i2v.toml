@@ -1,0 +1,24 @@
+# Morphic Frames-to-Video Wan2.2 LoRA Backend
+
+[models.morphic_wan22_i2v]
+enabled = true
+task = "video_generation"
+provider = "native_wan"
+family = "wan_i2v_morphic"
+model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B"
+model_name = "i2v-A14B"
+python = "python3"
+code_root = "submodules/_2_generation/backends/frames-to-video"
+high_noise_lora_weights_path = "${PUBLIC_MODELS_ROOT}/Wan-AI/LoRAs/frames-to-video/morphic/Wan2.2-frames-to-video/lora_interpolation_high_noise_final.safetensors"
+capabilities = ["image_to_video", "reference_conditioned_continuation"]
+height = 480
+width = 832
+frame_num = 81
+fps = 16
+sample_steps = 40
+sample_shift = 5.0
+sample_guide_scale = 5.0
+offload_model = true
+t5_cpu = true
+convert_model_dtype = true
+serve_persistent = false

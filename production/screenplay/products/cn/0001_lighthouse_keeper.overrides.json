@@ -1,0 +1,25 @@
+{
+  "story_id": "0001_lighthouse_keeper",
+  "_doc": "MoVE-Bench Track B hard-case annotation sidecar. Hand-authored; merged by scoring/trackb_gt.py. Schema: see that module's docstring.",
+  "lookalike_pairs": [
+    {
+      "pair": ["E2", "E6"],
+      "features": {
+        "E2": "玛拉：系深蓝头巾、粗棉渔装；守塔学徒/成年守塔人。",
+        "E6": "莉娜：玛拉的双胞胎姐姐，面容极似，但系赭红色羊毛披肩、鬓角别一枚贝壳发夹、神情张扬。"
+      },
+      "note": "双胞胎错认硬样本：0001 中 E2 只在 shot_0005、E6 只在 shot_0006（不同镜、不共屏），考验的是「只有玛拉在场时不要把莉娜画出来」及反向。"
+    }
+  ],
+  "state_changes": [
+    {"eid": "E4", "from_shot": "shot_0010", "label": "cracked", "desc": "菲涅尔透镜在暴风雨中迸出刺目裂纹；此后必须始终带裂痕，不得再以完好之姿出现（光束因裂纹而略有缺口）。"},
+    {"eid": "E3", "from_shot": "shot_0014", "label": "weathered", "desc": "航海日志由完好黄铜包角转为盐渍风化、封皮卷曲（多年后归来时的状态，区别于开场完好日志）。"},
+    {"eid": "E5", "from_shot": "shot_0010", "label": "sunk", "desc": "海燕号被巨浪掀翻、桅杆折断、沉没；之后仅以残骸或缺席出现，不得再现完好靛蓝渔船。"}
+  ],
+  "present_add": {},
+  "allowed_add": {},
+  "decoy_force": {
+    "shot_0005": ["E6"],
+    "shot_0006": ["E2"]
+  }
+}

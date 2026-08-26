@@ -1,0 +1,26 @@
+{
+  "story_id": "0003_desert_archaeologist",
+  "_doc": "MoVE-Bench Track B hard-case annotation sidecar. Hand-authored; merged by scoring/trackb_gt.py. Schema: see that module's docstring.",
+  "lookalike_pairs": [
+    {
+      "pair": ["E4", "E5"],
+      "features": {
+        "E4": "哈桑：沉稳的沙漠向导，披沙色粗布斗篷、缠深蓝头巾，左颊有风沙刻出的皱纹，牵一峰骆驼；未蒙面、不持械。",
+        "E5": "蒙面劫匪：同披沙色斗篷、体态与哈桑相近，但缠赭红头巾、蒙面、腰间别一把弯刀，眼神凶悍。"
+      },
+      "note": "沙色斗篷错认硬样本：E4 与 E5 同披沙色斗篷、体态相近，仅靠头巾颜色（深蓝 vs 赭红）/是否蒙面/是否持弯刀区分。shot_0003 只有哈桑、shot_0004 只有劫匪，考验单人在场时不要把另一方也画出来；shot_0010 向导归来时不得把赭红头巾的劫匪误画成哈桑（该镜 E5 已标 avoid）。"
+    }
+  ],
+  "state_changes": [
+    {"eid": "E2", "from_shot": "shot_0006", "label": "shattered", "desc": "楔形泥碑从艾拉手中跌落岩石，砖红碑面迸裂成数块残片；此后不得再以完好整碑之姿出现，仅以碎片示人。"},
+    {"eid": "E2", "from_shot": "shot_0011", "label": "reassembled", "desc": "碎裂残片被逐块拼合、砖红碑面重现完整楔形文字，但为拼合复原之态（可见拼缝），区别于开场未损的完好原碑。"},
+    {"eid": "E3", "from_shot": "shot_0008", "label": "discredited", "desc": "羊皮地图右下角的红蜡印被放大镜识破为伪造，地图就此被证伪，不再是可信线索。"},
+    {"eid": "E3", "from_shot": "shot_0009", "label": "burned", "desc": "被证伪的羊皮地图被投入火盆焚毁、火舌卷起化为灰烬残片；此后不得再作为可信线索或完好地图出现。"}
+  ],
+  "present_add": {},
+  "allowed_add": {},
+  "decoy_force": {
+    "shot_0003": ["E5"],
+    "shot_0004": ["E4"]
+  }
+}

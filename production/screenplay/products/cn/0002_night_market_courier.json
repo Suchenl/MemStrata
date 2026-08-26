@@ -1,0 +1,53 @@
+{
+  "story_id": "0002_night_market_courier",
+  "language": "cn",
+  "story_name": "霓虹夜市信使",
+  "story_overview": "一部霓虹雨夜的都市短剧，刻意制造记忆硬样本：两名穿红色雨衣的信使（主角林与劲敌阿豹）面容体态相近，极易错认；一只封蜡的木盒随剧情由完好→被撬开→空盒（废弃状态需规避）；早段出现的买家在中段长时缺席后于结尾回归。",
+  "creative_intent": {
+    "genre": "都市霓虹犯罪 / 悬疑",
+    "theme": "身份的错认与信任的重量",
+    "tone": "湿冷、霓虹、紧张",
+    "target_duration_sec": 130.0,
+    "visual_style": "雨夜霓虹、湿漉街面反光、红蓝色调、浅景深"
+  },
+  "main_entities": [
+    {"entity_id": "E1", "name": "林", "entity_type": "character", "appearance": "二十多岁的女信使，短发，穿亮红色连帽雨衣，左肩背一只黑色防水邮包，眼神机警。"},
+    {"entity_id": "E2", "name": "阿豹", "entity_type": "character", "appearance": "与林体态相近的男信使劲敌，同样穿亮红色连帽雨衣，但下巴有一道疤、右手戴银戒，神情桀骜。"},
+    {"entity_id": "E3", "name": "封蜡木盒", "entity_type": "object", "appearance": "一只巴掌大的深色木盒，盒盖压着一枚暗红封蜡印，四角包铜。"},
+    {"entity_id": "E4", "name": "买家周", "entity_type": "character", "appearance": "戴金丝眼镜的中年男子，穿米色风衣，左手拎鳄纹皮箱，笑容温和却藏锋。"},
+    {"entity_id": "E5", "name": "夜市摊", "entity_type": "location", "appearance": "霓虹招牌下的湿漉夜市大排档，红灯笼、蒸汽与塑料棚顶滴水。"},
+    {"entity_id": "E6", "name": "天台", "entity_type": "location", "appearance": "堆满空调外机与水箱的旧楼天台，远处是霓虹城市天际线，地面积水倒映灯光。"},
+    {"entity_id": "E7", "name": "地铁通道", "entity_type": "location", "appearance": "泛白日光灯管的地下通道，瓷砖墙贴满褪色广告，尽头有闸机。"}
+  ],
+  "production_screenplay": {
+    "scenes": [
+      {"scene_id": "S1", "scene_title": "接件", "t_start": 0.0, "t_end": 22.0, "entities_present": ["E1", "E3", "E5"]},
+      {"scene_id": "S2", "scene_title": "错认", "t_start": 22.0, "t_end": 44.0, "entities_present": ["E1", "E2", "E7"]},
+      {"scene_id": "S3", "scene_title": "交接", "t_start": 44.0, "t_end": 66.0, "entities_present": ["E1", "E4", "E6"]},
+      {"scene_id": "S4", "scene_title": "撬盒", "t_start": 66.0, "t_end": 90.0, "entities_present": ["E2", "E3", "E6"]},
+      {"scene_id": "S5", "scene_title": "空盒", "t_start": 90.0, "t_end": 110.0, "entities_present": ["E1", "E3", "E7"]},
+      {"scene_id": "S6", "scene_title": "回归", "t_start": 110.0, "t_end": 130.0, "entities_present": ["E1", "E4", "E5"]}
+    ],
+    "shots": [
+      {"shot_id": "shot_0001", "scene_id": "S1", "transition": "cut", "duration_sec": 5.0, "visual_track": {"actions": ["雨夜的夜市摊（E5）霓虹闪烁，红衣信使林（E1）在滴水的塑料棚下停稳，甩去帽檐的雨。"], "cinematography": {"shot_type": "中景", "camera_movement": "缓慢推入", "lighting": "红蓝霓虹逆光"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0002", "scene_id": "S1", "transition": "continue", "duration_sec": 5.0, "visual_track": {"actions": ["林（E1）从邮包取出一只封蜡木盒（E3），暗红封蜡印完好，她掂了掂重量。"], "cinematography": {"shot_type": "过肩近景", "camera_movement": "下摇到盒子", "lighting": "暖摊灯打亮封蜡"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0003", "scene_id": "S2", "transition": "cut", "duration_sec": 5.0, "visual_track": {"actions": ["泛白的地铁通道（E7）里，另一名同样穿红雨衣的信使阿豹（E2）迎面走来，下巴的疤与右手银戒一闪。"], "cinematography": {"shot_type": "对峙中景", "camera_movement": "锁定机位", "lighting": "冷白日光灯管"}}, "active_characters": ["E2"], "planned_assets": [{"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0004", "scene_id": "S2", "transition": "continue", "duration_sec": 5.0, "visual_track": {"actions": ["林（E1）与阿豹（E2）在地铁通道（E7）擦肩，两件相同的红雨衣一正一反，林下意识护住邮包。"], "cinematography": {"shot_type": "双人中景", "camera_movement": "横移跟随", "lighting": "冷白顶光"}}, "active_characters": ["E1", "E2"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0005", "scene_id": "S3", "transition": "cut", "duration_sec": 5.5, "visual_track": {"actions": ["旧楼天台（E6）积水倒映霓虹，买家周（E4）拎着鳄纹皮箱等候，金丝眼镜后一双笑眼。"], "cinematography": {"shot_type": "全景转中景", "camera_movement": "缓慢环绕", "lighting": "城市霓虹底光"}}, "active_characters": ["E4"], "planned_assets": [{"planned_asset_id": "E4", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E6", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0006", "scene_id": "S3", "transition": "continue", "duration_sec": 5.5, "visual_track": {"actions": ["林（E1）在天台（E6）把封蜡完好的木盒（E3）递向买家周（E4），封蜡印仍未破。"], "cinematography": {"shot_type": "手部特写切中景", "camera_movement": "轻微手持", "lighting": "霓虹侧光"}}, "active_characters": ["E1", "E4"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E6", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0007", "scene_id": "S4", "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["深夜天台（E6），阿豹（E2）借雨声用小刀撬开木盒（E3），暗红封蜡崩裂剥落。"], "cinematography": {"shot_type": "近景", "camera_movement": "急推封蜡", "lighting": "冷蓝月光加霓虹"}}, "active_characters": ["E2"], "planned_assets": [{"planned_asset_id": "E2", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "transform", "required": true}, {"planned_asset_id": "E6", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0008", "scene_id": "S5", "transition": "cut", "duration_sec": 5.5, "visual_track": {"actions": ["地铁通道（E7）里，林（E1）重新拿回木盒（E3），此刻封蜡已碎、盒盖大开、内里空空。"], "cinematography": {"shot_type": "过肩近景", "camera_movement": "缓推空盒", "lighting": "冷白日光灯"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0009", "scene_id": "S5", "transition": "continue", "duration_sec": 5.0, "visual_track": {"actions": ["林（E1）攥紧空木盒（E3）在地铁通道（E7）飞奔，红雨衣在灯管下拖出残影；封蜡完好的旧状态不再出现。"], "cinematography": {"shot_type": "跟拍全景", "camera_movement": "高速手持", "lighting": "频闪灯管"}}, "active_characters": ["E1"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E7", "asset_kind": "location", "operation": "preserve", "required": true}]},
+      {"shot_id": "shot_0010", "scene_id": "S6", "transition": "cut", "duration_sec": 6.0, "visual_track": {"actions": ["雨停的夜市摊（E5），林（E1）终于追上——买家周（E4）早已在此等候，金丝眼镜后笑意更深。"], "cinematography": {"shot_type": "双人中景", "camera_movement": "缓慢合围", "lighting": "暖红灯笼光"}}, "active_characters": ["E1", "E4"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "character", "intended_uses": ["appearance", "identity"], "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "location", "operation": "preserve", "required": true}, {"planned_asset_id": "E2", "asset_kind": "character", "intended_uses": ["identity"], "operation": "avoid", "required": false}]},
+      {"shot_id": "shot_0011", "scene_id": "S6", "transition": "continue", "duration_sec": 5.5, "visual_track": {"actions": ["林（E1）把空木盒（E3）拍在夜市摊（E5）的桌上，与买家周（E4）对视；碎裂空盒是唯一的证据。"], "cinematography": {"shot_type": "俯拍桌面切人脸", "camera_movement": "下压后拉起", "lighting": "暖摊灯"}}, "active_characters": ["E1", "E4"], "planned_assets": [{"planned_asset_id": "E1", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E3", "asset_kind": "object", "intended_uses": ["identity", "state"], "operation": "preserve", "required": true}, {"planned_asset_id": "E4", "asset_kind": "character", "operation": "preserve", "required": true}, {"planned_asset_id": "E5", "asset_kind": "location", "operation": "preserve", "required": true}]}
+    ]
+  },
+  "traceability": {
+    "hard_cases": [
+      "错认：E1 林 与 E2 阿豹 同穿红雨衣、体态相近，仅靠疤/银戒/邮包区分；S2 擦肩制造错认。",
+      "状态变化+废弃规避：E3 木盒 完好封蜡（S1/S3）→ 被撬(transform, S4)→ 空盒(S5/S6)；旧完好状态此后规避。",
+      "长时缺席回归：E4 买家周 S3 出现后 S4/S5 缺席，S6 回归。",
+      "错认者规避：S6 结尾对 E2 阿豹 标 operation=avoid（此刻不应误召回劲敌）。"
+    ]
+  }
+}

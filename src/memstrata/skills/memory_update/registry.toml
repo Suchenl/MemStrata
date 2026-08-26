@@ -1,0 +1,8 @@
+title_zh = "记忆更新（分层更新）"
+description_zh = "记忆更新 / Memory Update（论文 Stratified Update / 落库）：把 decompose 产出的 Observation 分层更新进 AssetBank——name-anchored 身份归并、WHO-before-WHERE 三道准入门、属性多样性分层选择、redundancy 丢弃（记新不记旧）、lifecycle 废弃留痕、cohesion 自审、全局预算。镜像 bench 标注管线的库构建逻辑，不 import vmem_bench。"
+title_en = "Memory Update (Stratified Update)"
+description_en = "Memory Update (paper Stratified Update): stratified-update the Observations produced by decompose into the AssetBank — name-anchored identity merge, WHO-before-WHERE admission gates, attribute-diverse representation selection, near-duplicate suppression (records new, not old), lifecycle deprecation with traceable markers, cohesion self-audit, global budget. Mirrors the bench annotation pipeline's library building; no vmem_bench import."
+entry_point = "memstrata.skills.memory_update:MemoryUpdater"
+dependent_models = []
+environment = "vace"
+vram_required_mib = 0
