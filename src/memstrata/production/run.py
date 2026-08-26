@@ -588,7 +588,7 @@ def main(argv: list[str] | None = None) -> int:
     root = memstrata_root()
 
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--screenplay", default=str(root / "data/Screenplay/products/en/0000_detective_mystery.json"),
+    ap.add_argument("--screenplay", default=str(root / "production/screenplay/products/en/0000_detective_mystery.json"),
                     help="production_screenplay JSON (default: the detective example)")
     ap.add_argument("--backend", default="wan22_i2v_a14b_lightx2v_4step",
                     help="default video backend: wan22_i2v_a14b_lightx2v_4step (Wan2.2-I2V-A14B "
