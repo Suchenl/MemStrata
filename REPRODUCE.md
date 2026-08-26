@@ -28,29 +28,25 @@
 
 ## 无 GPU 冒烟
 
+把本仓和 VMem-Bench 的 `paper-reproduction` **并排放**（`../VMem-Bench`）。然后：
+
 ```bash
-export CUDA_VISIBLE_DEVICES=
-python -m pip install -r requirements-dev.txt
-PYTHONPATH=src python -m pytest -q
-PYTHONPATH=src python -m memstrata.production.run --help
-PYTHONPATH=src python -m memstrata.production.run --list-backends
-PYTHONPATH=src python -m memstrata.production.run \
-  --backend recording --decompose none --no-flux --no-autoserve --segments 2 \
-  --outputs-root /tmp/opensource-paper-smoke/memstrata
+python -m pip install -e ".[dev]"
+python scripts/memstrata/doctor.py
+bash scripts/memstrata/cpu_demo.sh
 ```
 
-`recording` / `oracle` 不跑真实生成器。不要省略 `--no-flux --no-autoserve --decompose none`，否则会去拉 FLUX / Qwen / crop server。
-
-`oracle` 还需要配置里的源视频文件；缺视频时片段会被 SKIP，退出码仍可能是 0。无 GPU 冒烟请用 `recording`。
+`cpu_demo.sh` 已带 `--backend recording --no-flux --no-autoserve --segments 2`。不要改回默认 Wan/FLUX，那会去拉权重。
 
 ## 要对上 Track A 论文表，读者还缺什么
 
 本仓只提供 **当时的方法代码**。还需要：
 
 1. 同源的 **VMem-Bench `paper-reproduction`**（adapter + gold JSON + Stage 1 runner）。
-2. **源视频**（Blender Open Movies + LSMDC）。本仓与 HF **都不发像素**。LSMDC 需自行申请。
-3. 权重，经 `PUBLIC_MODELS_ROOT` 指向本地目录（SAM3 / DINOv3 / Qwen / 以及生产路径用的 Wan / FLUX——Stage 1 adapter 写路径主要是感知，不跑完整生成器）。
+2. **源视频**：在 VMem-Bench 仓跑 `bash scripts/prepare_blender.sh`（官方 BBB）；LSMDC 需自行申请，本仓与 HF **都不发像素**。
+3. 权重：见 [`MODELS.md`](MODELS.md)。`python ../VMem-Bench/scripts/doctor.py` 会打印缺哪一项、以及对应的 `huggingface-cli` 命令。
 4. GPU。91 部电影的 Stage 1 不是 CPU 能做完的。
-5. 环境变量：`PUBLIC_MODELS_ROOT`、`MEMSTRATA_SRC`（给 VMem-Bench adapter 指到本仓 `src/`）、`VMEM_DATASETS_ROOT`（视频根）。
+
+Adapter 会在 `../MemStrata/src` 找到本包；只有目录名不是 `MemStrata` 时才需要 `MEMSTRATA_SRC`。
 
 没有把 91 部 run 产物或权重放进 git。在补齐上述外部依赖之前，**禁止声称已经对上论文数字**。
