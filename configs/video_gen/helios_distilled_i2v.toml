@@ -1,7 +1,7 @@
 # Helios-Distilled i2v backend (fast CFG-distilled continuation from a FLUX keyframe).
 # Talks to the official Helios checkout through a MemStrata persistent file-queue server.
 # Env quirks (HF `kernels` FA2 alias, offline caches, deferred kernel load) are handled by
-# HeliosBackend._env; see .agents/rules/... 20260703-helios-a800-kernel notes.
+# HeliosBackend._env.
 
 [models.helios_distilled_i2v]
 enabled = true
@@ -9,12 +9,11 @@ task = "video_generation"
 provider = "helios"
 family = "helios"
 model = "${PUBLIC_MODELS_ROOT}/BestWishYsh/Helios-Distilled"
-code_root = "/data/USER/MODELS/VideoGen/Streaming/Helios"
-python = "helios/bin/python"
+code_root = "${HELIOS_CODE_ROOT}"
+python = "${HELIOS_PYTHON:-python}"
 # diffusers export_to_video -> imageio-ffmpeg; helios env has no ffmpeg, borrow vace's.
 ffmpeg = "ffmpeg"
-# HF/kernels caches that hold the Helios weights + the shimmed FA2 kernel snapshot.
-# MUST be the Montage repo cache (not the MemStrata-local one, which lacks the FA2 kernel).
+# HF/kernels caches for Helios weights + FA2 kernel snapshot.
 hf_home = "./models/model_weights"
 kernels_cache = "./models/model_weights/hub"
 capabilities = ["image_to_video", "distilled"]

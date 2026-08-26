@@ -13,7 +13,7 @@ Use `paper-reproduction` (and tag `paper-reproduction-v1` when that freeze lands
 
 ## What you need for tables
 
-- Source videos (Blender Open Movies + LSMDC; **not** in this repo)
+- Source videos (not in this repo). How to download / apply / where to put files: [VMem-Bench `docs/DATA.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/DATA.md) (BBB: `bash scripts/prepare_blender.sh` in that repo)
 - Gold / prompts: [huggingface.co/datasets/Suchenl/VMem-Bench](https://huggingface.co/datasets/Suchenl/VMem-Bench)
 - Scoring + adapters: [github.com/Suchenl/VMem-Bench](https://github.com/Suchenl/VMem-Bench)
 - Generator / encoder / VLM weights via `PUBLIC_MODELS_ROOT` (Wan, FLUX, Qwen, …)
