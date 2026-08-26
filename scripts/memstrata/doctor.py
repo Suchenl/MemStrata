@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Check that this MemStrata checkout can run the CPU demo."""
+"""Check that this MemStrata checkout has the pieces a GPU production run needs locally.
+
+Does not download weights. Set PUBLIC_MODELS_ROOT and see MODELS.md.
+"""
 
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -25,11 +29,15 @@ def main() -> int:
         print("MemStrata doctor: FAIL")
         for item in errors:
             print(f"  - {item}")
-        print("CPU demo: bash scripts/memstrata/cpu_demo.sh")
+        print("GPU run: export PUBLIC_MODELS_ROOT=...  (see MODELS.md)")
+        print("         bash scripts/memstrata/run_production.sh")
         return 1
     print("MemStrata doctor: OK")
     print(f"  root={ROOT}")
-    print("  next: bash scripts/memstrata/cpu_demo.sh")
+    print("  next: export PUBLIC_MODELS_ROOT=...  (see MODELS.md)")
+    print("        bash scripts/memstrata/run_production.sh")
+    if not os.environ.get("PUBLIC_MODELS_ROOT"):
+        print("  PUBLIC_MODELS_ROOT is unset; the production run will not find weights.")
     return 0
 
 

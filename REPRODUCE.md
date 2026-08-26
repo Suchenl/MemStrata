@@ -19,7 +19,7 @@ Use `paper-reproduction` (and tag `paper-reproduction-v1` when that freeze lands
 - Generator / encoder / VLM weights via `PUBLIC_MODELS_ROOT` (Wan, FLUX, Qwen, …)
 - GPUs sufficient for the chosen backend
 
-CPU smoke in this repo:
+A GPU production run is `bash scripts/memstrata/run_production.sh` after `PUBLIC_MODELS_ROOT` is set ([`MODELS.md`](MODELS.md)). The recording backend below only checks that the package imports; it does **not** reproduce paper numbers:
 
 ```bash
 PYTHONPATH=src python3 -m memstrata.production.run \

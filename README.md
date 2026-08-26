@@ -1,6 +1,8 @@
 # MemStrata
 
-# Getting started (no GPU)
+Stratified memory for **causal long video generation**. A real run needs a **GPU**, generator / encoder / VLM weights, and ffmpeg. Paper tables additionally need [VMem-Bench](https://github.com/Suchenl/VMem-Bench).
+
+## Getting started
 
 Clone the two repos **next to each other**:
 
@@ -9,21 +11,23 @@ git clone https://github.com/Suchenl/MemStrata.git
 git clone https://github.com/Suchenl/VMem-Bench.git
 cd MemStrata
 python -m pip install -e ".[dev]"
+export PUBLIC_MODELS_ROOT="$HOME/public_models"   # see MODELS.md
 python scripts/memstrata/doctor.py
-bash scripts/memstrata/cpu_demo.sh
 ```
 
-That writes a stitchable mp4 + `bank.json` under `production/outputs/`. Weights, Qwen, and Wan are not used.
-
-GPU / paper tables: [`MODELS.md`](MODELS.md) and [`REPRODUCE.md`](REPRODUCE.md). Benchmark: [VMem-Bench](https://github.com/Suchenl/VMem-Bench). Gold: [huggingface.co/datasets/Suchenl/VMem-Bench](https://huggingface.co/datasets/Suchenl/VMem-Bench).
-
-The generator \(G_\theta\) is **swappable**. Default production path (documented, not hard-wired): FLUX.2 Klein 9B-KV keyframes → Wan2.2-I2V-A14B LightX2V 4-step. List backends with `python -m memstrata.production.run --list-backends`.
+Default production path (documented, not hard-wired): FLUX.2 Klein 9B-KV keyframes → Wan2.2-I2V-A14B LightX2V 4-step.
 
 ```bash
-python -m pytest -q
+# downloads: MODELS.md
+bash scripts/memstrata/run_production.sh
+python -m memstrata.production.run --list-backends
 ```
 
+Weights: [`MODELS.md`](MODELS.md). Paper numbers: [`REPRODUCE.md`](REPRODUCE.md) on branch `paper-reproduction`. Gold: [huggingface.co/datasets/Suchenl/VMem-Bench](https://huggingface.co/datasets/Suchenl/VMem-Bench).
+
 `memstrata` and `vmem_bench` never import each other. Evaluation adapters live only in the VMem-Bench repo.
+
+Unit tests and an optional **install check** (`bash scripts/memstrata/cpu_demo.sh`) run without weights; that path is not the method.
 
 ## Citation
 
