@@ -21,4 +21,4 @@ Default production generator (only if you drop `--backend recording`):
 | Keyframes | `$PUBLIC_MODELS_ROOT/black-forest-labs/FLUX.2-klein-9B-kv` (see `configs/image_gen/`) |
 | Video | Wan2.2-I2V-A14B LightX2V 4-step, as in `configs/video_gen/wan22_i2v_a14b_lightx2v_4step.toml` |
 
-CPU demo never reads this file: `bash scripts/memstrata/cpu_demo.sh` in the MemStrata repo.
+The optional install check `bash scripts/memstrata/cpu_demo.sh` does not read this file (no Wan / FLUX / Qwen). It is not a substitute for a GPU production run.

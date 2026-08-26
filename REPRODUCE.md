@@ -26,7 +26,9 @@
   `scripts/evaluate_baselines/trackA/baseline_adapters/causal/runner.py --adapter memstrata`
 - **Track B 论文表（30 stories / system）**是后来在更新代码上跑的。本冻结核 **不声称**能对上 Track B 表。打分器在 VMem-Bench 仓，见那边的 `REPRODUCE.md`。
 
-## 无 GPU 冒烟
+## 安装检查（不跑论文、也不等于方法）
+
+确认包能 import。对上 Track A 表仍然要 GPU + 权重，见下一节。
 
 把本仓和 VMem-Bench 的 `paper-reproduction` **并排放**（`../VMem-Bench`）。然后：
 
