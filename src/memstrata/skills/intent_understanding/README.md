@@ -32,18 +32,6 @@ Dereferencing `q_n` into a Composed Context `C_n` is the separate `skills.compos
   Unresolvable names are reported (`plan_unresolved_names`), never invented. Any unusable plan
   falls back to FAST, so enabling PLAN cannot produce an empty read path.
 
-  Two fields carry state the beat itself cannot re-derive later:
-
-  | field | scope | effect |
-  |---|---|---|
-  | `count_required` | this beat | prefers a stored crop showing that many instances; below 2 it is read as "no constraint", because a planner answers 1 for every single entity |
-  | `retired` | every **later** beat | the record is deprecated after this beat composes, so `compose`'s usability gate keeps it out without the planner having to remember |
-
-  `retired` is applied *after* composition on purpose: the beat that destroys a prop is normally
-  the beat that shows it. A ban and a reference for the same entity is a planner contradiction;
-  the ban wins, except on that retirement overlap, and a surviving `count_required` blocks the
-  retirement outright (one of three floats smashing must not delete the other two).
-
   This is the small, forward-compatible half of
   `docs/method/unified_video_memory_pipeline_DESIGN.md` — the plan *contract* without the
   instance-cache migration, so that migration only has to change the execution side.

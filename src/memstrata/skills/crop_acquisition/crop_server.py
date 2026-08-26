@@ -26,7 +26,7 @@ Heavy imports (torch / transformers / SAM3) happen only inside ``build_models`` 
 
 LAUNCH (SAM3 needs the vendored transformers>=5.9 prepended on PYTHONPATH):
 
-  PYTHONPATH=./models/vendor/sam3_transformers59:\
+  PYTHONPATH=${MONTAGE_ROOT}/models/vendor/sam3_transformers59:\
 benchmarks/MemStrata/src:src \
   python3 \
     -m memstrata.skills.crop_acquisition.crop_server --server_dir <dir>

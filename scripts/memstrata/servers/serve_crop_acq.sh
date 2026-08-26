@@ -16,10 +16,10 @@
 #   bash scripts/memstrata/servers/serve_crop_acq.sh /path/to/run/crop_acq_server 0 1800
 set -euo pipefail
 
-MONTAGE_ROOT="${MONTAGE_ROOT:-.}"
+MONTAGE_ROOT="${MONTAGE_ROOT:-${MONTAGE_ROOT}}"
 SAM3_DEPS="${MEMSTRATA_SAM3_DEPS:-${MONTAGE_ROOT}/models/vendor/sam3_transformers59}"
 # The vendored sam3_transformers59 bundle is cp311; run under a py3.11 + torch env (helios).
-PY="${MEMSTRATA_PYTHON:-helios/bin/python}"
+PY="${MEMSTRATA_PYTHON:-python3}"
 
 SERVER_DIR="${1:?usage: serve_crop_acq.sh <server_dir> [device] [idle_timeout]}"
 DEVICE="${2:-}"

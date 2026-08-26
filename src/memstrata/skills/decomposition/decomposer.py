@@ -29,7 +29,6 @@ Angle/attribute resolution routes through ``memstrata.mllm`` classifiers.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Protocol
 
 from memstrata.bank import AssetType, SpatialAngle, StateAngle
@@ -56,12 +55,6 @@ class NamedEntity:
     crop_path: str | None = None  # when a crop is already isolated
     category: str = ""  # short English common noun for the open-vocab segmenter concept
     description: str = ""  # appearance hint for perception prompts (not a name oracle)
-    # Transient qualifier the naming source separated OUT of ``name`` ("young", "wounded",
-    # "soaked"). Identity belongs in ``name``; the condition it was seen in belongs here, which
-    # is what keeps one entity from splitting into one asset per appearance.
-    state_modifier: str = ""
-    # How many instances the shot states or implies ("three glass floats"); 0 when unstated.
-    count: int = 0
     spatial_angle: SpatialAngle = SpatialAngle.UNKNOWN
     state_angle: StateAngle = StateAngle.UNKNOWN
     temporal_tag: str = ""
@@ -85,9 +78,6 @@ class Observation:
     spatial_angle: SpatialAngle = SpatialAngle.UNKNOWN
     state_angle: StateAngle = StateAngle.UNKNOWN
     temporal_tag: str = ""
-    # Instances visible in this crop, carried through to the stored representation so the read
-    # side can honour a count-specific request ("the last two floats").
-    count: int = 0
     angle_meta: dict[str, Any] = field(default_factory=dict)
     # d̂_i — observation-level appearance description (rides the attribute VLM call).
     description: str = ""
@@ -190,17 +180,6 @@ class Discoverer(Protocol):
     ) -> list[DiscoveredEntity]: ...
 
 
-class EntityNamer(Protocol):
-    """Propose typed, NAMED entities visible in frames of a realized segment.
-
-    The contract that matters is the naming: an entity whose label is verbatim in ``prompt``
-    must carry ``entity_id`` (name-anchored, retrievable by that name), and a merely-visible
-    entity must leave ``entity_id`` unset so identity is decided by visual reconciliation.
-    """
-
-    def propose(self, *, frames: str | list[str], prompt: str = "") -> list[NamedEntity]: ...
-
-
 class RoleAwareDecomposer:
     """Paper Step 3: only entities named by the intent; encoder routed by τ_j."""
 
@@ -212,9 +191,6 @@ class RoleAwareDecomposer:
         angle_classifier: AngleClassifier | None = None,
         crop_quality_gate: bool = False,
         discoverer: Discoverer | None = None,
-        entity_namer: EntityNamer | None = None,
-        namer_frames: int = 3,
-        namer_frame_dir: str | Path | None = None,
         discovery_kinds: tuple[AssetType, ...] = (
             AssetType.CHARACTER,
             AssetType.PROP,
@@ -237,11 +213,6 @@ class RoleAwareDecomposer:
         self.crop_quality_gate = crop_quality_gate
         # Type-constrained discovery (paper D_T). ``None`` → requested-only decomposition.
         self.discoverer = discoverer
-        # Write-side naming. ``None`` → a first appearance can only enter memory unnamed, via
-        # discovery, which the name-authoritative read path cannot resolve later.
-        self.entity_namer = entity_namer
-        self.namer_frames = max(1, int(namer_frames))
-        self.namer_frame_dir = namer_frame_dir
         self.discovery_kinds = tuple(discovery_kinds)
         self.covered_iou = float(covered_iou)
 
@@ -289,25 +260,15 @@ class RoleAwareDecomposer:
         segment_id: int,
         named_entities: list[NamedEntity],
         segment_video: str | None = None,
-        prompt: str = "",
     ) -> list[Observation]:
-        """Produce ``O_n = O_n^req ∪ O_n^named ∪ O_n^disc`` for one realized segment.
+        """Produce ``O_n = O_n^req ∪ O_n^disc`` for one realized segment.
 
         Requested observations come first and keep their original order, so callers
         that index into the result (and the curate step's identity anchoring) are
-        unaffected by naming or discovery. ``prompt`` is only consumed by the optional
-        namer, so callers that pass none keep the historical two-part behaviour.
+        unaffected by discovery.
         """
         observations = self._decompose_requested(
             segment_id=segment_id, named_entities=named_entities, segment_video=segment_video
-        )
-        observations.extend(
-            self._decompose_named(
-                segment_id=segment_id,
-                segment_video=segment_video,
-                prompt=prompt,
-                requested=observations,
-            )
         )
         observations.extend(
             self._decompose_discovered(
@@ -326,139 +287,50 @@ class RoleAwareDecomposer:
         """O_n^req — one observation per named entity that has (or can get) a crop."""
         observations: list[Observation] = []
         for index, entity in enumerate(named_entities):
-            observation = self._observe_entity(
-                entity,
-                segment_id=segment_id,
-                index=index,
-                segment_video=segment_video,
-                source=SOURCE_REQUESTED,
-            )
-            if observation is not None:
-                observations.append(observation)
-        return observations
-
-    def _observe_entity(
-        self,
-        entity: NamedEntity,
-        *,
-        segment_id: int,
-        index: int,
-        segment_video: str | None,
-        source: str,
-    ) -> Observation | None:
-        """Acquire, gate, embed and annotate one entity's crop. ``None`` when unusable."""
-        crop = entity.crop_path
-        bbox: list[int] | None = None
-        acquisition_meta: dict[str, Any] = {}
-        if crop is None and segment_video and self.cropper is not None:
-            acquired = self.cropper.crop(segment_video, entity, segment_id=segment_id)
-            crop, bbox, acquisition_meta = _crop_path_bbox_meta(acquired)
-        if not crop:
-            return None
-        quality_meta: dict[str, Any] = {}
-        if self.crop_quality_gate:
-            report = audit_crop(crop)
-            quality_meta["crop_quality"] = report.to_dict()
-            if not report.accepted:
-                return None
-        vector, route = self._embed(crop, entity.kind)
-        spatial, state, angle_meta = self._resolve_angles(
-            crop=crop,
-            kind=entity.kind,
-            name=entity.name,
-            spatial=entity.spatial_angle,
-            state=entity.state_angle,
-        )
-        angle_meta.update(quality_meta)
-        angle_meta.update(acquisition_meta)
-        description = str(angle_meta.get("observation_description", "") or entity.description)
-        if entity.state_modifier:
-            # Keep the literal qualifier next to the crop: the enum only says "not default",
-            # while the read side matches a shot asking for the young/wounded appearance on text.
-            angle_meta["state_modifier"] = entity.state_modifier
-            if entity.state_modifier.lower() not in description.lower():
-                description = f"{entity.state_modifier} {description}".strip()
-        obs_id = entity.entity_id or f"{entity.kind.value}_{entity.name}_{segment_id}_{index}"
-        return Observation(
-            observation_id=str(obs_id),
-            kind=entity.kind,
-            name=entity.name,
-            image_path=crop,
-            entity_id=entity.entity_id,
-            embedding=vector,
-            encoder_route=route,
-            spatial_angle=spatial,
-            state_angle=state,
-            temporal_tag=entity.temporal_tag or f"segment_{segment_id}",
-            count=entity.count,
-            angle_meta=angle_meta,
-            # A namer supplies its own appearance description; keep it when the angle
-            # classifier did not produce one, otherwise the grounding-quality signal is lost.
-            description=description,
-            source=source,
-            bbox_norm=bbox,
-        )
-
-    def _decompose_named(
-        self,
-        *,
-        segment_id: int,
-        segment_video: str | None,
-        prompt: str,
-        requested: list[Observation],
-    ) -> list[Observation]:
-        """Entities the NAMER recognises in the realized segment, named from the prompt.
-
-        Without this, a first appearance can only enter memory through ``_decompose_discovered``,
-        which never infers names — so every new entity lands under a synthetic label
-        (``character_disc_c000_0``) that the name-authoritative read path can never resolve. The
-        namer instead binds the user-visible prompt's own words to entities it visually confirms,
-        which is what makes an entity retrievable by the name the next shot uses for it.
-
-        The requested/discovered split is the namer's: an entity whose label is verbatim in the
-        prompt carries ``entity_id`` and is anchored by that name, while a merely-visible entity
-        stays unanchored so cross-segment identity is decided by visual reconciliation instead of
-        a drifting descriptive label.
-        """
-        if self.entity_namer is None or not segment_video or not prompt:
-            return []
-        frames = self._namer_frames(segment_video, segment_id=segment_id)
-        if not frames:
-            return []
-        try:
-            entities = self.entity_namer.propose(frames=frames, prompt=prompt)
-        except Exception:  # noqa: BLE001 - naming is best-effort, never fails a segment
-            return []
-        # The read side already observed its own selections; re-observing them would double-count
-        # the same entity in one segment.
-        seen = {(o.kind, o.name.strip().casefold()) for o in requested}
-        observations: list[Observation] = []
-        for index, entity in enumerate(entities):
-            key = (entity.kind, entity.name.strip().casefold())
-            if key in seen:
+            crop = entity.crop_path
+            bbox: list[int] | None = None
+            acquisition_meta: dict[str, Any] = {}
+            if crop is None and segment_video and self.cropper is not None:
+                acquired = self.cropper.crop(segment_video, entity, segment_id=segment_id)
+                crop, bbox, acquisition_meta = _crop_path_bbox_meta(acquired)
+            if not crop:
                 continue
-            seen.add(key)
-            observation = self._observe_entity(
-                entity,
-                segment_id=segment_id,
-                index=index,
-                segment_video=segment_video,
-                source=SOURCE_REQUESTED if entity.entity_id else SOURCE_DISCOVERED,
+            quality_meta: dict[str, Any] = {}
+            if self.crop_quality_gate:
+                report = audit_crop(crop)
+                quality_meta["crop_quality"] = report.to_dict()
+                if not report.accepted:
+                    continue
+            vector, route = self._embed(crop, entity.kind)
+            spatial, state, angle_meta = self._resolve_angles(
+                crop=crop,
+                kind=entity.kind,
+                name=entity.name,
+                spatial=entity.spatial_angle,
+                state=entity.state_angle,
             )
-            if observation is not None:
-                observations.append(observation)
+            angle_meta.update(quality_meta)
+            angle_meta.update(acquisition_meta)
+            obs_id = entity.entity_id or f"{entity.kind.value}_{entity.name}_{segment_id}_{index}"
+            observations.append(
+                Observation(
+                    observation_id=str(obs_id),
+                    kind=entity.kind,
+                    name=entity.name,
+                    image_path=crop,
+                    entity_id=entity.entity_id,
+                    embedding=vector,
+                    encoder_route=route,
+                    spatial_angle=spatial,
+                    state_angle=state,
+                    temporal_tag=entity.temporal_tag or f"segment_{segment_id}",
+                    angle_meta=angle_meta,
+                    description=str(angle_meta.get("observation_description", "")),
+                    source=SOURCE_REQUESTED,
+                    bbox_norm=bbox,
+                )
+            )
         return observations
-
-    def _namer_frames(self, segment_video: str, *, segment_id: int) -> list[str]:
-        from memstrata.lib.media import sample_video_frames
-
-        out_dir = Path(self.namer_frame_dir or Path(segment_video).parent) / "namer_frames"
-        return sample_video_frames(
-            segment_video,
-            out_dir,
-            count=self.namer_frames,
-            prefix=f"seg{segment_id:05d}",
-        )
 
     def _decompose_discovered(
         self,

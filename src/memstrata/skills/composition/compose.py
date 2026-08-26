@@ -46,10 +46,9 @@ def select_reps(
     preferred_rep_id: str | None = None,
     preferred_spatial: SpatialAngle | None = None,
     preferred_state: StateAngle | None = None,
-    preferred_count: int | None = None,
     as_of_segment_id: int | None = None,
 ) -> list[str]:
-    """Pick causal, non-deprecated reps; prefer matching count, then spatial/state angles."""
+    """Pick causal, non-deprecated reps; prefer matching spatial/state angles."""
     if preferred_rep_id:
         for rep in asset.representations:
             if (
@@ -78,19 +77,13 @@ def select_reps(
     ]
     pool = aspect_hits if aspect_hits else candidates
 
-    # Eq(10): explicit id is handled above; otherwise prefer count, then state, then view,
+    # Eq(10): explicit id is handled above; otherwise prefer state, then view,
     # then recency. Quality is a write-path/admission concern, not a read priority.
-    #
-    # Count outranks the angles because it is the one dimension a viewer counts rather than
-    # infers: a prompt asking for "the last two floats" is visibly wrong when handed the crop
-    # showing three, whereas a front/side mismatch reads as a different shot of the same thing.
     wanted_state = preferred_state if preferred_state != StateAngle.UNKNOWN else None
     wanted_spatial = preferred_spatial if preferred_spatial != SpatialAngle.UNKNOWN else None
-    wanted_count = preferred_count if preferred_count and preferred_count > 0 else None
     ordered = sorted(
         pool,
         key=lambda r: (
-            int(wanted_count is not None and r.count == wanted_count),
             int(wanted_state is not None and r.state_angle == wanted_state),
             int(wanted_spatial is not None and r.spatial_angle == wanted_spatial),
             r.origin_segment_id,
@@ -216,7 +209,6 @@ def compose(
             preferred_rep_id=ref.representation_id,
             preferred_spatial=ref.preferred_spatial,
             preferred_state=ref.preferred_state,
-            preferred_count=ref.preferred_count,
             as_of_segment_id=as_of_segment_id,
         )
         asset_ids.append(asset.asset_id)

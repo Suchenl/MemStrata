@@ -1,7 +1,7 @@
 # Wan2.2-TI2V-5B-Turbo — 4-step, CFG-free, Self-Forcing distilled text+image-to-video.
 #
 # Selected via provider = "wan22_turbo" (see wan22_turbo_backend.py). Measured on an A800:
-# 4-step denoise at the native 704x1280/121f costs ~25s, while loading the weights costs ~5 min (base 5B
+# 4-step denoise at 480x832/81f costs ~7.5s, while loading the weights costs ~5 min (base 5B
 # shards + the 19.9 GB model.pt + T5 + VAE off shared storage), hence the persistent server.
 #
 # WHY A VENDORED REPO: the published checkpoint is a bare distilled DiT with native Wan key
@@ -21,7 +21,7 @@ provider = "wan22_turbo"
 family = "wan_ti2v"
 
 # The vendored upstream checkout (pipeline + wan/wan22 modules + wan_models/ symlinks).
-repo = "./models/vendor/wan22_ti2v5b_turbo"
+repo = "${WAN22_TURBO_REPO}"
 # Dir holding the distilled model.pt (DiT only; base 5B is resolved through repo/wan_models/).
 model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-TI2V-5B-Turbo"
 model_name = "ti2v-5B-turbo-4step"
@@ -35,20 +35,7 @@ python = "python3"
 
 capabilities = ["text_to_video", "image_to_video"]
 
-# Render at the checkpoint's native size, deliver at the benchmark's size.
-#
-# Upstream's run script, its --h/--w defaults and the hardcoded `seq_len = 27280  # [1,31,48,44,80]`
-# all describe 704x1280. Rendering at 480x832 instead is the one place this backend departed from the
-# reference implementation, and it is what made segments shake: on one keyframe/prompt/seed,
-# 480x832 measures accel 0.490 px / ratio 1.13 (noise-dominated) while 704x1280 measures 0.170 px /
-# ratio 0.09 despite 4x more real camera motion. Rendering smaller also saves far less than it
-# looks -- seq_len is a constant, so the DiT runs at the 720p sequence length either way and the
-# native render costs only 25.4 s against 14.6 s.
-#
-# The delivered clip is still 480x832 so MemStrata stays resolution-matched with the 1.3B baselines;
-# the downscale happens once, on the decoded tensor, inside the server.
-render_height = 704
-render_width = 1280
+# 480p landscape, pinned so every segment is the same size and stitching is safe.
 height = 480
 width = 832
 # 121 frames @ 24fps ~= 5.0s, matching the Wan2.1 baselines' 81f @ 16fps ~= 5.1s beat. Frame
@@ -64,6 +51,6 @@ server_job_timeout = 1800
 server_ready_timeout = 1800
 server_idle_timeout = 1800
 auto_pick_gpu = true
-min_free_mib = 44000          # ~29 GiB resident at 480x832/81f; the 720p render needs more
+min_free_mib = 40000          # measured ~29 GiB resident at 480x832/81f
 
 ffmpeg = "ffmpeg"

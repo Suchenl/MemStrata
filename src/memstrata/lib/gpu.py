@@ -104,30 +104,6 @@ def visible_devices_have_min_free(visible: str, *, min_free_mib: int) -> bool | 
     return all(free.get(idx, -1) >= min_free_mib for idx in ids)
 
 
-def freest_visible_device(visible: str, *, min_free_mib: int) -> str | None:
-    """Pick the emptiest entry of an explicit ``CUDA_VISIBLE_DEVICES`` that clears the floor.
-
-    For a service that occupies one card while more than one is visible to it. Returns ``None``
-    when the choice cannot be made (UUID/MIG syntax, no ``nvidia-smi``) or when no visible card
-    clears the floor, so the caller can fall back to its own error path.
-    """
-
-    tokens = [token.strip() for token in visible.split(",") if token.strip()]
-    if len(tokens) < 2:
-        return None
-    try:
-        ids = [int(token) for token in tokens]
-    except ValueError:
-        return None
-    free = gpu_free_memory_mib()
-    if free is None:
-        return None
-    ok = [idx for idx in ids if free.get(idx, -1) >= min_free_mib]
-    if not ok:
-        return None
-    return str(max(ok, key=lambda idx: free.get(idx, -1)))
-
-
 def cuda_visible_devices_for(count: int = 1, *, min_free_mib: int = 4000) -> str | None:
     """Return a ``CUDA_VISIBLE_DEVICES`` string for the ``count`` freest cards, or ``None``.
 

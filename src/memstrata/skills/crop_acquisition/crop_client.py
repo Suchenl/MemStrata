@@ -44,12 +44,12 @@ if TYPE_CHECKING:  # avoid heavy / cyclic imports at runtime
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_MONTAGE_ROOT = "."
+_DEFAULT_MONTAGE_ROOT = "${MONTAGE_ROOT}"
 # The vendored sam3_transformers59 bundle is compiled for CPython 3.11 (transformers 5.9 +
 # hf_hub/pydantic/regex/tiktoken .so are all cp311). The server subprocess therefore MUST
 # run under a py3.11 + torch env; `helios` (py3.11, torch 2.10) matches. The *client* can
 # still run under any env (it only samples frames + talks to the queue).
-_DEFAULT_PYTHON = "helios/bin/python"
+_DEFAULT_PYTHON = "python3"
 _DEFAULT_FRAME_POSITIONS = (0.2, 0.5, 0.8)
 
 

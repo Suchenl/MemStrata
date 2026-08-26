@@ -27,68 +27,6 @@ def _ffmpeg() -> str | None:
         return shutil.which("ffmpeg")
 
 
-def _probe_meta(path: Path) -> dict[str, Any]:
-    """``{"duration": s, "fps": f}`` for a clip, or ``{}`` when neither prober is usable.
-
-    Prefers ``imageio_ffmpeg``'s reader metadata because that is the binary the stitcher
-    already depends on; a bare ``ffprobe`` on PATH is the fallback. The bundled
-    imageio_ffmpeg binary has no sibling ``ffprobe``, which is why probing cannot be
-    ffprobe-only (it silently produced a zero-length timeline).
-    """
-    try:
-        import imageio_ffmpeg
-
-        reader = imageio_ffmpeg.read_frames(str(path))
-        try:
-            meta = reader.__next__()
-        finally:
-            reader.close()
-        return {"duration": float(meta["duration"]), "fps": float(meta["fps"])}
-    except Exception:
-        pass
-    probe = shutil.which("ffprobe")
-    if probe is None:
-        return {}
-    try:
-        out = subprocess.run(
-            [probe, "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=duration,avg_frame_rate", "-of", "csv=p=0", str(path)],
-            check=True, capture_output=True, text=True, timeout=30).stdout.strip()
-        rate, _, duration = out.partition(",")
-        num, _, den = rate.partition("/")
-        return {"duration": float(duration), "fps": float(num) / float(den or 1)}
-    except Exception:
-        return {}
-
-
-def _segment_durations(review_dir: Path) -> list[float]:
-    """Per-clip durations in segment order, memoised in ``review/durations.json``.
-
-    Probing every clip on every call would be quadratic (this runs after each segment), so
-    results are cached by ``(name, size)`` and only new clips pay a probe. An unprobeable
-    clip contributes 0.0 rather than breaking the timeline of the clips around it.
-    """
-    cache_path = review_dir / "durations.json"
-    try:
-        cache = json.loads(cache_path.read_text())
-    except Exception:
-        cache = {}
-    durations: list[float] = []
-    dirty = False
-    for seg in sorted((review_dir / "segments").glob("seg_*.mp4")):
-        key = f"{seg.name}:{seg.stat().st_size}"
-        if key not in cache:
-            cache[key] = _probe_meta(seg).get("duration", 0.0)
-            dirty = True
-        durations.append(float(cache[key]))
-    if dirty:
-        try:
-            cache_path.write_text(json.dumps(cache, indent=2), encoding="utf-8")
-        except Exception:
-            pass
-    return durations
-
-
 def _resolve(src: str | Path | None) -> Path | None:
     """Resolve an artifact path (absolute, or relative to cwd) to an existing file.
     Some summary fields are labels (e.g. 'flux_i2i'), not paths -> return None."""
@@ -132,20 +70,13 @@ def _stitch(review_dir: Path) -> Path | None:
     listing = review_dir / "_concat.txt"
     listing.write_text("".join(f"file '{s.resolve()}'\n" for s in segs))
     out = review_dir / "long_video.mp4"
-    base = [ff, "-y", "-f", "concat", "-safe", "0", "-i", str(listing)]
-    # This runs after EVERY segment, so re-encoding is quadratic in segment count: at 87 segments
-    # it costs ~29 s per call (measured) versus ~1 s for a stream copy. Every clip comes from the
-    # same backend at the same resolution/codec, so concat + copy is valid; re-encode stays as the
-    # fallback for a run whose clips are genuinely heterogeneous.
-    for args in (["-c", "copy"], ["-c:v", "libx264", "-pix_fmt", "yuv420p"]):
-        try:
-            subprocess.run([*base, *args, "-an", str(out)],
-                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            continue
-        if out.is_file():
-            return out
-    return None
+    cmd = [ff, "-y", "-f", "concat", "-safe", "0", "-i", str(listing),
+           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(out)]
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        return None
+    return out if out.is_file() else None
 
 
 def _write_index(review_dir: Path, rows: list[dict[str, Any]], *, title: str = "") -> None:
@@ -237,12 +168,6 @@ def organize_run(run_dir: str | Path, rows: list[dict[str, Any]] | None = None,
         organize_segment(run_dir, row)
     long_video = _stitch(review)
     _write_index(review, rows, title=title)
-    # Per-clip durations let the caller anchor memory timestamps to the grown film: clip i
-    # starts at sum(durations[:i]). Without them every ``sec`` in the memory snapshot is None.
-    durations = _segment_durations(review)
     return {"review_dir": str(review),
             "segments": len(list((review / "segments").glob("seg_*.mp4"))),
-            "long_video": str(long_video) if long_video else None,
-            "segment_durations": durations,
-            "duration_sec": sum(durations) if durations else None,
-            "fps": _probe_meta(long_video).get("fps") if long_video else None}
+            "long_video": str(long_video) if long_video else None}

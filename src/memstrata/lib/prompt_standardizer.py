@@ -189,34 +189,16 @@ def standardize_prompt(prompt: str, target_model: str, quality_preset: str | Non
     return prompt
 
 
-#: Buzzwords that push image models toward the plastic "AI render" look.
-AI_BUZZWORDS = [
-    "photorealistic",
-    "hyperrealistic",
-    "highly detailed",
-    "8k",
-    "flawless skin",
-    "studio lighting",
-]
-
-#: Photographic anchors that pull generations back toward real film.
-FILM_ANCHORS = (
-    "raw photo, un-retouched, shot on 35mm film, Fujifilm Superia, natural skin texture, "
-    "visible pores, slight film grain"
-)
-
-
-def strip_ai_buzzwords(text: str) -> str:
-    """Drop the CG-like buzzwords from a prompt fragment."""
-    for word in AI_BUZZWORDS:
-        text = text.replace(f", {word}", "").replace(word, "")
-    return text
-
-
 def preprocess_de_ai_prompt(prompt: str, quality_preset: str | None) -> str:
     """Clean up CG-like buzzwords and inject photographic film anchors to shatter AI plastic bias."""
-    anchors = FILM_ANCHORS
-    clean_text = strip_ai_buzzwords
+    dirty_words = ["photorealistic", "hyperrealistic", "highly detailed", "8k", "flawless skin", "studio lighting"]
+    anchors = "raw photo, un-retouched, shot on 35mm film, Fujifilm Superia, natural skin texture, visible pores, slight film grain"
+
+    def clean_text(text: str) -> str:
+        for word in dirty_words:
+            text = text.replace(f", {word}", "").replace(word, "")
+            text = text.replace(word, "")
+        return text
 
     # Detect and process structured JSON prompts
     try:

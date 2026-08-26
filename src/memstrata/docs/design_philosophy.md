@@ -128,7 +128,7 @@
 
 ## 5. 与 Bench 的关系
 
-- `memstrata` **零 import `vmem_bench`**；共享的 crop 质量/属性逻辑各存一份镜像（如
+- `memstrata` **零 import `memstrata_bench`**；共享的 crop 质量/属性逻辑各存一份镜像（如
   `lib/crop_quality.py` 之于 bench `crop_qa.py`），契约对齐、代码不交叉。
 - Bench 评测协议**已冻结**：本包可**消费**可选字段、可增强内部能力，但**不要求** Bench 新增
   标注轴或指标。库质量的增强是"方法侧变强"，不是"改考卷"。

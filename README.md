@@ -1,26 +1,6 @@
 # MemStrata
 
-Public code for **MemStrata** — stratified visual memory for controllable long-video generation.
-
-- This repo (`main` = production, `paper-reproduction` = paper-metric freeze)
-- Benchmark: [github.com/Suchenl/VMem-Bench](https://github.com/Suchenl/VMem-Bench)
-- Gold / prompts: [huggingface.co/datasets/Suchenl/VMem-Bench](https://huggingface.co/datasets/Suchenl/VMem-Bench)
-
-The generator \(G_\theta\) is **swappable**. Default production path (documented, not hard-wired): FLUX.2 Klein 9B-KV keyframes → Wan2.2-I2V-A14B LightX2V 4-step. List backends with `python -m memstrata.production.run --list-backends`. Weights are **not** in git; set `PUBLIC_MODELS_ROOT`.
-
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest -q          # assert-based, no GPU/LLM
-# CPU smoke (no real generator; --no-flux skips FLUX, decompose=none skips Qwen):
-PYTHONPATH=src python3 -m memstrata.production.run \
-  --backend recording --decompose none --no-flux --no-autoserve --segments 2
-```
-
-`memstrata` and `vmem_bench` never import each other. Evaluation adapters live only in the VMem-Bench repo.
-
----
-
-# MemStrata（方法说明）
+> **本分支是 `paper-reproduction`**，对应内部 `VMem-Track-A-MemStrata` @ `51be2914`（Track A Stage 1 冻结核）。生产代码看 `main`。复现步骤见 [`REPRODUCE.md`](REPRODUCE.md)。
 
 **面向可控长视频生成的记忆管理与上下文组合方法包。** 把一部长视频里出现过的实体
 （`character` / `prop` / `location`）沉淀为**结构化、可被生成条件化的记忆库** \(\mathcal{M}_n\)，
@@ -28,9 +8,10 @@ PYTHONPATH=src python3 -m memstrata.production.run \
 
 > 记忆库不是"帧的仓库"，而是"**每个实体一份、可被生成条件化的身份档案**"。
 
-本包（Python 包名 `memstrata`）与评测基准 [VMem-Bench](https://github.com/Suchenl/VMem-Bench)
-（包名 `vmem_bench`）**零相互导入、互不外部引用**（自包含硬约束见 [`AGENTS.md`](AGENTS.md)）。
-评测只在 VMem-Bench 仓库的 `scripts/evaluate_baselines/` adapter 里把本方法当黑盒 import。
+本包（`methods/MemStrata`，Python 包名 `memstrata`）与评测基准
+[`benchmarks/VMem-Bench`](../../benchmarks/VMem-Bench)（包名 `vmem_bench`）**零相互导入、互不外部引用**
+（自包含硬约束见 [`AGENTS.md`](AGENTS.md)）。评测只在
+`benchmarks/VMem-Bench/scripts/evaluate_baselines/` 的 adapter 里把本方法当黑盒 import。
 
 **最高纲领**是 [`src/memstrata/docs/design_philosophy.md`](src/memstrata/docs/design_philosophy.md)
 （六条库质量公理 + WHO-before-WHERE 准入原则）；任何记忆相关取舍先服从它，本文件与之冲突时以纲领为准。
@@ -40,24 +21,24 @@ PYTHONPATH=src python3 -m memstrata.production.run \
 ## 目录布局（方法侧，post-split）
 
 ```
-.
-├── AGENTS.md
-├── README.md
-├── configs/
-├── docs/
-├── src/memstrata/
-│   ├── docs/design_philosophy.md
-│   ├── bank/
-│   ├── skills/
-│   ├── mllm/
-│   ├── steps/
-│   ├── pipeline.py
-│   ├── production/run.py
-│   ├── adapters/
-│   ├── encoders/
-│   └── lib/
-├── production/               # screenplay samples (run outputs gitignored)
-└── scripts/memstrata/
+methods/MemStrata/
+├── AGENTS.md                 # 自包含 / 零跨包 import 硬约束
+├── README.md                 # ← 本文件：最外层总览 + 系统三大核心 + 写侧增强计划
+├── docs/                     # 方法侧知识文档（bench 文档应迁往 VMem-Bench，见文末“docs 治理”）
+├── src/memstrata/            # 方法包
+│   ├── docs/design_philosophy.md   # ★ 最高纲领
+│   ├── bank/                 # Asset bank M_n：Asset / AssetRepresentation（分层字段）
+│   ├── skills/               # ★ 可复用能力（见下“四阶段环 + 技能映射”）
+│   ├── mllm/                 # MLLM 角色注册表 + 各角色客户端（roles.py / crop_attributes.py / …）
+│   ├── steps/                # 论文四步的薄 shim（转发到 skills）
+│   ├── pipeline.py           # 四步环路编排
+│   ├── production/run.py     # 生产闭环入口（真实 backend + 真实感知）
+│   ├── adapters/             # 剧本 / bench 输入适配
+│   ├── encoders/             # DINOv3 / face / place 等编码器
+│   └── lib/                  # dedup / crop_quality / media 等确定性工具
+├── experiments/              # 方法侧可复现探针（probe / calibration / smoke）
+├── configs/                  # 生产配置
+└── scripts/memstrata/        # 运行入口（含 servers/serve_qwen.sh）
 ```
 
 ---
@@ -284,9 +265,9 @@ JSON（结构与基准 gt 的 `entities` 同源），并把视觉记忆按同根
 ## 运行自检
 
 ```bash
-python -m pytest -q
-PYTHONPATH=src python3 -m memstrata.production.run --backend recording --decompose none --no-flux --no-autoserve --segments 2
-PYTHONPATH=src python3 -m memstrata.production.run --backend oracle --decompose none --no-flux --no-autoserve --segments 2
+cd methods/MemStrata
+PYTHONPATH=src python -m pytest src/memstrata/tests -q       # assert-based，无 GPU/LLM
 ```
 
-真实 GPU 闭环（Wan / FLUX / Qwen）需要自备权重，见 [`docs/operations/models_and_environments.md`](docs/operations/models_and_environments.md)。论文表数字认 git 分支 `paper-reproduction`，不认随意的 `main`。仓库里部分历史文档仍写着旧 monorepo 路径（`methods/MemStrata`），在本仓里都指仓库根。
+写侧完整链路（VLM decompose → SAM3 crop → DINOv3 → 记忆更新）的真实 smoke 见
+[`experiments/methods/MemStrata/20260726_vlm_decompose_smoke`](../../experiments/methods/MemStrata/20260726_vlm_decompose_smoke)（位于仓库根 `experiments/`）。

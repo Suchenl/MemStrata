@@ -56,7 +56,6 @@ from memstrata.skills.memory_retrieval.name_match import (
     NameHit as _NameHit,
     match_cache as _match_cache,
     name_hits as _name_hits,
-    name_match as _name_match_uncached,
     unique_asset_ids as _unique_asset_ids,
 )
 
@@ -86,7 +85,6 @@ class AssetReference:
     requirement: str = "continuity"  # introduce | continuity
     preferred_spatial: SpatialAngle | None = None
     preferred_state: StateAngle | None = None
-    preferred_count: int | None = None
 
 
 @dataclass(slots=True)
@@ -103,11 +101,8 @@ class CompositionRequest:
     # ``route`` is the generation route the planner chose for this beat (see plan.ROUTES);
     # ``forbidden_asset_ids`` are entities that must NOT be conditioned on (a destroyed prop, a
     # look-alike explicitly distinguished from this beat's subject).
-    # ``retired_asset_ids`` is the subset the planner reports as permanently gone from the story;
-    # the caller turns those into a bank lifecycle transition so later beats stay clean too.
     route: str = ""
     forbidden_asset_ids: tuple[str, ...] = ()
-    retired_asset_ids: tuple[str, ...] = ()
     plan_unresolved_names: tuple[str, ...] = ()
     # Efficient-composition budget (design_philosophy.md axiom 6): how many reps a
     # named asset may contribute, and an optional hard cap on total reps across the
@@ -315,9 +310,7 @@ class IntentInterpreter:
         fallback_reason = ""
         intent_resolution_source = "recency"
         state_by_id: dict[str, StateAngle] = {}
-        count_by_id: dict[str, int] = {}
         forbidden_ids: tuple[str, ...] = ()
-        retired_ids: tuple[str, ...] = ()
         route = ""
         unresolved_names: tuple[str, ...] = ()
         # A committed plan owns the selection outcome, including a deliberate *empty* one
@@ -355,12 +348,10 @@ class IntentInterpreter:
                     )
                     route = resolved.route
                     forbidden_ids = tuple(resolved.forbidden_ids)
-                    retired_ids = tuple(resolved.retired_ids)
                     unresolved_names = tuple(resolved.unresolved_names)
                     if resolved.selected_ids or route == ROUTE_T2V:
                         selected_ids = resolved.selected_ids
                         state_by_id = resolved.state_by_id
-                        count_by_id = resolved.count_by_id
                         intent_resolution_source = "plan"
                         plan_committed = True
                     else:
@@ -461,43 +452,8 @@ class IntentInterpreter:
                     requirement=_requirement(asset, segment_id),
                     preferred_spatial=preferred_spatial,
                     preferred_state=preferred_state,
-                    preferred_count=count_by_id.get(asset_id),
                 )
             )
-
-        # Last-resort invariant: a name a deterministic match can still find must never leave
-        # this segment with nothing to condition on. Three empties above are legitimate and
-        # stay untouched — a committed plan's t2v route, the name-anchor ablation, and an
-        # asset the plan explicitly forbids — so only an unexplained empty reaches here.
-        #
-        # The retry rebuilds the term index from ``candidates`` instead of reusing the shared
-        # snapshot, which is keyed on ``bank.version``: any present or future mutation path
-        # that changes a name or alias without advancing that version serves a stale index,
-        # and the read path would silently return nothing for a name that is sitting in the
-        # bank. A measured 18-segment run had three such segments (segment 11 naming Elias at
-        # 6 reps, segment 14 naming Mara at 2) whose composed context still came back empty.
-        # Kept as a labelled recovery rather than a silent repair: ``name_recovered`` in the
-        # telemetry means the primary path is broken and should be diagnosed, not that the
-        # segment merely had a hard prompt.
-        if not refs and not plan_committed and not self.disable_name_anchor:
-            recovered = [
-                asset_id
-                for asset_id in _name_match_uncached(prompt, candidates)
-                if asset_id not in forbidden_ids
-            ]
-            for asset_id in recovered:
-                asset = self.bank.get_asset(asset_id)
-                if asset is None:
-                    continue
-                refs.append(
-                    AssetReference(
-                        asset_id=asset_id,
-                        function=FUNCTION_BY_TYPE.get(asset.kind, "identity_anchor"),
-                        requirement=_requirement(asset, segment_id),
-                    )
-                )
-            if refs:
-                intent_resolution_source = "name_recovered"
 
         # p̃_n: lightweight deterministic enrichment (no extra model call).
         # ponytail: full MLLM rewrite of the generation prompt is optional; bank facts
@@ -523,7 +479,6 @@ class IntentInterpreter:
             context_rep_budget=self.context_rep_budget,
             route=route,
             forbidden_asset_ids=forbidden_ids,
-            retired_asset_ids=retired_ids,
             plan_unresolved_names=unresolved_names,
         ), model_calls
 

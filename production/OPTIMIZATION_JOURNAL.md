@@ -281,13 +281,13 @@ optCA 三片平均 f1 ≈ **0.926**，precision 全 1.0，avoid_ok 全 1.0。每
    闭世界**混合盲化 roster**（present∪forbidden∪decoys）修好 precision≡1 与 avoidance 不可测；身份漂移**降级为诊断**
    （防冻帧/糊图刷分）；headline = `f1(char+prop) + avoidance_ok(bench-mode) + state_correctness`；新增确定性
    `stitch_coherence`；砍掉 embedding 二次确认 / redundancy_sim / 4.10。
-2. **GT 导出器**（`src/mave_bench/scoring/trackb_gt.py`，与 SUT 包零 import）：从剧本派生
+2. **GT 导出器**（`src/vmem_bench/scoring/trackb_gt.py`，与 SUT 包零 import）：从剧本派生
    present_required/allowed、forbidden、first/continuity、decoys（确定性采样+强制难 decoy）、gap、kind(object→prop)；
    **state_expected 沿 shot 序粘性传播**。已在 0001 验证：`shot_0014` 正确同时带 E3=weathered（**仅存在于散文** 的状态变化，
    机器字段无法导出）+ E4=cracked（从 shot_0010 传播），`shot_0011` 带 forbidden E5，`shot_0016` 带 forbidden E1。
 3. **硬样本标注 sidecar**：`0001_lighthouse_keeper.overrides.json` 已手写（lookalike E2/E6、3 处状态变化、
    twin 强制 decoy）；0002/0003 由子代理并行撰写中。
-4. **端到端判官**（`src/mave_bench/scoring/end2end_coverage.py`）：盲化 roster + 逐 entity_id JSON + 稳健解析+重试
+4. **端到端判官**（`src/vmem_bench/scoring/end2end_coverage.py`）：盲化 roster + 逐 entity_id JSON + 稳健解析+重试
    + k 投票；VLM 主判存在/状态/实例；**decoy 假阳率**做免费判官噪声地板。所有指标分支已用 mock-VLM 断言通过。
 5. **真实视频首跑**（0001 optCA 生成视频，judge=qwen3-vl-32b@8110，~17s/chunk）：
    - 前 4 chunk smoke：recall(char+prop)=1.0、precision=1.0、f1=1.0、**decoy_fpr=0.1**（判官在生成视频上对"不该在场"实体
@@ -386,7 +386,7 @@ bench-mode 下一旦检出泄漏即 `assert` 中止。新脚本 `scripts/memstra
 **复现（生成→评分）**
 ```
 bash scripts/memstrata/run_bench_eval.sh bench data/Screenplay/products/cn/0002_night_market_courier.json
-CUDA_VISIBLE_DEVICES="" PYTHONPATH=src python3 -m mave_bench.scoring.end2end_coverage \
+CUDA_VISIBLE_DEVICES="" PYTHONPATH=src python3 -m vmem_bench.scoring.end2end_coverage \
   --gt data/MoVE-Bench/trackB/gt/0002_night_market_courier.json \
   --run production/outputs/0002_night_market_courier/memstrata/bench
 ```

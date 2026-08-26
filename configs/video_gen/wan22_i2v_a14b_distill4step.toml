@@ -21,7 +21,7 @@ family = "wan_i2v_svi"
 model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B-distill4step-native"
 model_name = "i2v-A14B"
 python = "python3"
-code_root = "./submodules/_2_generation/backends/frames-to-video"
+code_root = "${WAN_CODE_ROOT}"
 capabilities = ["image_to_video", "reference_conditioned_continuation"]
 serve_persistent = false
 

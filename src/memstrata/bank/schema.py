@@ -42,61 +42,6 @@ NON_USABLE = frozenset({
 })
 
 
-_NAME_SEPARATORS = str.maketrans(dict.fromkeys("-_\u2010\u2011\u2012\u2013\u2014/", " "))
-
-#: Endings that only look plural. Folding these would merge distinct words ("glass" -> "glas",
-#: "iris" -> "iri", "bus" -> "bu"), so they are left alone.
-_FALSE_PLURAL_ENDINGS = ("ss", "us", "is", "as", "os")
-
-#: ``-es`` after these is the plural of a sibilant stem ("boxes" -> "box", "dishes" -> "dish").
-_SIBILANT_STEMS = ("s", "x", "z", "ch", "sh")
-
-#: Singular or plural-only nouns whose trailing ``s`` no rule can distinguish from a plural
-#: marker. ``lens`` is the one that actually bit: a lighthouse story mentions it constantly, and
-#: folding it to "len" would key the same prop under two different names.
-_INVARIANT_PLURALS = frozenset({
-    "lens", "news", "series", "species", "means", "clothes", "physics", "mathematics",
-})
-
-
-def _singularize(word: str) -> str:
-    """Fold a lowercase English word to its singular form, conservatively.
-
-    Only the rules that cannot merge unrelated words are applied; anything ambiguous is returned
-    unchanged. Words with no trailing ``s`` (including every CJK term) short-circuit immediately.
-    """
-    if len(word) < 4 or not word.endswith("s") or word in _INVARIANT_PLURALS:
-        return word
-    if word.endswith("ies"):
-        return word[:-3] + "y"
-    if word.endswith("es"):
-        stem = word[:-2]
-        if stem.endswith(_SIBILANT_STEMS):
-            return stem
-        # "floats"/"stakes": the -e belongs to the stem, so only the -s is the plural marker.
-        return word[:-1]
-    if word.endswith(_FALSE_PLURAL_ENDINGS):
-        return word
-    return word[:-1]
-
-
-def surface_key(name: str) -> str:
-    """Fold a name to a comparison key: case, separators, whitespace runs and head-noun plural.
-
-    Successive shots write the same term differently ("lantern room" / "lantern-room", "glass
-    float" / "glass floats"), and a write path that anchors identity on the surface form then
-    opens one asset per variant — a measured 87-segment run split one prop into ``glass floats``
-    (first seen in segment 13) and ``glass float`` (segment 22). This stays an exact-after-folding
-    match, not a fuzzy one, so identity remains reproducible. Only the final token is
-    singularized, because that is where an English plural marker sits; punctuation-free scripts
-    (CJK) are unaffected because they carry neither separators nor a trailing ``s``.
-    """
-    tokens = str(name or "").translate(_NAME_SEPARATORS).lower().split()
-    if tokens:
-        tokens[-1] = _singularize(tokens[-1])
-    return " ".join(tokens)
-
-
 class AssetVersionConflictError(RuntimeError):
     """A curation proposal was built from an obsolete bank snapshot."""
 
@@ -148,10 +93,6 @@ class AssetRepresentation:
     state_angle: StateAngle = StateAngle.UNKNOWN
     # temporal angle is the origin segment (and optional free-form tag).
     temporal_tag: str = ""
-    # How many instances of the asset this crop shows; 0 means the writer did not report one.
-    # A count is a *state* of a group ("three glass floats" then "the last two"), so it lives on
-    # the representation rather than the record: the record is one identity across all counts.
-    count: int = 0
     reference_aspects: list[str] = field(default_factory=list)  # α⁺
     excluded_aspects: list[str] = field(default_factory=list)  # α⁻
     quality_by_purpose: dict[str, float] = field(default_factory=dict)
@@ -169,7 +110,6 @@ class AssetRepresentation:
             "spatial_angle": self.spatial_angle.value,
             "state_angle": self.state_angle.value,
             "temporal_tag": self.temporal_tag,
-            "count": self.count,
             "reference_aspects": self.reference_aspects,
             "excluded_aspects": self.excluded_aspects,
             "quality_by_purpose": self.quality_by_purpose,
@@ -199,7 +139,6 @@ class AssetRepresentation:
             spatial_angle=spatial_angle,
             state_angle=state_angle,
             temporal_tag=str(data.get("temporal_tag", "")),
-            count=int(data.get("count", 0) or 0),
             reference_aspects=list(data.get("reference_aspects", [])),
             excluded_aspects=list(data.get("excluded_aspects", [])),
             quality_by_purpose={
@@ -297,7 +236,7 @@ class AssetBank:
         mirrors the read path (``memory_retrieval.name_match``), which already
         consults aliases, so write and read stay symmetric.
         """
-        key = surface_key(name)
+        key = name.strip().lower()
         if not key:
             return None
         canonical: Asset | None = None
@@ -305,13 +244,13 @@ class AssetBank:
         for asset in self.assets.values():
             if kind is not None and asset.kind != kind:
                 continue
-            if surface_key(asset.name) == key:
+            if asset.name.strip().lower() == key:
                 canonical = asset
                 break
             if aliased is None:
                 aliases = asset.metadata.get("aliases") or []
                 if isinstance(aliases, list) and any(
-                    surface_key(str(alias)) == key for alias in aliases
+                    str(alias).strip().lower() == key for alias in aliases
                 ):
                     aliased = asset
         return canonical if canonical is not None else aliased
@@ -326,12 +265,12 @@ class AssetBank:
         alias_key = str(alias or "").strip()
         if asset is None or not alias_key:
             return False
-        if surface_key(alias_key) == surface_key(asset.name):
+        if alias_key.strip().lower() == asset.name.strip().lower():
             return False
         aliases = asset.metadata.get("aliases")
         if not isinstance(aliases, list):
             aliases = []
-        if any(surface_key(str(a)) == surface_key(alias_key) for a in aliases):
+        if any(str(a).strip().lower() == alias_key.lower() for a in aliases):
             return False
         aliases.append(alias_key)
         asset.metadata["aliases"] = aliases

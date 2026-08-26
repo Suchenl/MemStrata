@@ -38,7 +38,6 @@ from memstrata.bank import (
     AssetRepresentation,
     AssetType,
     LifecycleStatus,
-    NON_USABLE,
     RelationType,
     SpatialAngle,
     StateAngle,
@@ -429,7 +428,6 @@ class MemoryUpdater:
         attributes_when_angles_known: bool | None = None,
         max_total_representations: int | None = None,
         disable_deprecation: bool = False,
-        name_authoritative_admit: bool = True,
         dark_gate: bool | None = None,
         cohesion_floor: float | None = None,
         cohesion_min_refs: int | None = None,
@@ -479,14 +477,6 @@ class MemoryUpdater:
         # events never mark representations deprecated, so `compose` keeps stale evidence
         # and emits no exclusions (paper ablation "- lifecycle avoidance").
         self.disable_deprecation = disable_deprecation
-        # Name-authoritative admission (unified-pipeline red line: identity is fixed by
-        # name/alias, never overridden by a visual embedding). When True, a low-cohesion
-        # crop of a name-resolved (known) entity is admitted as a legitimate state/
-        # appearance change instead of being dropped by gate ② — this is what lets the
-        # read side surface the CURRENT appearance for persist_state / state_change probes
-        # instead of being stuck on the first-seen look. χ-merged (discovered) evidence is
-        # unaffected and keeps the hard cohesion gate.
-        self.name_authoritative_admit = bool(name_authoritative_admit)
         # WHO-before-WHERE admission gates (design_philosophy.md §2).
         # ① dark gate: deterministic, on by default (unreadable crops pass through).
         self.dark_gate = bool(_pick(dark_gate, pol.dark_gate))
@@ -741,13 +731,7 @@ class MemoryUpdater:
             state = pack.state_angle
         return spatial, state, meta
 
-    def _apply_rep_selection(
-        self,
-        asset: Asset,
-        new_rep: AssetRepresentation,
-        *,
-        name_authoritative: bool = False,
-    ) -> bool:
+    def _apply_rep_selection(self, asset: Asset, new_rep: AssetRepresentation) -> bool:
         """Attach ``new_rep`` under the diversity budget. Returns True iff R_j changed."""
         # WHO-before-WHERE admission (design_philosophy.md §2). ① deterministic
         # luminance gate. A near-black/near-flat crop (dark) and a near-white/near-flat
@@ -796,26 +780,8 @@ class MemoryUpdater:
                 sim = similarity_to_set(new_emb, ref_embs)
                 new_rep.annotations["cohesion_to_bank"] = round(sim, 4)
                 if sim < cohesion_floor:
-                    # Name-authoritative identity (name/entity_id anchor, not a χ embedding
-                    # merge) + an EXPLICIT state signal: a low-cohesion crop of a KNOWN
-                    # entity that the decomposer already tagged with a changed state is a
-                    # legitimate appearance change (persist_state / state_change), not an
-                    # intruder. Identity is fixed by the name, so admit it rather than
-                    # dropping the new appearance (which strands the read side on the stale
-                    # first-seen look). Without a state signal a low-cohesion crop is still
-                    # ambiguous (a wrong bbox / occluder can also look dissimilar), so it
-                    # keeps the hard gate — as does all discovered/χ-merged evidence.
-                    state_signal = new_rep.state_angle not in (
-                        StateAngle.UNKNOWN,
-                        StateAngle.DEFAULT,
-                    )
-                    if name_authoritative and self.name_authoritative_admit and state_signal:
-                        new_rep.annotations["admission"] = (
-                            "admitted_state_change_name_authoritative"
-                        )
-                    else:
-                        new_rep.annotations["admission"] = "rejected_low_cohesion"
-                        return False
+                    new_rep.annotations["admission"] = "rejected_low_cohesion"
+                    return False
 
         new_bucket = _attr_bucket(new_rep)
         covered = {_attr_bucket(rep) for rep in active}
@@ -1031,61 +997,6 @@ class MemoryUpdater:
             self.bank.touch()
         return report
 
-    def _fold_qualified_variant(self, name: str, kind: AssetType) -> Asset | None:
-        """Find the one same-kind asset that is the same identity under a qualifier.
-
-        English noun phrases are head-final, so a qualifier lands in front of the identity:
-        "young Mara" is Mara, "indigo Petrel" is the Petrel, "brass fog bells" are the fog
-        bells. Surface matching treats those as different entities, and a shot that later drops
-        the qualifier opens a second record for one identity. A measured 20-segment run split
-        Mara into `young Mara` (segments 11, 17) and `Mara` (12-16), and the Petrel into
-        `indigo Petrel` and `Petrel`; segment 12 read empty because its prompt says "Mara" and
-        "the Petrel" while the bank only held the qualified forms.
-
-        Folding is refused when more than one asset matches, which is what keeps a shared head
-        noun from collapsing distinct props: with both `red door` and `blue door` banked, a bare
-        "door" is genuinely ambiguous and gets its own record instead of an arbitrary merge.
-        Instructing the namer to keep qualifiers out of labels was tried first and did not hold,
-        so the rule is enforced here where it is deterministic.
-        """
-        tokens = tuple(str(name or "").casefold().split())
-        if not tokens:
-            return None
-        matches: list[Asset] = []
-        for asset in self.bank.assets.values():
-            if asset.kind != kind or asset.status in NON_USABLE:
-                continue
-            other = tuple(str(asset.name or "").casefold().split())
-            if not other or other == tokens:
-                continue
-            # One name is the trailing part of the other: the shared tail is the head noun,
-            # the extra leading words are the qualifier.
-            if tokens[-len(other):] == other or other[-len(tokens):] == tokens:
-                matches.append(asset)
-        if len(matches) != 1:
-            return None
-        return matches[0]
-
-    def _adopt_qualified_variant(self, existing: Asset, name: str) -> Asset:
-        """Fold ``name`` onto ``existing``, keeping the unqualified form as the identity.
-
-        The bare head noun is the identity and the qualifier is a state of it, so when the
-        incoming name is the shorter one it becomes canonical and the qualified spelling stays
-        retrievable as an alias. Both surface forms therefore resolve to one record whichever
-        order the shots introduce them in.
-        """
-        incoming = str(name or "").strip()
-        if len(incoming.casefold().split()) < len(str(existing.name or "").casefold().split()):
-            previous = existing.name
-            existing.name = incoming
-            # The read-side term index is keyed on bank.version; publish the rename so it is
-            # rebuilt rather than serving an index that still only knows the qualified spelling.
-            self.bank.touch()
-            self.bank.register_alias(existing.asset_id, previous)
-        else:
-            self.bank.register_alias(existing.asset_id, incoming)
-        return existing
-
     def _resolve_asset(self, *, entity_id: str | None, name: str, kind: AssetType) -> Asset:
         """Name-anchored identity: prefer explicit id, else same name+kind in bank."""
         if entity_id:
@@ -1098,21 +1009,6 @@ class MemoryUpdater:
                 if name and name.strip().lower() != asset.name.strip().lower():
                     self.bank.register_alias(asset.asset_id, name)
                 return asset
-            # A write-side namer anchors on the prompt's own wording, so ``entity_id`` IS the
-            # name. Two shots spelling one term differently ("lantern room" / "lantern-room")
-            # would then open two assets for one place. Fold the variant onto the existing
-            # identity instead. Restricted to id == name so an authoritative id (a Track A
-            # packet's asset id) never falls back to a generic-name lookup, which could merge
-            # two distinct entities that share a perception label.
-            if name and entity_id == name:
-                existing = self.bank.find_by_name(name, kind=kind)
-                if existing is not None:
-                    self._warn_identity_conflict(existing, name=name, kind=kind, via="name")
-                    self.bank.register_alias(existing.asset_id, name)
-                    return existing
-                folded = self._fold_qualified_variant(name, kind)
-                if folded is not None:
-                    return self._adopt_qualified_variant(folded, name)
             asset = Asset(
                 asset_id=entity_id,
                 kind=kind,
@@ -1127,10 +1023,6 @@ class MemoryUpdater:
         if existing is not None:
             self._warn_identity_conflict(existing, name=name, kind=kind, via="name")
             return existing
-
-        folded = self._fold_qualified_variant(name, kind)
-        if folded is not None:
-            return self._adopt_qualified_variant(folded, name)
 
         new_id = f"{kind.value}_{name.strip().lower().replace(' ', '_')}"
         collision = self.bank.get_asset(new_id)
@@ -1248,20 +1140,6 @@ class MemoryUpdater:
                     break
         return picked
 
-    def _merge_is_confident(self, reconcile_meta: dict[str, Any]) -> bool:
-        """True when χ cleared β_τ by the short-circuit margin, i.e. "confidently the same".
-
-        Gates the promotion of an incoming surface name to a permanent alias. Deliberately
-        stricter than the merge decision itself: merging is reversible evidence-wise (one rep,
-        auditable by the cohesion sweep), whereas an alias silently redirects every later
-        prompt that uses that word.
-        """
-        chi = reconcile_meta.get("chi")
-        threshold = reconcile_meta.get("threshold")
-        if chi is None or threshold is None:
-            return False
-        return float(chi) >= float(threshold) + self.identity_shortcircuit_margin
-
     def _reconcile_identity(self, obs: Observation) -> tuple[Asset | None, dict[str, Any]]:
         """Pick the best same-type asset for a discovered observation, or ``None``.
 
@@ -1277,21 +1155,6 @@ class MemoryUpdater:
         deferred to a new provisional record rather than hard-merged, because every judge
         false-merges under strong blur. With no active judge the decision is exactly χ≥β_τ.
         """
-        # Lookalike disambiguation: when the observation's own label already resolves to a record
-        # of this type, that name is stronger evidence than any embedding distance. Two characters
-        # the encoder cannot tell apart (twins, two crew in the same oilskin) are exactly the case
-        # where χ merges them and the read path can then never separate them again, while their
-        # names were distinct all along. Names lose to nothing here; they simply skip χ.
-        if obs.name:
-            named = self.bank.find_by_name(obs.name)
-            if named is not None and named.kind == obs.kind and named.status not in NON_USABLE:
-                return named, {
-                    "asset_id": named.asset_id,
-                    "decision": "merged",
-                    "gate": "name_resolved",
-                    "threshold": self.reconcile_for(obs.kind),
-                }
-
         best: Asset | None = None
         best_row: dict[str, Any] = {}
         for asset in self.bank.assets.values():
@@ -1405,22 +1268,10 @@ class MemoryUpdater:
                     # read path can also retrieve the identity by the incoming name — otherwise
                     # a cross-segment prompt using the other name silently misses the merged
                     # asset and the bank looks fragmented on the read side.
-                    #
-                    # Only a *confidently* merged name earns this. A merge that merely cleared
-                    # β_τ costs one rep if it is wrong; an alias is permanent and cross-segment,
-                    # so a wrong one keeps answering every later prompt that uses that word. An
-                    # unguarded writeback made 7 of the 8 aliases in a measured 20-segment run
-                    # wrong: `Lena` (a teenage girl) answered to "old man", `ship's log` to "pen"
-                    # and "food", `salted fish` to "fishing nets". Reuse the already-calibrated
-                    # short-circuit margin rather than adding a second threshold to tune.
-                    if (
-                        obs.name
-                        and obs.name.strip().lower() != asset.name.strip().lower()
-                        and self._merge_is_confident(reconcile_meta)
-                    ):
+                    if obs.name and obs.name.strip().lower() != asset.name.strip().lower():
                         self.bank.register_alias(asset.asset_id, obs.name)
                 else:
-                    asset = self._fold_or_create_discovered(obs)
+                    asset = self._new_discovered_asset(obs)
             else:
                 asset = self._resolve_asset(
                     entity_id=obs.entity_id,
@@ -1500,21 +1351,13 @@ class MemoryUpdater:
                 spatial_angle=spatial,
                 state_angle=state,
                 temporal_tag=obs.temporal_tag or f"segment_{segment_id}",
-                count=obs.count,
                 reference_aspects=[_reference_aspect(obs.kind)],
                 quality_by_purpose={
                     _reference_aspect(obs.kind): float(obs.quality),
                 },
                 annotations=annotations,
             )
-            # Identity is name-authoritative unless it was decided by χ embedding
-            # reconciliation (discovered evidence with no symbolic anchor).
-            name_authoritative = not (
-                obs.source == SOURCE_DISCOVERED and not obs.entity_id
-            )
-            mutated = self._apply_rep_selection(
-                asset, new_rep, name_authoritative=name_authoritative
-            )
+            mutated = self._apply_rep_selection(asset, new_rep)
             if asset.status == LifecycleStatus.CANDIDATE:
                 asset.status = LifecycleStatus.REUSABLE
                 mutated = True
@@ -1525,23 +1368,6 @@ class MemoryUpdater:
         self._apply_relations(relations or [])
         self._enforce_global_budget()
         return touched
-
-    def _fold_or_create_discovered(self, obs: Observation) -> Asset:
-        """Last check before χ opens a second record: is this the same place, re-worded?
-
-        The write-side namer reads each segment on its own, so one place comes back as "lantern
-        room" in one shot and a bare "room" in the next. χ cannot save us there — a wide shot and
-        a close-up of one room are genuinely far apart in embedding space — so the qualified and
-        the bare spelling each opened a record (measured: ``room``/``lantern room`` and
-        ``shore``/``rocky shore`` coexisting in one 14-segment bank). Reuse the same head-noun
-        fold the named path uses; it refuses whenever more than one record could be the head, so
-        an ambiguous "door" against a red and a blue one still opens its own record.
-        """
-        if obs.name:
-            folded = self._fold_qualified_variant(obs.name, obs.kind)
-            if folded is not None:
-                return self._adopt_qualified_variant(folded, obs.name)
-        return self._new_discovered_asset(obs)
 
     def _new_discovered_asset(self, obs: Observation) -> Asset:
         """Create a record for a discovery that matched nothing above β_τ."""
@@ -1776,15 +1602,12 @@ class MemoryUpdater:
                 spatial_angle=_parse_spatial(obs.get("spatial_angle", SpatialAngle.UNKNOWN.value)),
                 state_angle=_parse_state(obs.get("state_angle", StateAngle.UNKNOWN.value)),
                 temporal_tag=str(obs.get("temporal_tag", f"segment_{segment_id}")),
-                count=int(obs.get("count", 0) or 0),
                 quality_by_purpose={
                     _reference_aspect(kind): float(obs.get("quality", 1.0)),
                 },
                 annotations=annotations,
             )
-            # Packet (text-gold / requested) evidence carries an explicit asset_id/name,
-            # so identity is always name-authoritative here.
-            if self._apply_rep_selection(asset, new_rep, name_authoritative=True):
+            if self._apply_rep_selection(asset, new_rep):
                 self.bank.touch()
 
         self._apply_state_events(list(packet.get("state_events", [])))

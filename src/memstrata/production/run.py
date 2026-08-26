@@ -24,15 +24,9 @@ import argparse
 import datetime as _dt
 import json
 import os
-import shutil
 import sys
 from pathlib import Path
 from typing import Any
-
-# A single failed segment is absorbed (isolated generator hiccup); this many in a row means the
-# run is misconfigured and must stop, because every subsequent segment would start from an empty
-# bank and the run would "succeed" while measuring nothing.
-_MAX_CONSECUTIVE_SEGMENT_FAILURES = 3
 
 
 def memstrata_root() -> Path:
@@ -73,41 +67,6 @@ def _crop_acquisition_digest(run_dir: Path) -> dict[str, Any] | None:
     }
 
 
-def _anchor_membank_to_film(mem: Any, run_dir: Path, info: dict[str, Any]) -> None:
-    """Make ``membank/`` a self-contained bank anchored to the grown film.
-
-    The memory schema's central promise is that every ``sec`` is a timestamp on
-    ``long_video.mp4``. That needs three things the pipeline cannot know on its own: the
-    film's real path, its fps/duration, and where each segment starts on it. The film is
-    *copied* (not linked) into the bank so the directory can be moved or shipped on its own,
-    and the copy is skipped while the source is unchanged in size.
-    """
-    membank = run_dir / "membank"
-    membank.mkdir(parents=True, exist_ok=True)
-    source = info.get("long_video")
-    if source and Path(source).is_file():
-        src = Path(source)
-        dst = membank / "long_video.mp4"
-        if not dst.is_file() or dst.stat().st_size != src.stat().st_size:
-            shutil.copy2(src, dst)
-        mem.long_video_path = str(dst)
-    if info.get("fps"):
-        mem.fps = float(info["fps"])
-    if info.get("duration_sec") is not None:
-        mem.long_video_duration_sec = float(info["duration_sec"])
-    durations = info.get("segment_durations") or []
-    start = 0.0
-    starts: dict[int, float] = {}
-    for index, duration in enumerate(durations):
-        starts[index] = round(start, 3)
-        start += float(duration)
-    if starts:
-        mem.segment_start_sec = starts
-    # The snapshot for this segment was written before the film grew, so refresh the header
-    # and timestamps now that the timeline is known.
-    mem.write_memory_snapshot()
-
-
 def build_pipeline(
     *,
     screenplay: dict[str, Any],
@@ -124,8 +83,6 @@ def build_pipeline(
     embedder_provider: str = "",
     angle_classifier_mode: str = "",
     discovery: bool = False,
-    write_naming: str = "perception",
-    resume: bool = False,
 ):
     """Assemble the seeded bank + generator (+keyframe) + MemStrata.for_production.
 
@@ -162,16 +119,7 @@ def build_pipeline(
     # is non-semantic, so those gates stay off until a real encoder is selected.
     emb = build_image_embedding(provider=embedder_provider or "hash")
 
-    # Resuming an interrupted story means reopening its bank, not rebuilding it: the memory IS the
-    # persisted artifact, so a run that died at shot 40 can carry its 40 shots of accumulated
-    # identity forward instead of paying for them again.
-    persisted_bank = run_dir / "bank.json"
-    if resume and persisted_bank.is_file():
-        bank = AssetBank.load(persisted_bank)
-        print(f"[prod] RESUME: reopened bank with {len(bank.assets)} assets from {persisted_bank}",
-              flush=True)
-    else:
-        bank = AssetBank()
+    bank = AssetBank()
     curator = build_curator(
         bank,
         policy=policy,
@@ -179,9 +127,7 @@ def build_pipeline(
         angle_classifier=angle_classifier,
         crop_attribute_classifier=crop_attr_classifier,
     )
-    # A reopened bank already holds the seeds; re-ingesting them would fold duplicates back in.
-    if not (resume and persisted_bank.is_file()):
-        curator.ingest_packet(seed_packet(screenplay))
+    curator.ingest_packet(seed_packet(screenplay))
 
     video_backend = build_video_backend(
         backend_name, output_dir=run_dir / "media", run_id=system, models_config=cfg)
@@ -212,39 +158,20 @@ def build_pipeline(
             bank=bank, server_dir=run_dir / "crop_acq_server",
             work_dir=run_dir / "observations", device=str(crop_acq_device))
         discoverer = None
-        if policy.discovery and write_naming != "mllm":
+        if policy.discovery:
             # Reuses the cropper's already-running server, so discovery costs no extra
             # model load — only extra proposals per frame.
-            #
-            # Skipped under mllm naming: the namer already returns the entities that are visible
-            # but unnamed by the prompt as UNANCHORED observations, which is the same D_T role,
-            # except they arrive with a label and a description. Running the concept proposer on
-            # top only added assets no shot can ask for — 4 of 24 in a measured 13-segment run
-            # were 'character_disc_c009_0'-style records.
             discoverer = ServerConceptDiscoverer(
                 cropper, work_dir=run_dir / "discoveries")
-        # Write-side naming. Without it a first appearance can only enter memory through
-        # discovery, which never infers names, so every new entity is banked under a synthetic
-        # label (character_disc_c000_0) that the name-authoritative read path cannot resolve —
-        # measured: 23 anonymous assets over 21 segments and an empty selection despite a full
-        # bank. The namer binds the shot's own wording to entities it visually confirms, which is
-        # the same capability Track A selects with MEMSTRATA_TRACKA_NAME_SOURCE=mllm.
-        entity_namer = None
-        if write_naming == "mllm":
-            from memstrata.skills.decomposition.vlm_decomposer import VlmEntityDecomposer
-
-            entity_namer = VlmEntityDecomposer()
         decomposer = build_decomposer(
             policy=policy, embedder=emb, cropper=cropper,
-            angle_classifier=angle_classifier, discoverer=discoverer,
-            entity_namer=entity_namer, namer_frame_dir=run_dir / "observations")
+            angle_classifier=angle_classifier, discoverer=discoverer)
 
     mem = MemStrata.for_production(
         persist_path=run_dir / "bank.json", policy=policy, bank=bank, generator=generator,
         curator=curator, decomposer=decomposer, embedder=emb,
         angle_classifier=angle_classifier, crop_attribute_classifier=crop_attr_classifier,
-        run_dir=run_dir / "pipeline", membank_dir=run_dir / "membank",
-        movie_id=str(screenplay.get("story_id", "")))
+        run_dir=run_dir / "pipeline")
     return mem, generator, composer
 
 
@@ -272,8 +199,6 @@ def run_production(
     embedder_provider: str = "",
     angle_classifier_mode: str = "",
     discovery: bool = False,
-    write_naming: str = "perception",
-    resume: bool = False,
 ) -> dict[str, Any]:
     from memstrata.adapters.screenplay import iter_shots, load_screenplay
     from memstrata.lib.review import organize_run
@@ -312,60 +237,24 @@ def run_production(
             crop_acq_device=crop_acq_device, width=width, height=height,
             organize_run=organize_run, GenerationRouter=GenerationRouter, bench_mode=bench_mode,
             embedder_provider=embedder_provider,
-            angle_classifier_mode=angle_classifier_mode, discovery=discovery,
-            write_naming=write_naming, resume=resume)
+            angle_classifier_mode=angle_classifier_mode, discovery=discovery)
     finally:
         if stop_services:
             svc.shutdown_launched()
-
-
-def _resume_state(run_dir: Path, n: int) -> tuple[dict[int, dict], list[int]]:
-    """Recover the closed shots (keyed by shot id) and the list of shots still to produce.
-
-    Keyed by shot id, not counted: a segment the generator could not produce is skipped without
-    writing a record, so ``len(records)`` is smaller than the shot the run actually reached. Resuming
-    at that count would re-produce a shot that already exists while leaving the skipped one missing
-    forever — the story then ends with a duplicate and a hole, and every later shot is misaligned
-    against the prompt stream it is scored against. Addressing shots by id instead makes a resume both
-    idempotent and hole-filling.
-    """
-
-    progress = run_dir / "progress.json"
-    if not progress.is_file():
-        return {}, list(range(n))
-    try:
-        data = json.loads(progress.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}, list(range(n))
-    closed: dict[int, dict] = {}
-    for record in data.get("segments") or []:
-        if not isinstance(record, dict):
-            continue
-        try:
-            sid = int(record["segment_id"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        # A shot id outside the requested range belongs to a longer run (e.g. a --segments-limited
-        # probe reopening a full story) and must not be inherited.
-        if 0 <= sid < n:
-            closed.setdefault(sid, record)
-    return closed, [i for i in range(n) if i not in closed]
 
 
 def _run_loop(
     *, screenplay, story_id, shots, n, run_dir, backend_name, system, flux, flux_backend,
     force_recompose, use_router_mllm, decompose, crop_acq_device, width, height,
     organize_run, GenerationRouter, bench_mode=False,
-    embedder_provider="", angle_classifier_mode="", discovery=False, write_naming="perception",
-    resume=False,
+    embedder_provider="", angle_classifier_mode="", discovery=False,
 ) -> dict[str, Any]:
     mem, _generator, composer = build_pipeline(
         screenplay=screenplay, backend_name=backend_name, run_dir=run_dir, system=system,
         flux=flux, flux_backend=flux_backend, width=width, height=height,
         decompose=decompose, crop_acq_device=crop_acq_device,
         embedder_provider=embedder_provider,
-        angle_classifier_mode=angle_classifier_mode, discovery=discovery,
-        write_naming=write_naming, resume=resume)
+        angle_classifier_mode=angle_classifier_mode, discovery=discovery)
     strat0 = mem.stratification()
     print(f"[prod] policy={mem.policy.name} angle_classifier={type(mem.angle_classifier).__name__} "
           f"crop_attr={type(mem.crop_attribute_classifier).__name__} "
@@ -392,28 +281,8 @@ def _run_loop(
     results: list[dict] = []
     prev_entities: list[str] = []
     gt_consumed = {"forbidden_deprecate": 0, "referenced_entities": 0}
-    consecutive_failures = 0
-    last_error: BaseException | None = None
-    closed: dict[int, dict] = {}
-    todo = list(range(n))
-    if resume:
-        closed, todo = _resume_state(run_dir, n)
-        results = [closed[sid] for sid in sorted(closed)]
-        if closed:
-            holes = [i for i in todo if i < max(closed)]
-            print(f"[prod] RESUME: {len(closed)}/{n} shots already closed, {len(todo)} to produce"
-                  + (f" (filling holes at {holes})" if holes else ""), flush=True)
-    for i in todo:
+    for i in range(n):
         shot = shots[i]
-        # Continuity is per shot, not per append: when filling a hole the previous on-screen set is
-        # the one its own predecessor closed with, not whatever the loop happened to touch last.
-        # Only in bench_mode, where "onscreen" is the SUT's own prior selection; the oracle-assisted
-        # path derives it from the screenplay's GT instead and must keep doing so.
-        if bench_mode:
-            if i - 1 in closed:
-                prev_entities = list(closed[i - 1].get("selected_assets") or [])
-            elif i == 0:
-                prev_entities = []
         if composer is not None:
             composer.seed = 2026 + i
 
@@ -457,7 +326,6 @@ def _run_loop(
                 used = attempt
                 break
             except Exception as exc:  # noqa: BLE001
-                last_error = exc
                 print(f"[prod] segment {i} mode={attempt} FAILED: {exc!r}", flush=True)
         # "onscreen" for the next segment: bench_mode uses the SUT's OWN selection (self-derived,
         # not GT); otherwise the GT referenced set (legacy oracle-assisted behavior).
@@ -467,19 +335,7 @@ def _run_loop(
             prev_entities = shot.referenced_entities
         if segment is None:
             print(f"[prod] segment {i}: SKIPPED", flush=True)
-            consecutive_failures += 1
-            # Skipping a segment is meant to absorb an isolated generator hiccup. A run that
-            # cannot produce several segments in a row is misconfigured, not unlucky (a gated /
-            # missing weight, a dead service), and letting it continue is worse than failing:
-            # every later segment starts from an empty bank, so the run *completes* while
-            # measuring nothing. Stop and surface the last error instead.
-            if consecutive_failures >= _MAX_CONSECUTIVE_SEGMENT_FAILURES:
-                raise RuntimeError(
-                    f"{consecutive_failures} consecutive segments failed "
-                    f"(last: {last_error!r}); aborting instead of running on an empty bank."
-                )
             continue
-        consecutive_failures = 0
 
         kf = (segment.generation.task.controls.get("keyframe_record")
               if segment.generation and segment.generation.task else None)
@@ -491,51 +347,30 @@ def _run_loop(
                     composed_refs.append({"asset_id": aid, "representation_id": rid,
                                           "path": found[1].object_uri})
         reps = {aid: len(a.representations) for aid, a in mem.bank.assets.items()}
-        record = {
+        results.append({
             "segment_id": i, "scene_id": shot.scene_id, "shot_id": shot.shot_id,
             "prompt": shot.prompt, "route_mode": decision.mode.value, "used_mode": used,
             "route_source": decision.source, "transition": shot.transition,
             "selected_assets": segment.context.asset_ids, "composed_refs": composed_refs,
-            # Which read path answered this segment. "name_recovered" means the primary path
-            # returned nothing for a name the bank still holds and the deterministic rematch
-            # had to save it — a defect signal worth grepping for after a run, not a normal hit.
-            "intent_source": segment.context.intent_resolution_source,
             "keyframe": kf.get("keyframe") if kf else None,
             "fused": kf.get("fused") if kf else None,
             "video": segment.generation.video_path if segment.generation else None,
             "bank_assets": sorted(mem.bank.assets.keys()), "bank_representations": reps,
             "new_observations": [o.observation_id for o in segment.observations],
             "touched_asset_ids": list(segment.touched_asset_ids),
-        }
-        # Both the assembled review video and the per-shot scoring read this list positionally, so it
-        # must stay in shot order even when a hole is filled after later shots were already produced.
-        closed[i] = record
-        results = [closed[sid] for sid in sorted(closed)]
+        })
         print(f"[prod] segment {i}: used={used} assets={segment.context.asset_ids} "
               f"obs={len(segment.observations)} reps={reps}", flush=True)
-        # Split the read path when it loses ground between intent and compose: an English replay of
-        # a 18-segment run had three segments whose intent resolved the right names (Elias, Mara)
-        # yet whose context came back empty, which is invisible when only the composed ids are
-        # logged. Printed only on a mismatch so a healthy run stays quiet.
-        intent_ids = [ref.asset_id for ref in segment.request.references]
-        if intent_ids != list(segment.context.asset_ids):
-            dropped = [aid for aid in intent_ids if aid not in set(segment.context.asset_ids)]
-            print(f"[prod] segment {i}: read-path drop src={segment.context.intent_resolution_source} "
-                  f"intent={intent_ids} composed={list(segment.context.asset_ids)} dropped={dropped}",
-                  flush=True)
         # Incremental progress dump so the agent-in-the-loop optimizer (skills/optimization)
         # can diagnose a LIVE run before summary.json exists.
         (run_dir / "progress.json").write_text(
             json.dumps({"story_id": story_id, "system": system, "backend": backend_name,
-                        # Closed-shot count, not the loop position: filling a hole at shot 13 of a
-                        # story with 74 shots closed must not report progress as 14.
-                        "flux": flux, "run_dir": str(run_dir), "done": len(results),
+                        "flux": flux, "run_dir": str(run_dir), "done": i + 1,
                         "total": len(shots), "segments": results}, ensure_ascii=False, indent=2),
             encoding="utf-8")
         try:
             info = organize_run(run_dir, results, title=story_id)
             print(f"[prod] review: {info['segments']} segs -> {info['long_video']}", flush=True)
-            _anchor_membank_to_film(mem, run_dir, info)
         except Exception as exc:  # noqa: BLE001
             print(f"[prod] organize skipped: {exc!r}", flush=True)
 
@@ -609,11 +444,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--decompose", choices=["crop_server", "none"], default="crop_server",
                     help="crop_server = real S5 GPU cropper (memory grows); none = no-GPU backend smoke")
     ap.add_argument("--crop-acq-device", default="", help="GPU index for the S5 crop server")
-    ap.add_argument("--write-naming", choices=["perception", "mllm"], default="perception",
-                    help="mllm = MemStrata's VlmEntityDecomposer binds this shot's own prompt "
-                         "names to entities it confirms in the generated frames, so a first "
-                         "appearance is retrievable by name later; perception = generic labels "
-                         "only (identity then rests entirely on visual reconciliation)")
     ap.add_argument("--no-autoserve", action="store_true",
                     help="do not bring up required services (Qwen MLLM); assume they are already up")
     ap.add_argument("--mllm-gpu", default="0", help="GPU index for the auto-served Qwen MLLM endpoint")
@@ -646,11 +476,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--height", type=int, default=480)
     ap.add_argument("--outputs-root", type=Path, default=root / "production/outputs")
     ap.add_argument("--run-dir", type=Path, default=None, help="override the timestamped output dir")
-    ap.add_argument("--resume", action="store_true",
-                    help="continue an interrupted run in --run-dir: reopen its persisted bank and "
-                         "skip the shots progress.json shows closed. The external memory is the "
-                         "point, so a story that died at shot 40 keeps those 40 shots of identity "
-                         "instead of regenerating them.")
     args = ap.parse_args(argv)
 
     if args.list_backends:
@@ -668,7 +493,7 @@ def main(argv: list[str] | None = None) -> int:
             autoserve=not args.no_autoserve, mllm_gpu=args.mllm_gpu, mllm_port=args.mllm_port,
             stop_services=args.stop_services, bench_mode=args.bench_mode,
             embedder_provider=args.embedder, angle_classifier_mode=args.angle_classifier,
-            discovery=args.discovery, write_naming=args.write_naming, resume=args.resume)
+            discovery=args.discovery)
     except Exception as exc:  # noqa: BLE001 — surface GPU/weight/config errors clearly
         print(json.dumps({"backend": args.backend, "error": repr(exc)}, ensure_ascii=False, indent=2))
         return 2

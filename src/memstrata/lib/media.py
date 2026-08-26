@@ -38,56 +38,6 @@ def load_crop_rgb_for_model(
     return image.convert("RGB")
 
 
-def sample_video_frames(
-    video: Path | str,
-    out_dir: Path | str,
-    *,
-    count: int = 3,
-    prefix: str = "frame",
-) -> list[str]:
-    """Write up to ``count`` evenly spaced frames of ``video`` as PNG; return their paths.
-
-    Several views of the same segment are what let a namer recognise an entity that is only
-    legible in one of them. Best-effort: returns ``[]`` rather than raising, because a caller
-    that cannot sample frames must degrade to its non-visual path, not fail the segment.
-    """
-    if count <= 0:
-        return []
-    try:
-        import imageio.v3 as iio
-        from PIL import Image
-    except Exception:  # noqa: BLE001 - optional at import time, absent in no-GPU smokes
-        return []
-    try:
-        frames = iio.imread(str(video), index=None)  # (T, H, W, 3)
-    except Exception:  # noqa: BLE001 - unreadable/absent video
-        return []
-    total = len(frames)
-    if total == 0:
-        return []
-    out_root = Path(out_dir)
-    out_root.mkdir(parents=True, exist_ok=True)
-    # Interior positions: the very first/last frames of a generated clip are the most likely
-    # to be a fade or a duplicated boundary frame.
-    picks = sorted({min(total - 1, max(0, round(total * p))) for p in _frame_positions(count)})
-    paths: list[str] = []
-    for order, index in enumerate(picks):
-        out = out_root / f"{prefix}_{order}.png"
-        try:
-            Image.fromarray(frames[index]).convert("RGB").save(out)
-        except Exception:  # noqa: BLE001
-            continue
-        paths.append(str(out))
-    return paths
-
-
-def _frame_positions(count: int) -> list[float]:
-    if count == 1:
-        return [0.5]
-    step = 1.0 / (count + 1)
-    return [step * (i + 1) for i in range(count)]
-
-
 def _parse_rate(value: str | None) -> float | None:
     if not value or value == "0/0":
         return None

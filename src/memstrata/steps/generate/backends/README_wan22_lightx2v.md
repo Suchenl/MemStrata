@@ -28,7 +28,7 @@ FLUX keyframe into a chunk video; the external stratified memory supplies long-r
    experts. Symlink them + the base Wan2.2-I2V-A14B components into a LightX2V-layout dir:
    ```bash
    bash scripts/memstrata/servers/setup_lightx2v_weights.sh <HIGH.safetensors> <LOW.safetensors>
-   # -> /data/.../Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step/
+   # -> ${UNSET_INTERNAL_PATH}
    #      high_noise_model/<HIGH>.safetensors + config.json
    #      low_noise_model/<LOW>.safetensors + config.json
    #      google/  models_t5_*.pth  Wan2.1_VAE.pth  configuration.json   (symlinked from base)

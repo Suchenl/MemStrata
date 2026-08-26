@@ -20,7 +20,7 @@ from memstrata.steps.generate.schemas import MediaGenerationTask, MediaTaskType
 
 BACKEND = "wan22_ti2v5b_turbo"
 REF_IMAGE = Path(
-    "./models/vendor/wan22_ti2v5b_turbo/examples/images/cat.JPG"
+    "${WAN22_TURBO_REPO}/examples/images/cat.JPG"
 )
 PROMPT = "a fluffy cat on a surfboard drifting over calm turquoise water, cinematic"
 

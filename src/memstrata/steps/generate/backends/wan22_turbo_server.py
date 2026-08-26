@@ -4,13 +4,8 @@ The Turbo checkpoint is a bare distilled DiT that only runs under its upstream r
 Self-Forcing pipeline (``Wan22FewstepInferencePipeline``), vendored at
 ``models/vendor/wan22_ti2v5b_turbo``. Loading it costs ~5 min (base 5B shards + the 19.9 GB
 ``model.pt`` + T5 + VAE off shared storage) while a 4-step 480x832/81f generation costs
-~25 s at the native 704x1280, so the weights must stay resident: this server loads once and then
-serves segments over the same tiny inbox/outbox file queue as the VACE / LightX2V servers.
-
-Rendering happens at the checkpoint's native 704x1280 and the clip is downscaled once, on the
-decoded tensor, to whatever size the caller asks to be delivered. Rendering smaller is not the
-saving it looks like -- ``seq_len`` is hardcoded to the 720p sequence length upstream, so the DiT
-runs the same width regardless -- and off-native renders visibly shake.
+~7.5 s, so the weights must stay resident: this server loads once and then serves segments
+over the same tiny inbox/outbox file queue as the VACE / LightX2V servers.
 
 Unlike the LightX2V server this one covers BOTH routes with one resident model, since
 TI2V-5B is natively text+image conditioned:
@@ -98,8 +93,6 @@ def run_job(pipe, request: dict, args: argparse.Namespace) -> tuple[Path, str]:
 
     height = int(request.get("height") or args.height)
     width = int(request.get("width") or args.width)
-    out_height = int(request.get("out_height") or args.out_height or height)
-    out_width = int(request.get("out_width") or args.out_width or width)
     num_frames = int(request.get("num_frames") or args.num_frames)
     if num_frames % 4 != 1:
         raise ValueError(f"num_frames must be one more than a multiple of 4, got {num_frames}")
@@ -143,21 +136,9 @@ def run_job(pipe, request: dict, args: argparse.Namespace) -> tuple[Path, str]:
     )[0]
     torch.cuda.synchronize()
     denoise_s = time.time() - t0
-    if (out_height, out_width) != (height, width):
-        # Generate at the checkpoint's native size, deliver at the benchmark's size. Off its
-        # native 704x1280 this model produces per-frame micro-jitter (measured: accel 0.49 px /
-        # ratio 1.13 at 480x832 versus 0.17 px / ratio 0.09 at 704x1280 on the same keyframe,
-        # prompt and seed), and because ``seq_len`` is hardcoded to the 720p sequence length the
-        # smaller render barely saves compute anyway. Resizing the decoded tensor keeps this to a
-        # single encode.
-        video = torch.nn.functional.interpolate(
-            video, size=(out_height, out_width), mode="bilinear",
-            align_corners=False, antialias=True,
-        )
     export_to_video(video.permute(0, 2, 3, 1).cpu().numpy(), str(out_path), fps=int(args.fps))
     logging.info(
-        "[wan22_turbo] %s render %dx%d -> deliver %dx%d %df: denoise+decode %.1fs",
-        mode, width, height, out_width, out_height, num_frames, denoise_s,
+        "[wan22_turbo] %s %dx%d %df: denoise+decode %.1fs", mode, width, height, num_frames, denoise_s
     )
     return out_path, mode
 
@@ -207,10 +188,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--config_path", required=True, help="upstream inference yaml (4-step schedule)")
     p.add_argument("--server_dir", required=True)
     p.add_argument("--idle_timeout", type=float, default=1800)
-    p.add_argument("--height", type=int, default=704, help="render height (checkpoint native)")
-    p.add_argument("--width", type=int, default=1280, help="render width (checkpoint native)")
-    p.add_argument("--out_height", type=int, default=0, help="delivered height (0 = same as render)")
-    p.add_argument("--out_width", type=int, default=0, help="delivered width (0 = same as render)")
+    p.add_argument("--height", type=int, default=480)
+    p.add_argument("--width", type=int, default=832)
     p.add_argument("--num_frames", type=int, default=81)
     p.add_argument("--fps", type=int, default=24)
     p.add_argument("--seed", type=int, default=2026)

@@ -18,9 +18,9 @@ from pathlib import Path
 
 # Hard-resolved Montage monorepo root default (env ``MONTAGE_WEIGHTS_ROOT`` overrides the
 # weights root directly; ``MONTAGE_ROOT`` overrides the discovered repo root).
-_MONTAGE_ROOT_FALLBACK = Path(".")
+_MONTAGE_ROOT_FALLBACK = Path("${MONTAGE_ROOT}")
 # Shared public checkpoints (SAM3, DINOv3) default location; env ``PUBLIC_MODELS_ROOT`` overrides.
-_PUBLIC_MODELS_ROOT_FALLBACK = Path(os.environ["PUBLIC_MODELS_ROOT"]) if os.environ.get("PUBLIC_MODELS_ROOT") else Path(".")
+_PUBLIC_MODELS_ROOT_FALLBACK = Path("${PUBLIC_MODELS_ROOT}")
 # Vendored transformers>=5.9 for SAM3; env ``MEMSTRATA_SAM3_DEPS`` overrides.
 _SAM3_DEPS_FALLBACK = _MONTAGE_ROOT_FALLBACK / "models" / "vendor" / "sam3_transformers59"
 
@@ -62,11 +62,13 @@ def hf_cache_dir() -> str:
 
 
 def public_models_root() -> Path:
-    """Shared public checkpoint root (SAM3, DINOv3). Default ``${PUBLIC_MODELS_ROOT}``."""
+    """Shared public checkpoint root (SAM3, DINOv3)."""
     override = os.environ.get("PUBLIC_MODELS_ROOT")
     if override:
         return Path(override).expanduser().resolve()
-    return _PUBLIC_MODELS_ROOT_FALLBACK
+    raise RuntimeError(
+        "PUBLIC_MODELS_ROOT is not set; required only when loading encoder weights"
+    )
 
 
 def sam3_deps_dir() -> str:

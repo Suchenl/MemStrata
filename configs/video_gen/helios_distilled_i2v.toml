@@ -9,14 +9,14 @@ task = "video_generation"
 provider = "helios"
 family = "helios"
 model = "${PUBLIC_MODELS_ROOT}/BestWishYsh/Helios-Distilled"
-code_root = "/data/USER/MODELS/VideoGen/Streaming/Helios"
-python = "helios/bin/python"
+code_root = "${HELIOS_CODE_ROOT}"
+python = "python3"
 # diffusers export_to_video -> imageio-ffmpeg; helios env has no ffmpeg, borrow vace's.
 ffmpeg = "ffmpeg"
 # HF/kernels caches that hold the Helios weights + the shimmed FA2 kernel snapshot.
 # MUST be the Montage repo cache (not the MemStrata-local one, which lacks the FA2 kernel).
-hf_home = "./models/model_weights"
-kernels_cache = "./models/model_weights/hub"
+hf_home = "${MEMSTRATA_WEIGHTS_ROOT}"
+kernels_cache = "${MEMSTRATA_WEIGHTS_ROOT}/hub"
 capabilities = ["image_to_video", "distilled"]
 
 # Generation params (defaults proven by experiments/probe/helios_distilled_i2v_from_flux).

@@ -9,13 +9,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from memstrata.bank import (
-    NON_USABLE,
-    AssetBank,
-    LifecycleStatus,
-    SpatialAngle,
-    StateAngle,
-)
+from memstrata.bank import AssetBank, SpatialAngle, StateAngle
 from memstrata.encoders import build_role_routed_embedding_from_env
 from memstrata.mllm.angle_classifier import AngleClassifier, build_angle_classifier
 from memstrata.mllm.crop_attributes import (
@@ -116,7 +110,6 @@ class MemStrata:
         # plan-driven read path can be switched on per run without touching call sites.
         intent_mode: str = "",
         plan_producer: PlanProducer | None = None,
-        slow_on_miss: bool = True,
         generator: Any = None,
         decomposer: RoleAwareDecomposer | None = None,
         curator: MemoryUpdater | None = None,
@@ -130,7 +123,6 @@ class MemStrata:
         max_total_representations: int | None = None,
         attributes_when_angles_known: bool | None = None,
         run_dir: str | Path | None = None,
-        membank_dir: str | Path | None = None,
         persist_path: str | Path | None = None,
         movie_id: str = "",
         long_video_path: str | Path | None = None,
@@ -164,23 +156,13 @@ class MemStrata:
             # Imported lazily: only a plan-mode run pays for the MLLM transport module.
             from memstrata.mllm.planner import MllmPlanner
             from memstrata.skills.intent_understanding.plan import MllmPlanProducer
-            from memstrata.skills.intent_understanding.interpreter import MllmIntentResolver
 
-            planner = MllmPlanner()
-            plan_producer = MllmPlanProducer(planner)
-            # Same transport also backs the fast->slow cascade below, so an indirect or temporal
-            # reference the planner phrased in words the bank cannot surface-match ("the boat we
-            # left at the pier" against a record named Petrel) still gets one bounded resolver
-            # call instead of returning nothing.
-            resolver = resolver or MllmIntentResolver(planner)
+            plan_producer = MllmPlanProducer(MllmPlanner())
         self.interpreter = IntentInterpreter(
             self.bank,
             resolver=resolver,
             plan_producer=plan_producer,
             mode=intent_mode,
-            # Only fires when the plan, name matching AND description matching all missed, so it
-            # costs one extra call on the rare segment that would otherwise compose nothing.
-            slow_on_miss=slow_on_miss,
         )
         self.generator = generator or NullGenerator()
         self.relation_hops = max(0, int(self.policy.relation_hops))
@@ -208,21 +190,12 @@ class MemStrata:
         self.run_dir = Path(run_dir) if run_dir else None
         if self.run_dir:
             self.run_dir.mkdir(parents=True, exist_ok=True)
-        # The memory bank is a deliverable, not a debug dump: it goes to its own root
-        # (``membank/``) rather than sharing run_dir with the per-segment pipeline records.
-        # Falls back to run_dir so existing callers keep their current layout.
-        self.membank_dir = Path(membank_dir) if membank_dir else None
-        if self.membank_dir:
-            self.membank_dir.mkdir(parents=True, exist_ok=True)
         # Identity of the produced film and the grown long_video.mp4 the memory snapshot's
         # timeline is anchored to; the producer sets long_video_path as it concatenates.
         self.movie_id = str(movie_id or "")
         self.fps = fps
         self.long_video_path = str(long_video_path) if long_video_path else None
         self.long_video_duration_sec: float | None = None
-        # segment_id -> that segment's start second on the grown film. The producer fills this
-        # as it stitches; without it no representation can be placed on the film's timeline.
-        self.segment_start_sec: dict[int, float] = {}
         self.segment_log: list[dict[str, Any]] = []
 
     def _warn_on_unapplied_policy(
@@ -277,31 +250,7 @@ class MemStrata:
         request, model_calls = self.interpreter.interpret(prompt, segment_id=segment_id)
         request.relation_hops = self.relation_hops
         context = compose(self.bank, request, as_of_segment_id=segment_id)
-        # After composing, never before: the beat that destroys a prop is usually the beat that
-        # shows it being destroyed, so retiring it first would strip the reference from the one
-        # shot that needs it most. Retirement is a statement about every LATER beat.
-        self._retire(request.retired_asset_ids, segment_id=segment_id)
         return request, context, model_calls
-
-    def _retire(self, asset_ids: tuple[str, ...], *, segment_id: int) -> None:
-        """Apply the plan's permanent removals to the bank's lifecycle.
-
-        A plan's ``forbidden`` list only covers the beat that produced it, but a prop that burns
-        is gone for the rest of the film — and the planner cannot re-derive that from a later
-        prompt that simply does not mention it. Deprecating the record hands the constraint to
-        ``compose``'s intrinsic NON_USABLE gate, which every later beat passes through, instead of
-        relying on the planner to keep remembering. Read from the prompt, not from ground truth,
-        so it stays valid under bench_mode.
-        """
-        for asset_id in asset_ids:
-            asset = self.bank.assets.get(asset_id)
-            if asset is None or asset.status in NON_USABLE:
-                continue
-            self.bank.update_status(asset_id, LifecycleStatus.DEPRECATED)
-            print(
-                f"[memstrata] segment {segment_id}: retire {asset_id} (plan reports it gone)",
-                flush=True,
-            )
 
     def _entities_for_request(self, request: CompositionRequest) -> list[NamedEntity]:
         """Derive Step 3 targets from the intent-resolved, already-addressable records."""
@@ -367,10 +316,6 @@ class MemStrata:
                     named_entities if named_entities is not None else self._entities_for_request(request)
                 ),
                 segment_video=segment_video,
-                # The write-side namer binds this shot's own wording to entities it confirms in
-                # the generated frames, so a first appearance enters memory under the name the
-                # next shot will use for it. Ignored when no namer is configured.
-                prompt=prompt,
             )
 
         touched = self.curator.curate_observations(
@@ -492,49 +437,18 @@ class MemStrata:
         the benchmark gt and is refreshed every segment so it stays a live, dynamically
         updated record. All ``sec`` values are on the grown ``long_video.mp4`` timeline
         (``self.long_video_path`` / ``self.long_video_duration_sec``, set by the producer).
-        Written to ``self.membank_dir`` when set, else ``run_dir``. No-op without either.
+        No-op without a ``run_dir``.
         """
-        target = self.membank_dir or self.run_dir
-        if target is None:
+        if self.run_dir is None:
             return None
         return export_memory_snapshot(
             self.bank,
-            target,
+            self.run_dir,
             movie_id=self.movie_id,
             fps=self.fps,
-            rep_seconds=self._rep_seconds_on_film(),
             video_path=self.long_video_path,
             video_duration_sec=self.long_video_duration_sec,
         )
-
-    def _rep_seconds_on_film(self) -> dict[str, float] | None:
-        """Place every representation on the grown film's timeline.
-
-        A generated segment carries no source timecode, so a representation's second is its
-        originating segment's start on the film plus the crop's own frame offset when the
-        attribute classifier recorded one. Returns None when the producer has not supplied
-        the segment→start map, which keeps ``sec`` explicitly unknown instead of guessed.
-        """
-        if not self.segment_start_sec:
-            return None
-        fps = float(self.fps) if self.fps else 0.0
-        seconds: dict[str, float] = {}
-        for asset in self.bank.assets.values():
-            for rep in asset.representations:
-                start = self.segment_start_sec.get(int(rep.origin_segment_id))
-                if start is None:
-                    continue
-                offset = 0.0
-                if fps > 0:
-                    attrs = (getattr(rep, "annotations", {}) or {}).get("crop_attributes") or {}
-                    frame_index = attrs.get("frame_index")
-                    if frame_index is not None:
-                        try:
-                            offset = float(frame_index) / fps
-                        except (TypeError, ValueError):
-                            offset = 0.0
-                seconds[rep.representation_id] = round(start + offset, 3)
-        return seconds or None
 
     def write_stratification_summary(self, path: str | Path | None = None) -> Path | None:
         """Persist the stratification diagnostic (latest state + per-segment trend)."""

@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from memstrata.bank import AssetType, StateAngle
+from memstrata.bank import AssetType
 from memstrata.skills.decomposition.decomposer import NamedEntity
 
 _KIND_BY_STR: dict[str, AssetType] = {
@@ -51,29 +51,13 @@ _INSTRUCTION = (
     "animal — rabbit, bird, squirrel, butterfly, insect, ...) is ALWAYS 'character', never "
     "'prop'. 'prop' is for inanimate objects (fruit, tool, rope, ...); 'location' is the "
     "setting/place.\n"
-    "  - label: the entity's PERSISTENT IDENTITY name — what it is called across the whole "
-    "film, not how it happens to look in this shot. If the prompt refers to this entity, copy "
-    "the prompt's exact wording for it VERBATIM, in the prompt's own language and script — do "
-    "NOT translate, transliterate, or paraphrase it (e.g. if the prompt says '紫色小鸟', the "
+    "  - label: the entity's name. If the prompt refers to this entity, copy the prompt's "
+    "exact wording for it VERBATIM, in the prompt's own language and script — do NOT "
+    "translate, transliterate, or paraphrase it (e.g. if the prompt says '紫色小鸟', the "
     "label MUST be '紫色小鸟', never 'purple bird'). Only if the entity is absent from the "
     "prompt, use a concise, specific descriptive label, written in the SAME language as the "
     "prompt. Never attach a prompt name to an entity that is not actually visible in the "
     "frames, and never invent a proper name that is neither visible nor stated in the prompt.\n"
-    "    Leave OUT of the label: (a) a transient condition or age the entity is merely in right "
-    "now — put that in state_modifier instead, so 'young Mara' has label 'Mara'; (b) leading "
-    "determiners, numerals and quantifier phrases — 'Two brass fog bells' has label 'brass fog "
-    "bells', 'A row of five spare oil lamps' has label 'spare oil lamps'. KEEP a qualifier in "
-    "the label in exactly two cases: it is part of the entity's actual name, or the prompt uses "
-    "it to tell this entity APART from another similarly-named one (if the prompt has both an "
-    "'indigo Petrel' and a 'red Petrel', those are two entities and both keep their qualifier).\n"
-    "  - state_modifier: the transient condition/age qualifier you removed from the label "
-    "('young', 'wounded', 'burnt', 'soaked', 'repaired'), copied from the prompt's or the "
-    "frames' wording. Empty string when the entity is in its ordinary, default condition.\n"
-    "  - count: how many instances of this entity are VISIBLE together, but ONLY when TWO OR MORE "
-    "are on screen and countable ('Two brass fog bells' with both visible is 2). This is the "
-    "number you removed from the label. Use 0 for a single individual, for an uncountable mass, or "
-    "when you cannot count them confidently — 0 is the normal answer, never guess and never "
-    "answer 1.\n"
     "  - category: a SHORT ENGLISH common noun naming what this entity concretely IS, usable "
     "as an open-vocabulary segmentation concept (e.g. 'red apple', 'acorn', 'vine rope', "
     "'rabbit', 'butterfly', 'meadow'). Lowercase, 1-3 words, singular, no proper names — this "
@@ -84,10 +68,7 @@ _INSTRUCTION = (
     "mentions but that do not appear; at most one 'location' (the setting/place). Do NOT "
     "list non-entities: backgrounds, the plain sky, end-credits / title cards / on-screen "
     "text / subtitles, logos, watermarks, or generic undifferentiated scenery — only "
-    "concrete, re-identifiable characters, props, and the single setting. A fixed "
-    "architectural surface (wall, floor, ceiling, window, doorway, staircase) is part of the "
-    "SETTING, not a prop — leave it to the 'location' entity unless the prompt treats that "
-    "specific object as a thing in its own right. Return "
+    "concrete, re-identifiable characters, props, and the single setting. Return "
     "at most {max_entities} entities, most important first."
 )
 
@@ -108,42 +89,12 @@ _STOP_SUBSTR_CJK: tuple[str, ...] = (
     "背景", "屏幕", "片尾", "片头", "字幕", "水印", "标题", "空白", "片头曲", "片尾曲",
 )
 
-# Fixed architectural surfaces belong to the setting (the location stratum), not to props: a
-# measured run banked 'window' as a prop and grew it to 3 representations. Matched on the LABEL
-# ONLY and only when bare, because a qualified one is a real subject — 'stained-glass window' or
-# 'the north window' must still pass, and their segmenter category is often the bare noun.
-_STOP_BARE_ARCHITECTURE: frozenset[str] = frozenset(
-    {
-        "window", "windows", "wall", "walls", "floor", "floors", "ceiling", "ceilings",
-        "doorway", "doorways", "staircase", "stairs", "railing", "corner", "room",
-        "窗", "窗户", "墙", "墙壁", "地板", "天花板", "楼梯", "栏杆", "房间",
-    }
-)
 
-
-_DEFAULT_STATE_WORDS: frozenset[str] = frozenset(
-    {"", "none", "n/a", "na", "default", "normal", "ordinary", "usual", "intact", "unchanged",
-     "无", "正常", "默认", "常态"}
-)
-
-
-def _is_default_state(modifier: str) -> bool:
-    """True when a returned modifier just means "ordinary condition".
-
-    Asked for a qualifier and given none, a model tends to fill the field with 'none' or
-    'normal' rather than an empty string. Treating those as a real state would mark every
-    representation CHANGED and destroy the signal the state stratum carries.
-    """
-    return modifier.strip().lower() in _DEFAULT_STATE_WORDS
-
-
-def _is_noise_label(label: str, category: str, *, kind: AssetType | None = None) -> bool:
-    """True for obvious non-entities (backgrounds / credits / on-screen text / bare surfaces)."""
+def _is_noise_label(label: str, category: str) -> bool:
+    """True for obvious non-entities (backgrounds / credits / on-screen text)."""
     lab = label.strip().lower()
     cat = category.strip().lower()
     if lab in _STOP_EXACT or (cat and cat in _STOP_EXACT):
-        return True
-    if kind is not AssetType.LOCATION and lab in _STOP_BARE_ARCHITECTURE:
         return True
     for token in _STOP_SUBSTR_CJK:
         if token in label or (category and token in category):
@@ -160,14 +111,10 @@ _SCHEMA: dict[str, Any] = {
                 "properties": {
                     "kind": {"type": "string", "enum": ["character", "prop", "location"]},
                     "label": {"type": "string"},
-                    "state_modifier": {"type": "string"},
-                    "count": {"type": "integer"},
                     "category": {"type": "string"},
                     "description": {"type": "string"},
                 },
-                "required": [
-                    "kind", "label", "state_modifier", "count", "category", "description",
-                ],
+                "required": ["kind", "label", "category", "description"],
                 "additionalProperties": False,
             },
         }
@@ -301,35 +248,18 @@ class VlmEntityDecomposer:
             if not label:
                 continue
             category = str(row.get("category") or "").strip()
-            if _is_noise_label(label, category, kind=kind):
+            if _is_noise_label(label, category):
                 continue  # background / credits / on-screen text are not assets
             if kind is AssetType.LOCATION:
                 if seen_locations >= 1:
                     continue  # one setting per frame (the recurring place stratum)
                 seen_locations += 1
-            modifier = str(row.get("state_modifier") or "").strip()
-            if modifier and _is_default_state(modifier):
-                modifier = ""
-            try:
-                count = int(row.get("count") or 0)
-            except (TypeError, ValueError):
-                count = 0
-            # A count of one is what a namer answers for any single entity, so it says nothing a
-            # crop of that entity does not already say. Only a group carries count information.
-            count = count if count >= 2 else 0
             entities.append(
                 NamedEntity(
                     name=label,
                     kind=kind,
                     category=category,
                     description=str(row.get("description") or "").strip(),
-                    state_modifier=modifier,
-                    count=max(0, count),
-                    # A stated condition is a stronger state signal than any classifier run on
-                    # the crop afterwards, and marking it non-default is what lets the curator's
-                    # cohesion gate admit a legitimately different-looking appearance of a KNOWN
-                    # entity instead of rejecting it as an intruder.
-                    state_angle=StateAngle.CHANGED if modifier else StateAngle.UNKNOWN,
                 )
             )
         # One call already emitted everything (matched=requested, unmatched=candidate

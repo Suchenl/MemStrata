@@ -156,65 +156,6 @@ def test_cohesion_rejects_outlier_when_floor_set() -> None:
     assert len(active) == 2
 
 
-def _obs_state(oid: str, vec: list[float], angle: SpatialAngle, state: StateAngle) -> Observation:
-    return Observation(
-        observation_id=oid,
-        kind=_CHAR,
-        name="Hero",
-        image_path=f"/nonexistent/{oid}.png",  # dark gate off in this test
-        embedding=vec,
-        spatial_angle=angle,
-        state_angle=state,
-    )
-
-
-def test_name_authoritative_state_change_admitted_despite_low_cohesion() -> None:
-    """persist_state fix: a name-anchored low-cohesion crop carrying an explicit state
-    signal is a legitimate appearance change, so it is admitted (not dropped by gate ②)."""
-    bank = AssetBank()
-    cur = AssetCurator(
-        bank, HashEmbedding(),
-        embed_on_ingest=False, dark_gate=False,
-        attributes_when_angles_known=False,
-        cohesion_floor=0.5, cohesion_min_refs=2,
-    )
-    cur.curate_observations([_obs("o0", [1.0, 0.0], SpatialAngle.FRONT)], segment_id=0)
-    cur.curate_observations([_obs("o1", [0.8, 0.6], SpatialAngle.SIDE)], segment_id=1)
-    # Same outlier vector as the rejection test, but now flagged as a CHANGED state.
-    cur.curate_observations(
-        [_obs_state("o2", [-0.6, 0.8], SpatialAngle.BACK, StateAngle.CHANGED)],
-        segment_id=2,
-    )
-    asset = bank.find_by_name("Hero", kind=_CHAR)
-    active = [r for r in asset.representations if not r.deprecated]
-    assert len(active) == 3  # admitted as a state change, not rejected
-    changed = [r for r in active if r.state_angle == StateAngle.CHANGED]
-    assert len(changed) == 1
-    assert changed[0].annotations["admission"] == "admitted_state_change_name_authoritative"
-
-
-def test_name_authoritative_admit_can_be_disabled() -> None:
-    """Ablation switch: with name_authoritative_admit=False the state-change crop is
-    rejected exactly like the legacy hard cohesion gate."""
-    bank = AssetBank()
-    cur = AssetCurator(
-        bank, HashEmbedding(),
-        embed_on_ingest=False, dark_gate=False,
-        attributes_when_angles_known=False,
-        cohesion_floor=0.5, cohesion_min_refs=2,
-        name_authoritative_admit=False,
-    )
-    cur.curate_observations([_obs("o0", [1.0, 0.0], SpatialAngle.FRONT)], segment_id=0)
-    cur.curate_observations([_obs("o1", [0.8, 0.6], SpatialAngle.SIDE)], segment_id=1)
-    cur.curate_observations(
-        [_obs_state("o2", [-0.6, 0.8], SpatialAngle.BACK, StateAngle.CHANGED)],
-        segment_id=2,
-    )
-    asset = bank.find_by_name("Hero", kind=_CHAR)
-    active = [r for r in asset.representations if not r.deprecated]
-    assert len(active) == 2  # gate ② still rejects when the switch is off
-
-
 def test_cohesion_disabled_by_default_keeps_outlier() -> None:
     bank = AssetBank()
     cur = AssetCurator(

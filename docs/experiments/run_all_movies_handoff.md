@@ -26,8 +26,8 @@ export PUBLIC_MODELS_ROOT=${PUBLIC_MODELS_ROOT} PYTHONPATH=src
 # 打分 embedder 的权重根：dinov3 走 PUBLIC_MODELS_ROOT；megaloc + siglip2 走仓库
 # models/model_weights（子项目自带的 models/model_weights 目前为空）。不设这个，
 # siglip2/megaloc 会静默降级、SigLIP2/Loc 列空着（正是下文验收门槛 2 要拦的坑）。
-export MEMSTRATA_WEIGHTS_ROOT=./models/model_weights
-export HF_HOME=./models/model_weights  # siglip2 缓存命中
+export MEMSTRATA_WEIGHTS_ROOT=${MEMSTRATA_WEIGHTS_ROOT}
+export HF_HOME=${MEMSTRATA_WEIGHTS_ROOT}  # siglip2 缓存命中
 PY=python3   # 节点无 repo .venv
 ```
 `vmem_bench` import 时强制 `HF_HUB_OFFLINE=1`，所以 **siglip2-base-patch16-224 必须先在本地

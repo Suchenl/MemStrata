@@ -12,13 +12,13 @@
 ## 规则 1：整体自包含——对 `methods/MemStrata/` 之外零依赖
 
 `src/memstrata/` **不得 import 任何 `methods/MemStrata/` 之外的代码**，尤其不得 import
-`src/montage/`（`montage.*`）和评测基准 `vmem_bench`（`vmem_bench.*` / 旧名 `vmem_bench.*`）。
+`src/montage/`（`montage.*`）和评测基准 `vmem_bench`（`vmem_bench.*` / 旧名 `memstrata_bench.*`）。
 产出（生成视频、记忆库、run 输出、日志、校准文件等）也不得写到 `methods/MemStrata/` 之外的仓库路径。
 
 - 第三方库（numpy / torch / transformers / PIL / …）与按路径加载的模型权重（统一走仓库
   `models/model_weights/`，见根目录 `AGENTS.md`）**不算耦合，允许使用**。
 - 这条规则管的是**逻辑/代码引用边界**，不是**物理磁盘选择**：超大运行产物（视频、权重缓存）仍按
-  `run-output-ledger` 技能走 `/data` 系列磁盘的容量故障转移，跟本规则不冲突——前提是引用
+  `run-output-ledger` 技能走 `${ALLOWED_LOCAL_MEDIA_PATH:-.}` 系列磁盘的容量故障转移，跟本规则不冲突——前提是引用
   路径/清单文件本身仍然登记在 `methods/MemStrata/` 内部（不要把索引/清单也搬出去）。
 - 为什么要这么严格：`memstrata` 要能作为独立方法子项目单独拆分发布，任何一处偷偷 import 了
   `src/montage/` 或 `vmem_bench`、或依赖仓库其它路径的产出，都会在拆分那一刻直接炸掉。

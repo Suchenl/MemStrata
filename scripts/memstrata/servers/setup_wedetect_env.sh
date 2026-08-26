@@ -52,7 +52,7 @@ echo
 echo "DONE. Activate with:  conda activate ${ENV_NAME}"
 echo "Smoke test (needs 1 GPU):"
 cat <<'EOF'
-  REPO=./models/vendor/WeDetect
+  REPO=${MONTAGE_ROOT}/models/vendor/WeDetect
   WEIGHTS=${PUBLIC_MODELS_ROOT}/_classified_by_task/Object_Detection
   cd "$REPO"
   python infer_wedetect_ref.py \

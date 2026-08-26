@@ -268,18 +268,9 @@ def _construct_image_embedding(
         return SigLIP2Embedding(model_id=model_id)
     if backend in {"dinov3", "dinov2"}:
         from memstrata.encoders.ssl.dinov3 import DinoV3Embedding
-        # Resolve locally like every other provider: the HF repo is *gated*, so handing the bare
-        # id to transformers 403s on any machine without credentials. That used to surface as a
-        # per-segment exception, which the production loop caught and skipped -- a whole run then
-        # completed with an empty bank instead of failing. Local snapshot is the default (see
-        # models/model_weights/local_paths.md); a missing one now raises with instructions.
-        model_id = _resolve_local_model(
-            provider=backend,
-            model=model,
-            weights=weights,
-            default_rel="facebook/dinov3-vitb16-pretrain-lvd1689m",
-            env_var="MEMSTRATA_DINOV3_WEIGHTS",
-        )
+        model_id = model or "facebook/dinov3-vitb16-pretrain-lvd1689m"
+        if weights and Path(weights).exists():
+            model_id = weights
         return DinoV3Embedding(model_id=str(model_id))
     if backend == "insightface":
         from memstrata.encoders.face.arcface import ArcFaceEmbedding

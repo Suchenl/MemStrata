@@ -27,7 +27,7 @@ import json
 import mimetypes
 import os
 import urllib.request
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
@@ -203,42 +203,12 @@ class MllmRoleRunner:
         self.calls.append({"role": role.id, "key": role_key, "model": self._model_for(role)})
 
         if role.sampling.response_format == "json_schema":
-            result = self._parse_json(role, raw, messages, eff_schema)
+            result = json.loads(raw)
             missing = [f for f in role.schema_fields if f not in result]
             if missing:
                 raise ValueError(f"role {role.id} reply missing fields {missing}: {result}")
             return result
         return raw
-
-    def _parse_json(
-        self,
-        role: RoleSpec,
-        raw: str,
-        messages: list[dict[str, Any]],
-        schema: dict[str, Any] | None,
-    ) -> Any:
-        """Parse a JSON reply, re-asking once with a wider budget if it was cut off.
-
-        A reply that ends mid-string is the decoder hitting ``max_tokens``, not a model that cannot
-        follow the schema — and because these roles decode greedily, asking again identically
-        reproduces the same truncated bytes. A shot whose plan is one token too long therefore never
-        heals: it fails, is retried, and fails at exactly the same character, holding a card for as
-        long as anything keeps retrying it. Widening the budget is the only retry that can differ.
-        """
-
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            if not raw.strip():
-                raise
-        wider = replace(role.sampling, max_tokens=role.sampling.max_tokens * 4)
-        raw = self._transport_for(role).chat(
-            model=self._model_for(role), messages=messages,
-            sampling=wider, schema=schema, timeout=self.timeout,
-        )
-        self.calls.append({"role": role.id, "key": role.key, "model": self._model_for(role),
-                           "retry": "widened_budget"})
-        return json.loads(raw)
 
 
 # Convenience: a mock transport for tests / offline wiring checks.

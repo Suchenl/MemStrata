@@ -101,7 +101,6 @@ class Wan22TurboBackend:
             "distill=4step_self_forcing",
             "cfg=off",
             f"frames={self.params.get('num_frames', 81)}",
-            f"render={self.params.get('render_width', 1280)}x{self.params.get('render_height', 704)}",
             f"size={self.params.get('width', 832)}x{self.params.get('height', 480)}",
         ]
         return GenerationArtifact(
@@ -120,11 +119,8 @@ class Wan22TurboBackend:
             "prompt": standardize_prompt(task.prompt, "wan"),
             "save_file": str(out_path),
             "seed": int(self.params.get("base_seed", 2026)),
-            # Render native, deliver at the benchmark's size (see the server's module docstring).
-            "height": int(self.params.get("render_height", 704)),
-            "width": int(self.params.get("render_width", 1280)),
-            "out_height": int(self.params.get("height", 480)),
-            "out_width": int(self.params.get("width", 832)),
+            "height": int(self.params.get("height", 480)),
+            "width": int(self.params.get("width", 832)),
             "num_frames": int(self.params.get("num_frames", 81)),
         }
         first_frame = self._first_frame(task)
@@ -192,10 +188,8 @@ class Wan22TurboBackend:
             "--config_path", str(self._config_path()),
             "--server_dir", str(server_dir),
             "--idle_timeout", str(self.params.get("server_idle_timeout", 1800)),
-            "--height", str(self.params.get("render_height", 704)),
-            "--width", str(self.params.get("render_width", 1280)),
-            "--out_height", str(self.params.get("height", 480)),
-            "--out_width", str(self.params.get("width", 832)),
+            "--height", str(self.params.get("height", 480)),
+            "--width", str(self.params.get("width", 832)),
             "--num_frames", str(self.params.get("num_frames", 81)),
             "--fps", str(self.params.get("fps", 24)),
             "--seed", str(self.params.get("base_seed", 2026)),
@@ -228,23 +222,10 @@ class Wan22TurboBackend:
         if ff and Path(ff).exists():
             env["IMAGEIO_FFMPEG_EXE"] = ff
         min_free_mib = int(self.params.get("min_free_mib", 40000))
-        visible = env.get("CUDA_VISIBLE_DEVICES", "")
-        if visible:
-            from memstrata.lib.gpu import (
-                ensure_cuda_visible_devices_have_min_free,
-                freest_visible_device,
-            )
+        if env.get("CUDA_VISIBLE_DEVICES"):
+            from memstrata.lib.gpu import ensure_cuda_visible_devices_have_min_free
 
-            # The server occupies exactly ONE card, so when several are visible it should take the
-            # emptiest rather than demand the floor from all of them. That distinction matters on a
-            # packed node: a story is given its own generation card plus the node's shared services
-            # card (so the small crop server can reach it), and the shared card is by design nearly
-            # full. Requiring every visible card to clear the floor failed every such story.
-            narrowed = freest_visible_device(visible, min_free_mib=min_free_mib)
-            if narrowed is not None:
-                env["CUDA_VISIBLE_DEVICES"] = narrowed
-            else:
-                ensure_cuda_visible_devices_have_min_free(env, min_free_mib=min_free_mib)
+            ensure_cuda_visible_devices_have_min_free(env, min_free_mib=min_free_mib)
         elif self.params.get("auto_pick_gpu", True):
             from memstrata.lib.gpu import cuda_visible_devices_for
 

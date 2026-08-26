@@ -76,13 +76,7 @@ class Sampling:
 
     temperature: float = 0.0
     top_p: float = 1.0
-    # A structured reply that hits this ceiling is cut off mid-JSON and the shot is dropped, so the
-    # ceiling has to clear the *busiest* scene, not the average one. Measured on Qwen3.5-9B: a
-    # 15-entity layout plan costs 784 tokens, i.e. ~77% of the old 1024 default, so scenes with
-    # ~18+ entities truncated and produced the interior gaps seen in the Track B run. Raising the
-    # ceiling is free: the same request at 4096 returned the identical 784 tokens, finish_reason
-    # "stop", and the same latency to the tenth of a second — unused budget costs nothing.
-    max_tokens: int = 4096
+    max_tokens: int = 1024
     thinking: bool = False
     response_format: str = "json_schema"  # "json_schema" | "text"
 
@@ -108,17 +102,6 @@ class RoleSpec:
 
 
 # --- decode presets -----------------------------------------------------------
-# ``thinking`` is silently defeated by ``response_format="json_schema"``. Guided decoding pins every
-# token to the schema grammar from the first one, so the model has nowhere to put a deliberation and
-# simply does not produce one. Probed on the live Qwen3.5-9B endpoint with one prompt, crossing the
-# toggle with the format: unstructured went 37 tokens / 1.3s with thinking off versus 2048 tokens
-# (budget exhausted) / 67.2s with it on, while the same prompt under json_schema went 55 versus 68
-# tokens, 1.9 versus 2.3s. The toggle works; the grammar overrides it.
-#
-# Every _DECIDE role below emits json_schema, so none of them actually deliberates — the preset
-# records intent, not behaviour. Two consequences worth keeping straight: thinking cannot be blamed
-# for a slow or truncated structured role, and a role that genuinely needs reasoning has to get it
-# from the schema (an explanation field decoded BEFORE the verdict) rather than from this flag.
 _DECIDE = Sampling(temperature=0.0, top_p=1.0, thinking=True)     # ambiguous decisions/planning
 _CLASSIFY = Sampling(temperature=0.0, top_p=1.0, thinking=False)  # simple structured classification
 _AUTHOR = Sampling(temperature=0.2, top_p=0.9, thinking=False, response_format="text")  # short prose
@@ -268,7 +251,7 @@ ROLE_REGISTRY: dict[str, RoleSpec] = {
         # Structured localization — no chain-of-thought; thinking off for speed.
         sampling=_CLASSIFY, status=Status.IMPLEMENTED, hot_path=True,
         impl_ref="memstrata/skills/entity_grounding/grounding_cropper.py::VlmGroundingCropper "
-                 "(mirrors vmem_bench s5 QwenImageGrounder; runs on the unified Qwen3.5-9B)",
+                 "(mirrors memstrata_bench s5 QwenImageGrounder; runs on the unified Qwen3.5-9B)",
         notes="Targeted (not open-vocab), per design_philosophy decompose. Track A gold "
               "ObservationPackets still bypass this; used for the real closed loop. "
               "SAM3 mask refine + identity-consistency audit are follow-ons (still PARTIAL upstream).",
@@ -352,13 +335,7 @@ ROLE_REGISTRY: dict[str, RoleSpec] = {
                 "maintain avoidance so deprecated representations are not reused.",
         inputs="asset current state + new observation attributes",
         output="state update ops (state_angle, deprecate ids, avoidance)",
-        sampling=_DECIDE, status=Status.IMPLEMENTED, hot_path=True,
-        impl_ref="folded into R1b (skills/intent_understanding/plan.py: state_required, "
-                 "count_required, retired) + pipeline.py::MemStrata._retire",
-        notes="Deliberately NOT its own call. The planner already reads the beat once for R1b, "
-              "so state, surviving count and permanent removal ride that same call, and the "
-              "lifecycle transition itself is deterministic code. A separate state-manager call "
-              "would re-read the same prose to answer a question R1b can answer in passing.",
+        sampling=_DECIDE, status=Status.PLANNED, hot_path=True,
         schema_fields=("state_angle", "deprecate", "avoidance"),
     ),
     "prompt_optimizer": RoleSpec(

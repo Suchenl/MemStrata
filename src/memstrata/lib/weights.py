@@ -58,11 +58,17 @@ def configure_torch_hub() -> str:
 
 
 def public_models_root() -> Path:
-    """Shared public model root, organized as ``<org>/<repo>``."""
+    """Shared public model root, organized as ``<org>/<repo>``.
+
+    Unset is allowed: CPU import / recording must not crash. Resolving a
+    real checkpoint without the env var raises.
+    """
     override = os.environ.get("PUBLIC_MODELS_ROOT")
     if override:
         return Path(override).expanduser().resolve()
-    raise RuntimeError("PUBLIC_MODELS_ROOT is not set")
+    raise RuntimeError(
+        "PUBLIC_MODELS_ROOT is not set; required only when loading generator/encoder weights"
+    )
 
 
 def resolve_model_reference(model: str) -> str:
