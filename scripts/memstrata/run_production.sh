@@ -24,7 +24,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # benchmarks/MemStrata
 cd "$HERE"
 
-SCREENPLAY="${1:-data/Screenplay/products/cn/0000_detective_mystery.json}"
+SCREENPLAY="${1:-production/screenplay/products/en/0000_detective_mystery.json}"
 BACKEND="${2:-wan22_i2v_a14b_lightx2v_4step}"
 SYSTEM="${3:-memstrata}"
 PY="${PY:-python3}"
@@ -34,7 +34,8 @@ args=(-m memstrata.production.run
 # FLUX keyframe fusion is ON by default (run.py); NO_FLUX=1 disables it.
 [ "${NO_FLUX:-0}" = "1" ] && args+=(--no-flux)
 [ "${FORCE:-0}" = "1" ] && args+=(--force-recompose)
-[ -n "${CHUNKS:-}" ]    && args+=(--chunks "$CHUNKS")
+n="${SEGMENTS:-${CHUNKS:-}}"
+[ -n "$n" ] && args+=(--segments "$n")
 [ -n "${CROP_ACQ_GPU:-}" ] && args+=(--crop-acq-device "$CROP_ACQ_GPU")
 [ -n "${MLLM_GPU:-}" ]  && args+=(--mllm-gpu "$MLLM_GPU")
 [ -n "${MLLM_PORT:-}" ] && args+=(--mllm-port "$MLLM_PORT")
