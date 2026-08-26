@@ -11,7 +11,7 @@ family = "helios"
 model = "${PUBLIC_MODELS_ROOT}/BestWishYsh/Helios-Distilled"
 code_root = "${HELIOS_CODE_ROOT}"
 python = "python3"
-# diffusers export_to_video -> imageio-ffmpeg; helios env has no ffmpeg, borrow vace's.
+# Use ffmpeg on PATH (imageio-ffmpeg).
 ffmpeg = "ffmpeg"
 # HF/kernels caches that hold the Helios weights + the shimmed FA2 kernel snapshot.
 # MUST be a cache that contains the FA2 kernel snapshot, not an empty local hub.

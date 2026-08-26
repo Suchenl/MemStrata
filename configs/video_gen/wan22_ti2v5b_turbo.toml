@@ -28,9 +28,9 @@ model_name = "ti2v-5B-turbo-4step"
 # Upstream 4-step schedule: denoising_step_list [1000,750,500,250] + warp_denoising_step.
 config_path = "configs/inference/wan22.yaml"
 
-# The vace env already satisfies every requirement (torch 2.5.1+cu124, flash_attn 2.8.3,
-# diffusers, omegaconf, easydict, ftfy, av, cv2), so no new env and no pip installs: upstream's
-# training-only deps (lmdb/decord/pandas) are import-guarded in the vendored copy instead.
+# Needs torch 2.5 + flash-attn 2.8, plus the usual video extras (diffusers, omegaconf,
+# easydict, ftfy, av, cv2). Upstream's training-only deps (lmdb/decord/pandas) are
+# import-guarded in the vendored copy.
 python = "python3"
 
 capabilities = ["text_to_video", "image_to_video"]

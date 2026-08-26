@@ -8,7 +8,7 @@ from __future__ import annotations
 
 try:
     import tomllib  # Python >= 3.11
-except ModuleNotFoundError:  # pragma: no cover - py<3.11 (e.g. the vace env)
+except ModuleNotFoundError:  # pragma: no cover - py<3.11 (e.g. torch + flash-attn)
     import tomli as tomllib
 from pathlib import Path
 from typing import Any

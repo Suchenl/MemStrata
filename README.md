@@ -2,16 +2,26 @@
 
 > **本分支是 `paper-reproduction`**，对应内部 `VMem-Track-A-MemStrata` @ `51be2914`（Track A Stage 1 冻结核）。生产代码看 `main`。复现步骤见 [`REPRODUCE.md`](REPRODUCE.md)。
 
+## Citation
+
+```bibtex
+@article{chen2026memstrata,
+  title={Stratifying and Benchmarking Long-Range Memory for Causal Long Video Generation},
+  author={Chen, Yuzhuo and Shi, Huafeng and Wang, Xinyu and Wang, Yucheng and Hong, Haoqin and Zhang, Guoxin and Ma, Zehua},
+  year={2026}
+}
+```
+
+See [`CITATION.cff`](CITATION.cff).
+
 **面向可控长视频生成的记忆管理与上下文组合方法包。** 把一部长视频里出现过的实体
 （`character` / `prop` / `location`）沉淀为**结构化、可被生成条件化的记忆库** \(\mathcal{M}_n\)，
 并在每个生成步为"点名到的实体"组合出**最小而充分**的视觉上下文，让下游生成器稳定复现同一身份。
 
 > 记忆库不是"帧的仓库"，而是"**每个实体一份、可被生成条件化的身份档案**"。
 
-本包（`methods/MemStrata`，Python 包名 `memstrata`）与评测基准
-[`benchmarks/VMem-Bench`](../../benchmarks/VMem-Bench)（包名 `vmem_bench`）**零相互导入、互不外部引用**
-（自包含硬约束见 [`AGENTS.md`](AGENTS.md)）。评测只在
-`benchmarks/VMem-Bench/scripts/evaluate_baselines/` 的 adapter 里把本方法当黑盒 import。
+本包（Python 包名 `memstrata`）与评测基准 [VMem-Bench](https://github.com/Suchenl/VMem-Bench)
+（包名 `vmem_bench`）**零相互导入、互不外部引用**（自包含硬约束见 [`AGENTS.md`](AGENTS.md)）。评测只在 VMem-Bench 仓的 `scripts/evaluate_baselines/` adapter 里把本方法当黑盒 import。
 
 **最高纲领**是 [`src/memstrata/docs/design_philosophy.md`](src/memstrata/docs/design_philosophy.md)
 （六条库质量公理 + WHO-before-WHERE 准入原则）；任何记忆相关取舍先服从它，本文件与之冲突时以纲领为准。
@@ -21,7 +31,7 @@
 ## 目录布局（方法侧，post-split）
 
 ```
-methods/MemStrata/
+.
 ├── AGENTS.md                 # 自包含 / 零跨包 import 硬约束
 ├── README.md                 # ← 本文件：最外层总览 + 系统三大核心 + 写侧增强计划
 ├── docs/                     # 方法侧知识文档（bench 文档应迁往 VMem-Bench，见文末“docs 治理”）

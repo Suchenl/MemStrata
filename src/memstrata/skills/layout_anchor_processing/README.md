@@ -33,6 +33,6 @@ retrieved real crops ──R4(vision MLLM: which crop → which region)──▶
 - One multimodal MLLM (Qwen3.5-9B) plays both R3 (text) and R4 (vision). See
   `docs/method/mllm_roles.md`.
 - FLUX I2I fusion of the collage is a generation-backend concern and runs in the
-  `MultiShotMaster` conda env with `black-forest-labs/FLUX.2-klein-9b-kv` (not `flux2`,
+  a Python that has `black-forest-labs/FLUX.2-klein-9b-kv` (not `flux2`,
   whose huggingface_hub is broken). `composite_crops` only produces the input canvas.
 - Coordinates are normalized `[0,1000]`, `box_2d = [ymin,xmin,ymax,xmax]`.

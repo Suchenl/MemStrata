@@ -1,8 +1,7 @@
 # MemStrata · 模型权重 / 环境 / 运行要求（唯一权威清单）
 
-> 目的：把 MemStrata（SUT `memstrata` + 基准 `memstrata_bench` + baselines）用到的**所有**
-> 权重位置、conda 环境、环境变量、运行要求集中到一处，便于管理与**独立发布**。
-> 新增/换权重/换环境时**只改本文件**，其它文档引用此处，不要另立清单。
+> 目的：把 MemStrata 用到的**所有**权重位置、Python 依赖、环境变量、运行要求集中到一处。
+> 新增/换权重时**只改本文件**，其它文档引用此处，不要另立清单。
 >
 > 发布红线（见 [`../../AGENTS.md`](../../AGENTS.md) 规则 1）：`src/memstrata/` 与
 > `src/vmem_bench/` **不得 import `benchmarks/VMem-Bench/` 之外的代码**。第三方库与
@@ -67,16 +66,17 @@
 > 方案设计见 [`../showcase/audio_pipeline_PLAN.md`](../showcase/audio_pipeline_PLAN.md)（CosyVoice2 对白 /
 > ACE-Step BGM / Stable Audio Open foley + ducking + 对齐）。权重已下载，MVP 待接线。
 
-## 2. Conda 环境与归属
+## 2. Python environments
 
-根：`${CONDA_ENVS_ROOT}/`
+Use a CPython 3.10+ interpreter with the packages you actually run. There is no
+required conda env name.
 
-| 环境 | 用途 | 关键约束 |
-|---|---|---|
-| `vace` | **主环境**：pytest、`montage`/`memstrata` 主流程、Wan2.2 lightx2v（editable 装入，torch 2.5.1+cu124 + flash_attn2） | 系统 python **无 pytest**，测试必须用它：`python3` |
-| `helios` | **crop-acquisition server 子进程**（py3.11 + torch 2.10，匹配 vendored transformers 5.9 的 cp311 .so） | crop_client 默认 `python=.../envs/helios/bin/python`；client 端可用任意 env |
-| `vllm` | MLLM 服务（`serve_qwen.sh` 默认 `VLLM_ENV`） | vLLM serve Qwen3.5-9B / Qwen3-VL-8B |
-| `qwen` / `slotmem` / `diffsynth*` / `flux2` 等 | 特定 baseline / 后端 | 按需，见各自 serve 脚本 |
+| Role | Typical stack |
+|---|---|
+| CPU tests / `recording` demo | `pip install -e ".[dev]"` (numpy, pillow, pytest) |
+| Perception / SAM3 crop server | CPython **3.11** + torch + vendored `models/vendor/sam3_transformers59` (transformers 5.9). Set `MEMSTRATA_PYTHON` if that is not your default `python3`. |
+| Wan / LightX2V generation | torch + flash-attn matching the chosen backend (see the backend TOML) |
+| MLLM judge / IAMFlow HTTP | vLLM or any OpenAI-compatible server; point `*_ENDPOINT` env vars at it |
 
 ## 3. 环境变量（MEMSTRATA_*）
 
@@ -89,7 +89,7 @@
 | `MEMSTRATA_QWEN3_EMBEDDING_ENDPOINT` / `_MODEL` / `_API_KEY` / `_WEIGHTS` | qwen3 文本 embed 走 server 或本地 | 空→本地权重 |
 | `MEMSTRATA_ANGLE_CLASSIFIER` | 角度/属性分类器 `null`\|`heuristic`\|`vlm` | `null`（每 rep 角度未知，**不可报分层结果**） |
 | `MEMSTRATA_CONTEXT_JUDGER_BASE_URL` / `MEMSTRATA_CROP_ATTR_BASE_URL` / `..._MODEL` | planner / 角度属性 MLLM 端点与模型 | 见 `mllm/planner.py`、`mllm/crop_attributes.py` |
-| `MEMSTRATA_SCORING_EMBEDDER_WEIGHTS` / `MEMSTRATA_WEIGHTS_ROOT` | 打分侧编码器权重 | 见 `memstrata_bench/scoring/embedder.py` |
+| `MEMSTRATA_SCORING_EMBEDDER_WEIGHTS` / `MEMSTRATA_WEIGHTS_ROOT` | 打分侧编码器权重 | 见 `vmem_bench/scoring/embedder.py` |
 | `MEMSTRATA_ALLOW_HF_DOWNLOAD` | =1 允许 transformers 联网解析（默认离线） | 未设（离线；crop server 设 `HF_HUB_OFFLINE=1`） |
 | `MEMSTRATA_RETRIEVAL_VARIANT` / `MEMSTRATA_RETRIEVAL_TOPK` | 检索 baseline 家族变体 / top-k | 见 `retrieval_family_DESIGN.md` |
 
@@ -127,5 +127,5 @@ python3 \
 - [ ] `src/memstrata/skills/layout_anchor_processing/` 标注为 "vendored from montage"——确认已真正 vendored、无运行期跨引用。
 - [ ] 视频 lightx2v 权重目录为待组装 TODO：`.../Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step`（用户下载中）。
 
-> 校验命令（应为空）：在 `src/memstrata/`、`src/memstrata_bench/` 下搜 `import montage` /
+> 校验命令（应为空）：在 `src/memstrata/`、`src/vmem_bench/` 下搜 `import montage` /
 > `from montage` / 指向仓库其它路径的产出写入。

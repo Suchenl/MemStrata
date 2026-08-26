@@ -18,7 +18,7 @@ height = 1024
 width = 1024
 steps = 4
 guidance_scale = 0.0
-# Load once in the MultiShotMaster env and serve via file-based job queue so the
-# pipeline (vace env) can drive FLUX I2I keyframe fusion without importing it in-process.
+# Load once and serve via file-based job queue so the pipeline can drive FLUX I2I
+# keyframe fusion without importing it in-process.
 serve_persistent = true
 auto_pick_gpu = true

@@ -50,3 +50,16 @@ bash scripts/memstrata/cpu_demo.sh
 Adapter 会在 `../MemStrata/src` 找到本包；只有目录名不是 `MemStrata` 时才需要 `MEMSTRATA_SRC`。
 
 没有把 91 部 run 产物或权重放进 git。在补齐上述外部依赖之前，**禁止声称已经对上论文数字**。
+
+## Citation
+
+```bibtex
+@article{chen2026memstrata,
+  title={Stratifying and Benchmarking Long-Range Memory for Causal Long Video Generation},
+  author={Chen, Yuzhuo and Shi, Huafeng and Wang, Xinyu and Wang, Yucheng and Hong, Haoqin and Zhang, Guoxin and Ma, Zehua},
+  year={2026}
+}
+```
+
+See [`CITATION.cff`](CITATION.cff).
+

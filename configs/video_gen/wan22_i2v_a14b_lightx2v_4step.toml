@@ -27,10 +27,9 @@ model_cls = "wan2.2_moe_distill"
 model = "${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step"
 model_name = "i2v-A14B-moe-distill-4step"
 
-# LightX2V is installed (editable, --no-deps) INTO the vace env: vace already has torch 2.5.1+cu124
-# and flash_attn2 (LightX2V pins torch<=2.8, so helios' torch 2.10 is too new). This keeps one env
-# and does not disturb the native_wan path (which runs generate.py in a subprocess, never imports
-# lightx2v). A conda --clone of vace on this Ceph FS was abandoned (too slow).
+# LightX2V is installed (editable, --no-deps) into a Python with torch<=2.8 and flash_attn2
+# (LightX2V pins torch<=2.8). This keeps one interpreter and does not disturb the native_wan
+# path (which runs generate.py in a subprocess, never imports lightx2v).
 python = "python3"
 
 capabilities = ["image_to_video"]
@@ -40,8 +39,8 @@ infer_steps = 4
 guidance_high = 1.0
 guidance_low = 1.0
 sample_shift = 5.0
-# flash_attn2 is present in the cloned lightx2v env (from vace); flash_attn3 is NOT installed and
-# sage_attn2 would need a source build on torch2.5/cu124. torch_sdpa is the zero-dep fallback.
+# flash_attn2 is required; flash_attn3 is optional. sage_attn2 would need a source build
+# on torch2.5/cu124. torch_sdpa is the zero-dep fallback.
 attn_mode = "flash_attn2"
 
 # 480p production (user directive: don't run large sizes). Output is PINNED to exactly 832x480
@@ -62,7 +61,7 @@ auto_pick_gpu = true
 min_free_mib = 70000          # BF16 dual-expert is heavy; drop + set offload=true on smaller cards
 offload = false
 
-# diffusers/imageio export borrows vace's ffmpeg (mirrors the helios config).
+# Use ffmpeg on PATH (imageio-ffmpeg).
 ffmpeg = "ffmpeg"
 
 # Hand-authored LightX2V distill config (vendored from upstream wan_moe_i2v_distill_model.json):

@@ -15,7 +15,6 @@ KIND="${1:?usage: serve_qwen.sh <text|vision> <gpu> <port>}"
 GPU="${2:?gpu id}"
 PORT="${3:?port}"
 
-VLLM_ENV="${VLLM_ENV:-${CONDA_ENVS_ROOT}/vllm}"
 PUBLIC_MODELS_ROOT="${PUBLIC_MODELS_ROOT:-${PUBLIC_MODELS_ROOT}}"
 
 case "${KIND}" in
@@ -26,22 +25,24 @@ case "${KIND}" in
     # and vision R4/R7/R8...). We keep video=0 (only the max-size *video* profiling is slow;
     # image profiling is cheap) and eager (low-QPS planning calls don't need CUDA graphs).
     IMG_LIMIT="${IMG_LIMIT:-8}"
-    MM_ARGS=(--allowed-local-media-path ${ALLOWED_LOCAL_MEDIA_PATH:-.} --limit-mm-per-prompt "{\"image\":${IMG_LIMIT},\"video\":0}" --enforce-eager)
+    MM_ARGS=(--allowed-local-media-path /data --limit-mm-per-prompt "{\"image\":${IMG_LIMIT},\"video\":0}" --enforce-eager)
     ;;
   vision)
     MODEL_PATH="${PUBLIC_MODELS_ROOT}/Qwen/Qwen3-VL-8B-Instruct"
     SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3-VL-8B-Instruct}"
-    MM_ARGS=(--allowed-local-media-path ${ALLOWED_LOCAL_MEDIA_PATH:-.} --limit-mm-per-prompt '{"image":8,"video":1}')
+    MM_ARGS=(--allowed-local-media-path /data --limit-mm-per-prompt '{"image":8,"video":1}')
     ;;
   *) echo "unknown kind: ${KIND}" >&2; exit 2 ;;
 esac
 
 [[ -d "${MODEL_PATH}" ]] || { echo "model path missing: ${MODEL_PATH}" >&2; exit 1; }
 
-export PATH="${VLLM_ENV}/bin:${PATH}"
-for d in "${VLLM_ENV}"/lib/python*/site-packages/nvidia/nvjitlink/lib; do
-  [[ -d "${d}" ]] && { export LD_LIBRARY_PATH="${d}:${LD_LIBRARY_PATH:-}"; break; }
-done
+if [[ -n "${VLLM_ENV:-}" && -d "${VLLM_ENV}/bin" ]]; then
+  export PATH="${VLLM_ENV}/bin:${PATH}"
+  for d in "${VLLM_ENV}"/lib/python*/site-packages/nvidia/nvjitlink/lib; do
+    [[ -d "${d}" ]] && { export LD_LIBRARY_PATH="${d}:${LD_LIBRARY_PATH:-}"; break; }
+  done
+fi
 export CUDA_VISIBLE_DEVICES="${GPU}"
 
 exec vllm serve "${MODEL_PATH}" \
