@@ -14,6 +14,7 @@ python -m pytest -q          # assert-based, no GPU/LLM
 # CPU smoke (no real generator; --no-flux skips FLUX, decompose=none skips Qwen):
 PYTHONPATH=src python3 -m memstrata.production.run \
   --backend recording --decompose none --no-flux --no-autoserve --segments 2
+# writes mp4 + bank.json under production/outputs/ (gitignored); override with --outputs-root
 ```
 
 `memstrata` and `vmem_bench` never import each other. Evaluation adapters live only in the VMem-Bench repo.

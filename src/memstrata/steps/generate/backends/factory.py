@@ -82,5 +82,5 @@ def list_video_backend_names(*, models_config: str | Path | None = None) -> list
     names = ["recording", "oracle"]
     video_dir = cfg_root / "video_gen"
     if video_dir.is_dir():
-        names.extend(sorted(p.stem for p in video_dir.glob("*.toml")))
+        names.extend(sorted(p.stem for p in video_dir.glob("*.toml") if p.stem not in names))
     return names

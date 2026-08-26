@@ -9,10 +9,10 @@
 #   bash scripts/memstrata/run_production.sh \
 #     [SCREENPLAY] [BACKEND] [SYSTEM]
 # Env overrides:
-#   PY           python interpreter (default: vace env)
+#   PY           python interpreter (default: python3)
 #   FLUX=1       add FLUX I2I keyframe fusion
 #   FORCE=1      recompose a fresh keyframe every shot (film-quality)
-#   CHUNKS=N     limit shots (0/unset = whole screenplay)
+#   SEGMENTS=N   limit shots (0/unset = whole screenplay; CHUNKS is a legacy alias)
 #   CROP_ACQ_GPU crop-acquisition server GPU index
 #   MLLM_GPU     GPU index for the auto-served Qwen MLLM endpoint (default 0)
 #   MLLM_PORT    Qwen MLLM port (default 8000)
@@ -21,10 +21,10 @@
 #   EXTRA        extra args forwarded to `python -m memstrata.production.run`
 set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # benchmarks/MemStrata
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$HERE"
 
-SCREENPLAY="${1:-data/Screenplay/products/cn/0000_detective_mystery.json}"
+SCREENPLAY="${1:-production/screenplay/products/en/0000_detective_mystery.json}"
 BACKEND="${2:-wan22_i2v_a14b_lightx2v_4step}"
 SYSTEM="${3:-memstrata}"
 PY="${PY:-python3}"
@@ -34,7 +34,8 @@ args=(-m memstrata.production.run
 # FLUX keyframe fusion is ON by default (run.py); NO_FLUX=1 disables it.
 [ "${NO_FLUX:-0}" = "1" ] && args+=(--no-flux)
 [ "${FORCE:-0}" = "1" ] && args+=(--force-recompose)
-[ -n "${CHUNKS:-}" ]    && args+=(--chunks "$CHUNKS")
+n="${SEGMENTS:-${CHUNKS:-}}"
+[ -n "$n" ] && args+=(--segments "$n")
 [ -n "${CROP_ACQ_GPU:-}" ] && args+=(--crop-acq-device "$CROP_ACQ_GPU")
 [ -n "${MLLM_GPU:-}" ]  && args+=(--mllm-gpu "$MLLM_GPU")
 [ -n "${MLLM_PORT:-}" ] && args+=(--mllm-port "$MLLM_PORT")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+import subprocess
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -59,6 +60,44 @@ class ArtifactStore:
         return digest, destination
 
 
+def write_placeholder_mp4(path: Path, *, seconds: float = 1.0) -> list[str]:
+    """Write a tiny H.264 clip so CPU smoke can concat without a generator.
+
+    Prefers ffmpeg / imageio-ffmpeg. Falls back to a few ISO-BMFF bytes so the
+    path still exists when no encoder is available.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    notes: list[str] = []
+    ff = None
+    try:
+        import imageio_ffmpeg
+
+        ff = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        ff = shutil.which("ffmpeg")
+    if ff:
+        duration = max(0.25, float(seconds))
+        try:
+            subprocess.run(
+                [
+                    ff, "-y", "-hide_banner", "-loglevel", "error",
+                    "-f", "lavfi", "-i", f"color=c=black:s=320x240:d={duration:g}:r=8",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                    str(path),
+                ],
+                check=True, capture_output=True, timeout=30,
+            )
+            if path.is_file() and path.stat().st_size > 0:
+                notes.append("placeholder_mp4")
+                return notes
+        except Exception:
+            pass
+    path.write_bytes(b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isomplaceholder")
+    notes.append("placeholder_mp4_bytes")
+    return notes
+
+
 def resolve_model_reference(model: str) -> str:
     token = "${PUBLIC_MODELS_ROOT}"
     if model.startswith(token):
@@ -111,4 +150,5 @@ __all__ = [
     "repo_root",
     "resolve_model_reference",
     "weights_root",
+    "write_placeholder_mp4",
 ]

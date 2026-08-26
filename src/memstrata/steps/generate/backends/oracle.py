@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from memstrata.steps.generate.backends._support import write_placeholder_mp4
 from memstrata.steps.generate.schemas import GenerationArtifact, MediaGenerationTask, MediaTaskType
 
 
@@ -57,10 +58,7 @@ class OracleBackend:
         if task.task_type is not MediaTaskType.VIDEO_SEGMENT:
             raise ValueError("OracleBackend only supports video_segment tasks")
         controls = task.controls
-        source = Path(str(controls.get("source_video", "")))
-        if not source.is_file():
-            raise FileNotFoundError(f"oracle source_video missing: {source}")
-
+        source = Path(str(controls.get("source_video") or ""))
         start = float(controls.get("source_start_sec", 0.0))
         if "source_end_sec" in controls:
             duration = max(0.01, float(controls["source_end_sec"]) - start)
@@ -69,7 +67,12 @@ class OracleBackend:
 
         out = self.output_dir / f"{task.segment_id}.mp4"
         notes: list[str] = []
-        if not _ffmpeg_split(source, out, start, duration):
+        if not source.is_file():
+            # CPU / README smoke has no frozen source clip; still emit a real mp4 so the
+            # production loop can close segments instead of silently skipping them.
+            notes.extend(write_placeholder_mp4(out, seconds=duration))
+            notes.append("oracle_placeholder_no_source")
+        elif not _ffmpeg_split(source, out, start, duration):
             shutil.copy2(source, out)
             notes.append("oracle_full_copy_no_ffmpeg")
 
