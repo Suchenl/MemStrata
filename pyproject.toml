@@ -15,7 +15,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+# Test-time dependencies. The base install stays light (numpy + pillow); the
+# shipped unit suite exercises the mask-quality (scipy) and jitter (OpenCV)
+# skills, so `pip install -e ".[dev]"` pulls those in to run the full suite.
+dev = [
+  "pytest>=8",
+  "opencv-python-headless",
+  "scipy",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
