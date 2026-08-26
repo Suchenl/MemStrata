@@ -113,10 +113,8 @@ python3 \
 
 ## 5. 运行要求（GPU / 远程）
 
-- GPU 优先级：h800 > kml-a800(remote) > local A800；**只在分配节点调度**（a800 node2/node3，h800 node1）。
-- 远程作业必须 `setsid` 防 SSH/tmux 断连；BDY-A800 走 `scripts/tgpu_fs.py` 共享 FS 队列，禁 SSH。
-- 详见技能 [`montage-gpu-run`](../../../../.agents/skills/workflows/montage-gpu-run/SKILL.md)（chunk 对齐 / 正确 python /
-  tgpu 引号 / VACE server / 不可浏览视频等坑）。
+- GPU 优先级：大显存卡优先；**只在你自己分配到的节点上调度**。
+- 远程作业必须 `setsid`（或等价）防止 SSH/tmux 断连。
 - 判分 API 必须带 `/chat/completions` 全路径。
 
 ## 6. 发布自包含检查单（release blockers）

@@ -10,7 +10,7 @@
 
 | 项 | 决策 | 理由 |
 |---|---|---|
-| 生产节点 | **kml-a800 node1（8×80GB，全空）** via tgpu + tmux | 全流程需并存 4 个重服务（Qwen MLLM + FLUX + 视频 + crop），单卡放不下；node1 八卡全空。 |
+| 生产节点 | 多卡训练机 + tmux | 全流程需并存 4 个重服务（Qwen MLLM + FLUX + 视频 + crop），单卡放不下。 |
 | 本机 GPU | GPU0 空、GPU1 被 `qwen3-vl-32b`@:8110 占（=bench Stage-2 judge） | 本机不适合跑全流程；judge 保留不动。 |
 | 视频后端 | **`wan22_i2v_a14b_lightx2v_4step_morphic`**（morphic LoRA） | 今日人脸测试：SVI 在 4-step 蒸馏上**把脸溶成灰雾**，morphic 脸全程完好（见 §1）。故默认用 morphic。 |
 | 关键帧 | **FLUX 开**（`--flux`），每镜 `--force-recompose` | 关键帧/首帧必须 FLUX；每镜重生关键帧＝影视级质量、无 AR 漂移，且每 chunk 都走记忆读路径（利于客观指标）。 |

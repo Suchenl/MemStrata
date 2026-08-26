@@ -33,7 +33,7 @@ PY=python3   # 节点无 repo .venv
 `vmem_bench` import 时强制 `HF_HUB_OFFLINE=1`，所以 **siglip2-base-patch16-224 必须先在本地
 缓存**（`$HF_HOME/hub/models--google--siglip2-base-patch16-224`）；缺就先一次性
 `huggingface_hub.snapshot_download("google/siglip2-base-patch16-224")`（需临时联网），之后即可离线跑。
-长任务在节点的 **tmux** 里跑（SSH 掉线不杀任务）；不要前台挂在 tgpu SSH 会话上。
+长任务在节点的 **tmux** 里跑（SSH 掉线不杀任务）；不要把前台挂在会随登录退出的 SSH 会话上。
 > 节点 CPU 争抢（如他人的大批量 ffmpeg，`loadavg` 几十）会让打分（图像预处理 CPU-bound）慢几十倍；
 > 铺开前先 `cat /proc/loadavg` 看一眼，必要时 `OMP_NUM_THREADS=2 MKL_NUM_THREADS=2` 做好邻居。
 
@@ -54,9 +54,8 @@ CUDA_VISIBLE_DEVICES=0 $PY scripts/vmem_bench/compare/generate_causal_traces.py 
     --iamflow-llm-endpoint http://127.0.0.1:8100/v1 \
     --iamflow-vlm-endpoint http://127.0.0.1:8101/v1 --iamflow-vlm-cache
 ```
-多卡/多节点并行（墙钟≈最慢单片）：先在每个 target 起
-`python scripts/tgpu_fs.py worker --cluster kml-a100 --node 1`，再加
-`--submit kml-a100:1:0 kml-a100:2:0`。
+多卡/多节点并行（墙钟≈最慢单片）：每个 GPU 单独起一个 `generate_causal_traces.py`
+（或 `causal/runner.py`）进程，影片列表互斥。
 
 ## 第 2 步：跑全部系统 × 22 部影片
 

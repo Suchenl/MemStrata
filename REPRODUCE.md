@@ -43,7 +43,7 @@ bash scripts/memstrata/cpu_demo.sh
 本仓只提供 **当时的方法代码**。还需要：
 
 1. 同源的 **VMem-Bench `paper-reproduction`**（adapter + gold JSON + Stage 1 runner）。
-2. **源视频**：在 VMem-Bench 仓跑 `bash scripts/prepare_blender.sh`（官方 BBB）；LSMDC 需自行申请，本仓与 HF **都不发像素**。
+2. **源视频**：逐步获取说明见 VMem-Bench [`docs/DATA.md`](https://github.com/Suchenl/VMem-Bench/blob/paper-reproduction/docs/DATA.md)（并排放时是 `../VMem-Bench/docs/DATA.md`）。BBB：`bash scripts/prepare_blender.sh`。LSMDC：官方申请页 + 拼成 `LSMDC_Videos_Stitched/<movie_id>.mp4`。本仓与 HF **都不发像素**。
 3. 权重：见 [`MODELS.md`](MODELS.md)。`python ../VMem-Bench/scripts/doctor.py` 会打印缺哪一项、以及对应的 `huggingface-cli` 命令。
 4. GPU。91 部电影的 Stage 1 不是 CPU 能做完的。
 
