@@ -4,5 +4,5 @@ title_en = "Generation-Path Routing"
 description_en = "Generation-path router (role R2b): from prompt + intent + which referenced entities are on the previous segment's last frame, decide how to seed the next segment — continue_ar (Helios continues from the prior video window video=[style_anchor + ~73 recent frames], history_sizes=[16,2,1]) / reanchor_lastframe (prev last frame as i2v anchor + new prompt) / recompose_partial (paste a returning crop onto the last frame, then i2v) / recompose_keyframe (R3→R4→FLUX fresh keyframe from memory). A deterministic rule layer restricts the feasible modes (no prior segment / scene cut ⇒ recompose only); the MLLM picks among them and is re-validated. continue_ar MUST use video= (not image=<last frame>): image/video are mutually exclusive and a single last frame cannot preserve motion continuity."
 entry_point = "memstrata.skills.generation_routing:GenerationRouter"
 dependent_models = ["Qwen3.5-9B-Instruct"]
-environment = "vace"
+environment = "python3"
 vram_required_mib = 0

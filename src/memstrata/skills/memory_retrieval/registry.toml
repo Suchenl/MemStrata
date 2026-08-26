@@ -5,7 +5,7 @@ description_en = "MemStrata's memory-recall skill: given the current prompt, rec
 entry_point = "memstrata.skills.memory_retrieval:build_retriever"
 name_match_fn = "memstrata.skills.memory_retrieval:name_match"
 dependent_models = ["Qwen3-Embedding-4B (text-text)", "SigLIP2 (text-frame)", "DINOv3 ViT-B/16 (keyframe diversity)"]
-environment = "vace"
+environment = "python3"
 vram_required_mib = 0
 
 [knobs]

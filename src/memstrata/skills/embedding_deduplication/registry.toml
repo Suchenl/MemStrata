@@ -4,5 +4,5 @@ title_en = "Embedding Deduplication"
 description_en = "Model-free deduplication over embeddings including identity matching and non-redundant selection."
 entry_point = "memstrata.skills.embedding_deduplication:select_non_redundant"
 dependent_models = []
-environment = "MultiShotMaster"
+environment = "python3"
 vram_required_mib = 0

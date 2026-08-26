@@ -4,7 +4,7 @@ title_en = "Intent Understanding (read path, Stage 3)"
 description_en = "Paper Stage 3 intent interpretation: resolve external intent g_n + addressable asset space A_n into a structured request q_n (which existing asset ids + angle/state preferences) plus a light enhanced prompt p̃_n. FAST (default, 0 model calls) uses name/alias match (reusing skills.memory_retrieval.name_match), falling back to description-overlap then recency; SLOW (opt-in) adds an MllmIntentResolver reasoning over the bank listing but never invents ids outside A_n. This skill only parses intent; dereferencing q_n is the separate skills.composition (Compose) stage."
 entry_point = "memstrata.skills.intent_understanding:IntentInterpreter"
 dependent_models = ["Qwen3.5-9B-Instruct (SLOW mode only; FAST default is model-free)"]
-environment = "vace"
+environment = "python3"
 vram_required_mib = 0
 
 # Read-path tuning knobs (surfaced to skills/optimization for the context_not_read signal).

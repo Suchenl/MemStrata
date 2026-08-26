@@ -4,5 +4,5 @@ title_en = "Asset Decomposition"
 description_en = "Role-aware asset decomposition (paper Decompose step): targeted per-named-entity crop from the generated chunk (not open-vocab), type-routed encoding, one Observation each for the curate step. Crop isolation is provided by the crop_acquisition / entity_grounding skills."
 entry_point = "memstrata.skills.decomposition:RoleAwareDecomposer"
 dependent_models = []
-environment = "vace"
+environment = "python3"
 vram_required_mib = 0

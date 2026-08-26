@@ -5,7 +5,7 @@ description_en = "Paper Compose step (read path): resolve external intent g_n + 
 entry_point = "memstrata.skills.composition:IntentInterpreter"
 compose_fn = "memstrata.skills.composition:compose"
 dependent_models = ["Qwen3.5-9B-Instruct (slow mode only; FAST default is model-free)"]
-environment = "vace"
+environment = "python3"
 vram_required_mib = 0
 
 # Read-path tuning knobs (surfaced to skills/optimization for the context_not_read signal).
