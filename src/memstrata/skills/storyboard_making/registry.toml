@@ -6,5 +6,5 @@ entry_point = "memstrata.skills.storyboard_making:StoryboardMaker"
 dependent_models = [
     "black-forest-labs/FLUX.2-klein-9b-kv"
 ]
-environment = "flux2"
+environment = "python3"
 vram_required_mib = 9318  # ~9.1 GB (FP8, flux.2-klein-9b-kv-fp8, production default)

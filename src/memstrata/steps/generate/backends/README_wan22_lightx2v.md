@@ -14,8 +14,8 @@ FLUX keyframe into a chunk video; the external stratified memory supplies long-r
 
 ## One-time setup (blocked on the distilled weights the user is downloading)
 
-1. **Install LightX2V** into an env (the `helios` env already has FA2/FA3; a dedicated
-   `lightx2v` env is cleaner):
+1. **Install LightX2V** into a Python env that already has FA2/FA3 (a dedicated
+   LightX2V env is cleaner):
    ```bash
    git clone https://github.com/ModelTC/LightX2V && cd LightX2V
    pip install -e .          # + follow its README for the attention kernel (sage_attn2 / flash-attn)

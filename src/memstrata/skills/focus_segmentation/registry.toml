@@ -4,5 +4,5 @@ title_en = "Focus Segmentation"
 description_en = "Explicit in-focus vs out-of-focus plane segmentation from a single image using reblur gradient ratio."
 entry_point = "memstrata.skills.focus_segmentation:focus_map"
 dependent_models = []
-environment = "MultiShotMaster"
+environment = "python3"
 vram_required_mib = 0

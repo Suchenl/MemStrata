@@ -11,7 +11,7 @@ the manager brings each one up **reuse-first**:
     and poll until healthy or timeout.
 
 Scope note: the FLUX image server, Helios/Wan video servers and the S5 crop-acq server already
-self-start from inside their backends (file-queue servers that own their own conda env/GPU), so
+self-start from inside their backends (file-queue servers that own their own interpreter/GPU), so
 they are intentionally NOT re-managed here. The one service that was previously manual — the
 Qwen OpenAI-compatible MLLM endpoint shared by the keyframe composer (R3/R4) and the generation
 router — is what this layer provisions.

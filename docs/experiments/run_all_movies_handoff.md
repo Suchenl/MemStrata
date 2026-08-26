@@ -44,7 +44,7 @@ PY=python3   # 节点无 repo .venv
 缺 iamflow，其余未开始。脚本逐 stage 幂等可续跑。
 
 ```bash
-# (可选) 先从 vllm env 起 IAMFlow 的 LLM/VLM 服务器（DiT 仍留在 vace，忠实提速）
+# (可选) 先起 IAMFlow 的 LLM/VLM 服务器（DiT 仍留在训练 Python 进程，忠实提速）
 bash scripts/baselines/iamflow/servers/serve_iamflow_vllm.sh 0        # LLM :8100 + VLM :8101
 curl -s http://127.0.0.1:8100/v1/models             # ready 后再跑
 
@@ -125,5 +125,5 @@ data/BlenderOpenMovies/big_buck_bunny` 与一部 caminandes），逐项核对下
 - 不 truncate 历史、不换蒸馏/更小模型、不用 name/budget 代理当方法行。
 - 因果对手的机制 forward 不能省（省了就是 `*_budget_proxy` 消融，非方法行）。
 - `decmem` 不进主表（输入模态不匹配，H800 也解决不了）。
-- IAMFlow 的 DiT/VAE 始终在本地 `vace` 进程跑（与已冻结 BBB trace 的 KV 数值一致）；vLLM 只承接
+- IAMFlow 的 DiT/VAE 始终在本地训练进程跑（与已冻结 BBB trace 的 KV 数值一致）；vLLM 只承接
   LLM/VLM（同权重、贪心解码）。

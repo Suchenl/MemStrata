@@ -1,8 +1,7 @@
 # MemStrata · 模型权重 / 环境 / 运行要求（唯一权威清单）
 
-> 目的：把 MemStrata（SUT `memstrata` + 基准 `vmem_bench` + baselines）用到的**所有**
-> 权重位置、conda 环境、环境变量、运行要求集中到一处，便于管理与**独立发布**。
-> 新增/换权重/换环境时**只改本文件**，其它文档引用此处，不要另立清单。
+> 目的：把 MemStrata 用到的**所有**权重位置、Python 依赖、环境变量、运行要求集中到一处。
+> 新增/换权重时**只改本文件**，其它文档引用此处，不要另立清单。
 >
 > 发布红线（见 [`../../AGENTS.md`](../../AGENTS.md) 规则 1）：`src/memstrata/` 与
 > `src/vmem_bench/` **不得 import `benchmarks/VMem-Bench/` 之外的代码**。第三方库与
@@ -67,16 +66,17 @@
 > 方案设计见 [`../showcase/audio_pipeline_PLAN.md`](../showcase/audio_pipeline_PLAN.md)（CosyVoice2 对白 /
 > ACE-Step BGM / Stable Audio Open foley + ducking + 对齐）。权重已下载，MVP 待接线。
 
-## 2. Conda 环境与归属
+## 2. Python environments
 
-根：``
+Use a CPython 3.10+ interpreter with the packages you actually run. There is no
+required conda env name.
 
-| 环境 | 用途 | 关键约束 |
-|---|---|---|
-| `vace` | **主环境**：pytest、`montage`/`memstrata` 主流程、Wan2.2 lightx2v（editable 装入，torch 2.5.1+cu124 + flash_attn2） | 系统 python **无 pytest**，测试必须用它：`python3` |
-| `helios` | **crop-acquisition server 子进程**（py3.11 + torch 2.10，匹配 vendored transformers 5.9 的 cp311 .so） | crop_client 默认 `python=.../envs/helios/bin/python`；client 端可用任意 env |
-| `vllm` | MLLM 服务（`serve_qwen.sh` 默认 `VLLM_ENV`） | vLLM serve Qwen3.5-9B / Qwen3-VL-8B |
-| `qwen` / `slotmem` / `diffsynth*` / `flux2` 等 | 特定 baseline / 后端 | 按需，见各自 serve 脚本 |
+| Role | Typical stack |
+|---|---|
+| CPU tests / `recording` demo | `pip install -e ".[dev]"` (numpy, pillow, pytest) |
+| Perception / SAM3 crop server | CPython **3.11** + torch + vendored `models/vendor/sam3_transformers59` (transformers 5.9). Set `MEMSTRATA_PYTHON` if that is not your default `python3`. |
+| Wan / LightX2V generation | torch + flash-attn matching the chosen backend (see the backend TOML) |
+| MLLM judge / IAMFlow HTTP | vLLM or any OpenAI-compatible server; point `*_ENDPOINT` env vars at it |
 
 ## 3. 环境变量（MEMSTRATA_*）
 

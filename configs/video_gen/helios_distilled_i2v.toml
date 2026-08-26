@@ -11,7 +11,7 @@ family = "helios"
 model = "${PUBLIC_MODELS_ROOT}/BestWishYsh/Helios-Distilled"
 code_root = "${HELIOS_CODE_ROOT}"
 python = "${HELIOS_PYTHON:-python}"
-# diffusers export_to_video -> imageio-ffmpeg; helios env has no ffmpeg, borrow vace's.
+# Use ffmpeg on PATH (imageio-ffmpeg).
 ffmpeg = "ffmpeg"
 # HF/kernels caches for Helios weights + FA2 kernel snapshot.
 hf_home = "./models/model_weights"

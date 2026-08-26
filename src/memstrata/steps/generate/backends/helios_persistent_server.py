@@ -8,7 +8,7 @@ pipeline once (the ~5min cold start is paid a single time) and serves sequential
 The pipeline setup + i2v call faithfully mirror
 ``experiments/probe/helios_distilled_i2v_from_flux`` (which mirrors the official
 ``infer_helios.py``). It is dependency-light and imports **no** ``memstrata`` code, so it
-runs cleanly inside the ``helios`` conda env. The env quirks (HF ``kernels`` FA2 revision
+runs cleanly in an interpreter that has Helios installed. The env quirks (HF ``kernels`` FA2 revision
 alias via ``sitecustomize``, ``MONTAGE_HELIOS_DEFER_KERNEL_LOAD``, offline HF caches,
 ``HELIOS_ROOT`` on ``PYTHONPATH``, ``IMAGEIO_FFMPEG_EXE``) are set by ``HeliosBackend._env``.
 """

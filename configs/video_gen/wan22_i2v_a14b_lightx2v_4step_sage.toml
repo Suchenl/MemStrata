@@ -1,6 +1,6 @@
 # SAGE variant of wan22_i2v_a14b_lightx2v_4step.toml — identical except self-attn uses
-# SageAttention v2 (sage_attn2). SageAttention 1.0.6 (Triton, zero-compile) is installed in the
-# vace env and works on both A800 (sm80) and H800 (sm90). Used ONLY for a same-keyframe A/B speed
+# SageAttention v2 (sage_attn2). SageAttention 1.0.6 (Triton, zero-compile) works on
+# both A800 (sm80) and H800 (sm90). Used ONLY for a same-keyframe A/B speed
 # test against the flash_attn2 lightx2v backend; the flash one stays the stable default.
 
 [models.wan22_i2v_a14b_lightx2v_4step_sage]

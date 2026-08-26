@@ -274,7 +274,7 @@ def _resolve_python(raw: str) -> str:
     if not raw or raw == "None":
         raise ValueError(
             "wan22_turbo backend requires `python` (an interpreter with torch + flash-attn, "
-            "e.g. the vace env)"
+            "e.g. torch + flash-attn)"
         )
     path = Path(raw)
     return str(path if path.is_absolute() else repo_root() / path)

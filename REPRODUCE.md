@@ -25,3 +25,7 @@ CPU smoke in this repo:
 PYTHONPATH=src python3 -m memstrata.production.run \
   --backend recording --decompose none --no-flux --no-autoserve --segments 2
 ```
+
+## Citation
+
+See [`CITATION.cff`](CITATION.cff).

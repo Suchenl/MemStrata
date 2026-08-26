@@ -4,5 +4,5 @@ title_en = "Measure Video Jitter"
 description_en = "Measures within-shot micro-jitter: phase-correlation per-frame global translation, summarised as median acceleration and acceleration/speed ratio with a steady|jittery|noise-dominated verdict, plus content-jump detection so cuts are not read as shake. The verdict ranks arms of the same shot and prompt; it is not an absolute realism gate."
 entry_point = "memstrata.skills.mesure_video_jitter:measure_jitter"
 dependent_models = []
-environment = "helios"
+environment = "python3"
 vram_required_mib = 0

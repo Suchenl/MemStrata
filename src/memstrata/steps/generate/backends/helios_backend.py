@@ -28,9 +28,9 @@ from memstrata.steps.generate.schemas import (
     MediaTaskType,
 )
 
-# HF `kernels` FA2 revision alias shim for the helios env on A800 (see probe / kernel note).
+# HF `kernels` FA2 revision alias shim for Helios on A800 (see probe / kernel note).
 _SITECUSTOMIZE = '''\
-"""FA2 kernel-version alias shim for the Helios env on A800 (HF_HUB_OFFLINE=1)."""
+"""FA2 kernel-version alias shim for Helios on A800 (HF_HUB_OFFLINE=1)."""
 import kernels._versions as _kernel_versions
 import kernels.utils as _kernel_utils
 
@@ -304,7 +304,7 @@ def _reference_image_paths(task: MediaGenerationTask) -> list[Path]:
 
 def _resolve_python(raw: str) -> str:
     if not raw or raw == "None":
-        raise ValueError("Helios backend requires `python` (path to the helios-env interpreter)")
+        raise ValueError("Helios backend requires `python` (interpreter with Helios installed)")
     path = Path(raw)
     return str(path if path.is_absolute() else repo_root() / path)
 

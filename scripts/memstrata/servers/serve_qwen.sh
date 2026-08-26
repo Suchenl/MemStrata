@@ -15,7 +15,6 @@ KIND="${1:?usage: serve_qwen.sh <text|vision> <gpu> <port>}"
 GPU="${2:?gpu id}"
 PORT="${3:?port}"
 
-VLLM_ENV="${VLLM_ENV:-vllm}"
 PUBLIC_MODELS_ROOT="${PUBLIC_MODELS_ROOT:-${PUBLIC_MODELS_ROOT}}"
 
 case "${KIND}" in
@@ -38,10 +37,12 @@ esac
 
 [[ -d "${MODEL_PATH}" ]] || { echo "model path missing: ${MODEL_PATH}" >&2; exit 1; }
 
-export PATH="${VLLM_ENV}/bin:${PATH}"
-for d in "${VLLM_ENV}"/lib/python*/site-packages/nvidia/nvjitlink/lib; do
-  [[ -d "${d}" ]] && { export LD_LIBRARY_PATH="${d}:${LD_LIBRARY_PATH:-}"; break; }
-done
+if [[ -n "${VLLM_ENV:-}" && -d "${VLLM_ENV}/bin" ]]; then
+  export PATH="${VLLM_ENV}/bin:${PATH}"
+  for d in "${VLLM_ENV}"/lib/python*/site-packages/nvidia/nvjitlink/lib; do
+    [[ -d "${d}" ]] && { export LD_LIBRARY_PATH="${d}:${LD_LIBRARY_PATH:-}"; break; }
+  done
+fi
 export CUDA_VISIBLE_DEVICES="${GPU}"
 
 exec vllm serve "${MODEL_PATH}" \

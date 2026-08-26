@@ -14,7 +14,7 @@ set -euo pipefail
 MONTAGE_ROOT="${MONTAGE_ROOT:-.}"
 REPO="${WEDETECT_REPO:-${MONTAGE_ROOT}/models/vendor/WeDetect}"
 WEIGHTS="${WEDETECT_WEIGHTS:-${PUBLIC_MODELS_ROOT}/_classified_by_task/Object_Detection}"
-PY="${WEDETECT_PYTHON:-wedetect/bin/python}"
+PY="${WEDETECT_PYTHON:-python3}"
 
 REF="${REF:-2B}"                                   # 2B | 4B
 REF_CKPT="${WEDETECT_REF_CKPT:-${WEIGHTS}/WeDetect-Ref-${REF}}"

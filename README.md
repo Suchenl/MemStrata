@@ -25,6 +25,18 @@ python -m pytest -q
 
 `memstrata` and `vmem_bench` never import each other. Evaluation adapters live only in the VMem-Bench repo.
 
+## Citation
+
+```bibtex
+@article{chen2026memstrata,
+  title={Stratifying and Benchmarking Long-Range Memory for Causal Long Video Generation},
+  author={Chen, Yuzhuo and Shi, Huafeng and Wang, Xinyu and Wang, Yucheng and Hong, Haoqin and Zhang, Guoxin and Ma, Zehua},
+  year={2026}
+}
+```
+
+See [`CITATION.cff`](CITATION.cff). Code is Apache-2.0.
+
 ---
 
 # MemStrata（方法说明）
