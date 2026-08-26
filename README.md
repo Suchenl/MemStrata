@@ -1,20 +1,26 @@
 # MemStrata
 
-Public code for **MemStrata** — stratified visual memory for controllable long-video generation.
+# Getting started (no GPU)
 
-- This repo (`main` = production, `paper-reproduction` = paper-metric freeze)
-- Benchmark: [github.com/Suchenl/VMem-Bench](https://github.com/Suchenl/VMem-Bench)
-- Gold / prompts: [huggingface.co/datasets/Suchenl/VMem-Bench](https://huggingface.co/datasets/Suchenl/VMem-Bench)
-
-The generator \(G_\theta\) is **swappable**. Default production path (documented, not hard-wired): FLUX.2 Klein 9B-KV keyframes → Wan2.2-I2V-A14B LightX2V 4-step. List backends with `python -m memstrata.production.run --list-backends`. Weights are **not** in git; set `PUBLIC_MODELS_ROOT`.
+Clone the two repos **next to each other**:
 
 ```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest -q          # assert-based, no GPU/LLM
-# CPU smoke (no real generator; --no-flux skips FLUX, decompose=none skips Qwen):
-PYTHONPATH=src python3 -m memstrata.production.run \
-  --backend recording --decompose none --no-flux --no-autoserve --segments 2
-# writes mp4 + bank.json under production/outputs/ (gitignored); override with --outputs-root
+git clone https://github.com/Suchenl/MemStrata.git
+git clone https://github.com/Suchenl/VMem-Bench.git
+cd MemStrata
+python -m pip install -e ".[dev]"
+python scripts/memstrata/doctor.py
+bash scripts/memstrata/cpu_demo.sh
+```
+
+That writes a stitchable mp4 + `bank.json` under `production/outputs/`. Weights, Qwen, and Wan are not used.
+
+GPU / paper tables: [`MODELS.md`](MODELS.md) and [`REPRODUCE.md`](REPRODUCE.md). Benchmark: [VMem-Bench](https://github.com/Suchenl/VMem-Bench). Gold: [huggingface.co/datasets/Suchenl/VMem-Bench](https://huggingface.co/datasets/Suchenl/VMem-Bench).
+
+The generator \(G_\theta\) is **swappable**. Default production path (documented, not hard-wired): FLUX.2 Klein 9B-KV keyframes → Wan2.2-I2V-A14B LightX2V 4-step. List backends with `python -m memstrata.production.run --list-backends`.
+
+```bash
+python -m pytest -q
 ```
 
 `memstrata` and `vmem_bench` never import each other. Evaluation adapters live only in the VMem-Bench repo.
