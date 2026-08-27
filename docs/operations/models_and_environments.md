@@ -1,70 +1,78 @@
-# MemStrata · 模型权重 / 环境 / 运行要求（唯一权威清单）
+# MemStrata · Model weights / environments / run requirements (single authoritative list)
 
-> 目的：把 MemStrata 用到的**所有**权重位置、Python 依赖、环境变量、运行要求集中到一处。
-> 新增/换权重时**只改本文件**，其它文档引用此处，不要另立清单。
+> Purpose: gather **all** weight locations, Python dependencies, environment
+> variables, and run requirements that MemStrata uses into one place.
+> When adding/swapping weights, **edit only this file**; other documents reference
+> here rather than maintaining their own list.
 >
-> 发布红线（见 [`../../AGENTS.md`](../../AGENTS.md) 规则 1）：`src/memstrata/` 与
-> `src/vmem_bench/` **不得 import `benchmarks/VMem-Bench/` 之外的代码**。第三方库与
-> **按路径加载的权重**不算耦合。本文件末尾维护「发布自包含检查单」，列出当前尚存的越界依赖。
+> Release red line (see [`../../AGENTS.md`](../../AGENTS.md) rule 1): `src/memstrata/`
+> and `src/vmem_bench/` **must not import code outside `benchmarks/VMem-Bench/`**.
+> Third-party libraries and **weights loaded by path** do not count as coupling.
+> The end of this file maintains a "release self-containment checklist" listing the
+> cross-boundary dependencies that still remain.
 
-## 0. 权重根目录（PUBLIC_MODELS_ROOT）
+## 0. Weight root (PUBLIC_MODELS_ROOT)
 
-代码统一通过环境变量 `PUBLIC_MODELS_ROOT` 解析本地权重（见
-`src/memstrata/encoders/base.py`、`scripts/**/serve_*.sh`、crop server env）。
+The code resolves local weights uniformly through the environment variable
+`PUBLIC_MODELS_ROOT` (see `src/memstrata/encoders/base.py`,
+`scripts/**/serve_*.sh`, and the crop server env).
 
-| 根 | 路径 | 用途 |
+| Root | Path | Purpose |
 |---|---|---|
-| 默认根（代码 default） | `${PUBLIC_MODELS_ROOT}` | 编码器 / MLLM / 视频权重的默认解析根 |
-| 用户扩展根 | `${PUBLIC_MODELS_ROOT}` | dinov3 全档 + **音频模型**都在这里 |
+| Default root (code default) | `${PUBLIC_MODELS_ROOT}` | Default resolution root for encoder / MLLM / video weights |
+| User extended root | `${PUBLIC_MODELS_ROOT}` | The full dinov3 set + **audio models** live here |
 
-> 两个根都存在同名 `facebook/dinov3-vitb16-pretrain-lvd1689m`。跑校准/闭环时用哪个根，就
-> `export PUBLIC_MODELS_ROOT=<root>`；音频相关必须用扩展根（默认根下没有 `Audio/`）。
+> Both roots contain a `facebook/dinov3-vitb16-pretrain-lvd1689m` of the same
+> name. When running calibration / the closed loop, `export PUBLIC_MODELS_ROOT=<root>`
+> for whichever root you use; anything audio-related must use the extended root
+> (the default root has no `Audio/`).
 
-## 1. 权重清单（按角色）
+## 1. Weight inventory (by role)
 
-路径 = `<PUBLIC_MODELS_ROOT>/<相对路径>`，除非另注绝对路径。
+Path = `<PUBLIC_MODELS_ROOT>/<relative path>` unless an absolute path is noted.
 
-### 1.1 视觉编码器（相似度门 / 检索 / 打分）
-| 角色 | provider | 相对路径 | 说明 |
+### 1.1 Visual encoders (similarity gate / retrieval / scoring)
+| Role | provider | Relative path | Notes |
 |---|---|---|---|
-| 通用图像 embed（写路径 gate②/去冗/自审、检索关键帧多样性） | `dinov3` | `facebook/dinov3-vitb16-pretrain-lvd1689m`（另有 `-vitl16-`/`-vits16-`，仅在扩展根） | 写路径阈值**编码器相对**，换它必须重跑校准（见 §4） |
-| 文本↔帧跨模态 | `siglip2` | `google/siglip2-base-patch16-512`（打分侧默认 `-224`，`MEMSTRATA_SIGLIP2_MODEL`） | text→frame 检索 / 视觉打分 |
-| 文本↔文本 | `qwen3_embedding` | `Qwen/Qwen3-Embedding-4B` | 可走本地权重，或设 `MEMSTRATA_QWEN3_EMBEDDING_ENDPOINT` 走 server |
-| 人脸（可选路由） | `insightface` | 由 `MEMSTRATA_FACE_EMBEDDER_WEIGHTS` / `weights=` 指定 | 仅在开启 face 路由时 |
+| General image embed (write-path gate②/dedup/self-audit, retrieval keyframe diversity) | `dinov3` | `facebook/dinov3-vitb16-pretrain-lvd1689m` (also `-vitl16-`/`-vits16-`, only on the extended root) | Write-path thresholds are **encoder-relative**; swapping it requires re-running calibration (see §4) |
+| Text↔frame cross-modal | `siglip2` | `google/siglip2-base-patch16-512` (scoring side defaults to `-224`, `MEMSTRATA_SIGLIP2_MODEL`) | text→frame retrieval / visual scoring |
+| Text↔text | `qwen3_embedding` | `Qwen/Qwen3-Embedding-4B` | Can use local weights, or set `MEMSTRATA_QWEN3_EMBEDDING_ENDPOINT` to go through a server |
+| Face (optional routing) | `insightface` | Specified by `MEMSTRATA_FACE_EMBEDDER_WEIGHTS` / `weights=` | Only when face routing is enabled |
 
-### 1.2 感知（crop 获取 / grounding）
-| 组件 | 权重/依赖 | 位置 | 说明 |
+### 1.2 Perception (crop acquisition / grounding)
+| Component | Weights/dependency | Location | Notes |
 |---|---|---|---|
-| SAM3 概念分割 + DINOv3 + GroundingDINO | vendored `sam3_transformers59`（transformers 5.9，cp311 .so） | `<montage_root>/models/vendor/sam3_transformers59` | **⚠️ 当前在 MemStrata 之外**（发布需内置，见 §6）。crop server 子进程用 py3.11 env |
-| GroundingDINO 权重 | 随 crop server 解析（缺权重则优雅降级为纯 kind 检索） | `PUBLIC_MODELS_ROOT` 下 | bbox-only 兜底标 `bbox_high_recall_no_mask` |
+| SAM3 concept segmentation + DINOv3 + GroundingDINO | vendored `sam3_transformers59` (transformers 5.9, cp311 .so) | `<montage_root>/models/vendor/sam3_transformers59` | **⚠️ Currently outside MemStrata** (release needs it bundled, see §6). The crop server subprocess uses a py3.11 env |
+| GroundingDINO weights | Resolved together with the crop server (missing weights degrade gracefully to kind-only retrieval) | Under `PUBLIC_MODELS_ROOT` | The bbox-only fallback is tagged `bbox_high_recall_no_mask` |
 
-### 1.3 MLLM（planner / 角度属性 / 打分判分）
-由 `scripts/memstrata/servers/serve_qwen.sh` 用 vLLM 起 OpenAI 兼容服务：
-| 角色 | 模型 | 相对路径 | served name |
+### 1.3 MLLM (planner / angle attributes / scoring judgment)
+Started by `scripts/memstrata/servers/serve_qwen.sh` using vLLM as an OpenAI-compatible service:
+| Role | Model | Relative path | served name |
 |---|---|---|---|
-| 文本 R1/R2/R3/R5（也可全角色） | Qwen3.5-9B | `Qwen/Qwen3.5-9B` | `Qwen3.5-9B-Instruct` |
-| 视觉 R4/R7/R8（角度属性 / 视觉判分） | Qwen3-VL-8B-Instruct | `Qwen/Qwen3-VL-8B-Instruct` | `Qwen3-VL-8B-Instruct` |
-| 判分（Stage2 视觉覆盖） | qwen3-vl-32b（外部判分 API） | 判分服务 | **调用必须带 `/chat/completions` 全路径**（曾 404） |
+| Text R1/R2/R3/R5 (can also cover all roles) | Qwen3.5-9B | `Qwen/Qwen3.5-9B` | `Qwen3.5-9B-Instruct` |
+| Visual R4/R7/R8 (angle attributes / visual judgment) | Qwen3-VL-8B-Instruct | `Qwen/Qwen3-VL-8B-Instruct` | `Qwen3-VL-8B-Instruct` |
+| Judging (Stage 2 visual coverage) | qwen3-vl-32b (external judging API) | Judging service | **Calls must include the full `/chat/completions` path** (previously 404'd) |
 
-### 1.4 视频生成 / 关键帧
-| 组件 | 权重 | 位置 | 说明 |
+### 1.4 Video generation / keyframes
+| Component | Weights | Location | Notes |
 |---|---|---|---|
-| 视频 i2v（默认后端） | Wan2.2-I2V-A14B lightx2v 4-step distill | `${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step` | 由 `setup_lightx2v_weights.sh` 从两份 distilled safetensors + 基座组装；配置见 `configs/video_gen/wan22_i2v_a14b_lightx2v_4step.toml` |
-| 关键帧融合 | FLUX.2 klein（`flux.2-klein-9b-kv-fp8`） | 见对应 image backend config | R3/R4 collage → FLUX I2I，可 `--no-flux` 关闭 |
+| Video i2v (default backend) | Wan2.2-I2V-A14B lightx2v 4-step distill | `${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step` | Assembled by `setup_lightx2v_weights.sh` from two distilled safetensors + the base model; config at `configs/video_gen/wan22_i2v_a14b_lightx2v_4step.toml` |
+| Keyframe fusion | FLUX.2 klein (`flux.2-klein-9b-kv-fp8`) | See the corresponding image backend config | R3/R4 collage → FLUX I2I, can be turned off with `--no-flux` |
 
-### 1.5 音频（showcase / audio MVP，权重在扩展根 `Audio/` 下）
-根：`${PUBLIC_MODELS_ROOT}/Audio`
-| 用途 | 模型 | 子路径 |
+### 1.5 Audio (showcase / audio MVP, weights under the extended root `Audio/`)
+Root: `${PUBLIC_MODELS_ROOT}/Audio`
+| Purpose | Model | Subpath |
 |---|---|---|
-| 对白 TTS | CosyVoice2-0.5B | `FunAudioLLM/CosyVoice2-0.5B` |
-| 对白 TTS（备选/新版） | Fun-CosyVoice3-0.5B-2512 | `FunAudioLLM/Fun-CosyVoice3-0.5B-2512` |
-| CosyVoice 文本前端 | CosyVoice-ttsfrd | `FunAudioLLM/CosyVoice-ttsfrd` |
-| 情感/双语 TTS（备选） | IndexTTS-2 | `IndexTeam/IndexTTS-2` |
-| 背景音乐 BGM | ACE-Step v1.5 | `ACE-Step/acestep-v15-sft`、`ACE-Step/acestep-v15-xl-turbo-diffusers` |
-| 音效 foley | Stable Audio Open | `stabilityai/stable-audio-open-1.0`、`stabilityai/stable-audio-open-small` |
+| Dialogue TTS | CosyVoice2-0.5B | `FunAudioLLM/CosyVoice2-0.5B` |
+| Dialogue TTS (alternative/new version) | Fun-CosyVoice3-0.5B-2512 | `FunAudioLLM/Fun-CosyVoice3-0.5B-2512` |
+| CosyVoice text frontend | CosyVoice-ttsfrd | `FunAudioLLM/CosyVoice-ttsfrd` |
+| Emotional/bilingual TTS (alternative) | IndexTTS-2 | `IndexTeam/IndexTTS-2` |
+| Background music (BGM) | ACE-Step v1.5 | `ACE-Step/acestep-v15-sft`, `ACE-Step/acestep-v15-xl-turbo-diffusers` |
+| Sound effects (foley) | Stable Audio Open | `stabilityai/stable-audio-open-1.0`, `stabilityai/stable-audio-open-small` |
 
-> 方案设计见 [`../showcase/audio_pipeline_PLAN.md`](../showcase/audio_pipeline_PLAN.md)（CosyVoice2 对白 /
-> ACE-Step BGM / Stable Audio Open foley + ducking + 对齐）。权重已下载，MVP 待接线。
+> For the design, see [`../showcase/audio_pipeline_PLAN.md`](../showcase/audio_pipeline_PLAN.md) (Chinese)
+> (CosyVoice2 dialogue / ACE-Step BGM / Stable Audio Open foley + ducking +
+> alignment). The weights are downloaded; the MVP is pending wiring.
 
 ## 2. Python environments
 
@@ -78,25 +86,26 @@ required conda env name.
 | Wan / LightX2V generation | torch + flash-attn matching the chosen backend (see the backend TOML) |
 | MLLM judge / IAMFlow HTTP | vLLM or any OpenAI-compatible server; point `*_ENDPOINT` env vars at it |
 
-## 3. 环境变量（MEMSTRATA_*）
+## 3. Environment variables (MEMSTRATA_*)
 
-| 变量 | 作用 | 默认 |
+| Variable | Effect | Default |
 |---|---|---|
-| `PUBLIC_MODELS_ROOT` | 本地权重解析根 | `${PUBLIC_MODELS_ROOT}` |
-| `MEMSTRATA_GENERAL_EMBEDDER_PROVIDER` | 通用图像 embed provider（`hash`\|`dinov3`\|...） | `hash`（非语义，gate②/自审关闭） |
-| `MEMSTRATA_FACE_EMBEDDER_PROVIDER` / `MEMSTRATA_PLACE_EMBEDDER_PROVIDER` | 人脸 / 场所路由 provider | 空（不路由） |
-| `MEMSTRATA_SIGLIP2_WEIGHTS` / `MEMSTRATA_SIGLIP2_MODEL` | siglip2 权重/模型名覆盖 | 相对默认 |
-| `MEMSTRATA_QWEN3_EMBEDDING_ENDPOINT` / `_MODEL` / `_API_KEY` / `_WEIGHTS` | qwen3 文本 embed 走 server 或本地 | 空→本地权重 |
-| `MEMSTRATA_ANGLE_CLASSIFIER` | 角度/属性分类器 `null`\|`heuristic`\|`vlm` | `null`（每 rep 角度未知，**不可报分层结果**） |
-| `MEMSTRATA_CONTEXT_JUDGER_BASE_URL` / `MEMSTRATA_CROP_ATTR_BASE_URL` / `..._MODEL` | planner / 角度属性 MLLM 端点与模型 | 见 `mllm/planner.py`、`mllm/crop_attributes.py` |
-| `MEMSTRATA_SCORING_EMBEDDER_WEIGHTS` / `MEMSTRATA_WEIGHTS_ROOT` | 打分侧编码器权重 | 见 `vmem_bench/scoring/embedder.py` |
-| `MEMSTRATA_ALLOW_HF_DOWNLOAD` | =1 允许 transformers 联网解析（默认离线） | 未设（离线；crop server 设 `HF_HUB_OFFLINE=1`） |
-| `MEMSTRATA_RETRIEVAL_VARIANT` / `MEMSTRATA_RETRIEVAL_TOPK` | 检索 baseline 家族变体 / top-k | 见 `retrieval_family_DESIGN.md` |
+| `PUBLIC_MODELS_ROOT` | Local weight resolution root | `${PUBLIC_MODELS_ROOT}` |
+| `MEMSTRATA_GENERAL_EMBEDDER_PROVIDER` | General image embed provider (`hash`\|`dinov3`\|...) | `hash` (non-semantic, gate②/self-audit off) |
+| `MEMSTRATA_FACE_EMBEDDER_PROVIDER` / `MEMSTRATA_PLACE_EMBEDDER_PROVIDER` | Face / place routing provider | empty (no routing) |
+| `MEMSTRATA_SIGLIP2_WEIGHTS` / `MEMSTRATA_SIGLIP2_MODEL` | siglip2 weights/model-name override | relative default |
+| `MEMSTRATA_QWEN3_EMBEDDING_ENDPOINT` / `_MODEL` / `_API_KEY` / `_WEIGHTS` | qwen3 text embed via server or local | empty → local weights |
+| `MEMSTRATA_ANGLE_CLASSIFIER` | Angle/attribute classifier `null`\|`heuristic`\|`vlm` | `null` (per-rep angle unknown, **stratified results must not be reported**) |
+| `MEMSTRATA_CONTEXT_JUDGER_BASE_URL` / `MEMSTRATA_CROP_ATTR_BASE_URL` / `..._MODEL` | planner / angle-attribute MLLM endpoint and model | see `mllm/planner.py`, `mllm/crop_attributes.py` |
+| `MEMSTRATA_SCORING_EMBEDDER_WEIGHTS` / `MEMSTRATA_WEIGHTS_ROOT` | Scoring-side encoder weights | see `vmem_bench/scoring/embedder.py` |
+| `MEMSTRATA_ALLOW_HF_DOWNLOAD` | =1 allows transformers online resolution (offline by default) | unset (offline; the crop server sets `HF_HUB_OFFLINE=1`) |
+| `MEMSTRATA_RETRIEVAL_VARIANT` / `MEMSTRATA_RETRIEVAL_TOPK` | Retrieval baseline family variant / top-k | see `retrieval_family_DESIGN.md` |
 
-## 4. 写路径阈值校准（换编码器必跑）
+## 4. Write-path threshold calibration (must be run when swapping encoders)
 
-`MemoryPolicy.production()` 里的 per-type 阈值（B_τ / γ_τ / β_τ / cohesion floor）是**编码器相对**的
-起点值，不是测量值。换编码器（如 hash→dinov3）后必须重跑：
+The per-type thresholds in `MemoryPolicy.production()` (B_τ / γ_τ / β_τ / cohesion
+floor) are **encoder-relative** starting values, not measured values. After
+swapping the encoder (e.g. hash→dinov3) you must re-run:
 
 ```bash
 PUBLIC_MODELS_ROOT=${PUBLIC_MODELS_ROOT} \
@@ -106,26 +115,28 @@ python3 \
   --encoder dinov3
 ```
 
-- 标注对照集：`experiments/methods/MemStrata/20260722_memstrata_cohesion_calibration/labels_lsmdc.json`
-- dinov3 缓存嵌入已存在于 20260722 目录（`embeddings_dinov3.json`，可复用免 GPU）
-- 无 GPU 管线自检：`--self-test`
-- 产出 `calibration_result.json` 的 `suggested_policy` 回填 `MemoryPolicy.production()`
+- Labeled reference set: `experiments/methods/MemStrata/20260722_memstrata_cohesion_calibration/labels_lsmdc.json`
+- dinov3 cached embeddings already exist in the 20260722 directory (`embeddings_dinov3.json`, reusable and GPU-free)
+- GPU-free pipeline self-test: `--self-test`
+- The `suggested_policy` in the produced `calibration_result.json` is backfilled into `MemoryPolicy.production()`
 
-## 5. 运行要求（GPU / 远程）
+## 5. Run requirements (GPU / remote)
 
-- GPU 优先级：大显存卡优先；**只在你自己分配到的节点上调度**。
-- 远程作业必须 `setsid`（或等价）防止 SSH/tmux 断连。
-- 判分 API 必须带 `/chat/completions` 全路径。
+- GPU priority: large-VRAM cards first; **only schedule on nodes allocated to you**.
+- Remote jobs must use `setsid` (or equivalent) to survive SSH/tmux disconnects.
+- The judging API must include the full `/chat/completions` path.
 
-## 6. 发布自包含检查单（release blockers）
+## 6. Release self-containment checklist (release blockers)
 
-发布前需消除以下「MemStrata 之外」的依赖（`src/memstrata/` 不得 import 仓库其它路径）：
+Before release, the following "outside MemStrata" dependencies must be eliminated
+(`src/memstrata/` must not import other repo paths):
 
-- [ ] `models/vendor/sam3_transformers59`（crop server 依赖）在 `benchmarks/VMem-Bench/` 之外——需内置或作为可选外部依赖显式声明。
-- [ ] `src/memstrata/skills/embedding_deduplication/`（tests + README）`import montage.skills.embedding_deduplication`——需 vendored 化或删除。
-- [ ] `src/memstrata/skills/focus_segmentation/`（tests + README）`import montage.skills.focus_segmentation`——同上。
-- [ ] `src/memstrata/skills/layout_anchor_processing/` 标注为 "vendored from montage"——确认已真正 vendored、无运行期跨引用。
-- [ ] 视频 lightx2v 权重目录为待组装 TODO：`.../Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step`（用户下载中）。
+- [ ] `models/vendor/sam3_transformers59` (crop server dependency) is outside `benchmarks/VMem-Bench/` — needs to be bundled or explicitly declared as an optional external dependency.
+- [ ] `src/memstrata/skills/embedding_deduplication/` (tests + README) `import montage.skills.embedding_deduplication` — needs to be vendored or removed.
+- [ ] `src/memstrata/skills/focus_segmentation/` (tests + README) `import montage.skills.focus_segmentation` — same as above.
+- [ ] `src/memstrata/skills/layout_anchor_processing/` is marked "vendored from montage" — confirm it is genuinely vendored with no runtime cross-references.
+- [ ] The video lightx2v weight directory is a to-be-assembled TODO: `.../Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step` (user is downloading).
 
-> 校验命令（应为空）：在 `src/memstrata/`、`src/vmem_bench/` 下搜 `import montage` /
-> `from montage` / 指向仓库其它路径的产出写入。
+> Verification command (should be empty): under `src/memstrata/` and
+> `src/vmem_bench/`, search for `import montage` / `from montage` / any output
+> writes that point to other repo paths.
