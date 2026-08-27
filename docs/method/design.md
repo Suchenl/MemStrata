@@ -92,8 +92,8 @@ crop → AngleClassifier → Observation(spatial, state, temporal)
   `metadata.aliases` 归一到同一 asset，读写路径对称，只认显式别名、不做模糊自动合并。
 - **组合预算（axiom 6；`CompositionRequest.context_rep_budget` / `max_reps_per_asset`）**：可选硬上限，
   先砍关系扩展的连续性 rep，再砍点名实体多余 rep，**永不砍点名身份的最后一条 rep**。
-  与 bench 契约见 [`benchmark/crop_contract.md`](../../../../benchmarks/VMem-Bench/docs/benchmark/crop_contract.md)；
-  **Bench+SUT crop 总原则**见[`benchmark/crop_contract.md`](../../../../benchmarks/VMem-Bench/docs/benchmark/crop_contract.md)。
+  与 bench 契约见 [`benchmark/crop_contract.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/benchmark/crop_contract.md)；
+  **Bench+SUT crop 总原则**见[`benchmark/crop_contract.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/benchmark/crop_contract.md)。
 
 环境变量：`MEMSTRATA_ANGLE_CLASSIFIER_BASE_URL`（否则回退 `MEMSTRATA_CONTEXT_JUDGER_BASE_URL`）、
 `MEMSTRATA_ANGLE_CLASSIFIER_MODEL`。
@@ -111,7 +111,7 @@ Observation 可选透传 `spatial_angle` / `state_angle` / `temporal_tag`；缺�
 ## 3. 测试
 
 ```bash
-cd benchmarks/MemStrata
+cd MemStrata
 PYTHONPATH=src python3 src/memstrata/tests/test_replay_roundtrip.py
 PYTHONPATH=src python3 src/memstrata/tests/test_production_dedup.py
 PYTHONPATH=src python3 src/memstrata/tests/test_pipeline_smoke.py

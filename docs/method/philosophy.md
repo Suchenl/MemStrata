@@ -2,7 +2,7 @@
 
 > 本文件是 `memstrata` 方法包（**SUT / 我们的方法**，不是 baseline）的**最高纲领**。任何记忆管理 /
 > 上下文组合相关的取舍，先服从本文件；实现细节（包结构、接线）见 [`design.md`](design.md)，
-> Bench+SUT 共用的 crop 契约见 [`benchmark/crop_contract.md`](../../../../benchmarks/VMem-Bench/docs/benchmark/crop_contract.md)。
+> Bench+SUT 共用的 crop 契约见 [`benchmark/crop_contract.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/benchmark/crop_contract.md)。
 > 当细节文档与本纲领冲突时，**以本纲领为准**，并回改细节文档。
 
 ---

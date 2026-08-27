@@ -275,7 +275,7 @@ JSON（结构与基准 gt 的 `entities` 同源），并把视觉记忆按同根
 ## 运行自检
 
 ```bash
-cd methods/MemStrata
+cd MemStrata
 PYTHONPATH=src python -m pytest src/memstrata/tests -q       # assert-based，无 GPU/LLM
 ```
 
