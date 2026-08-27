@@ -11,6 +11,7 @@
 #   export MEMSTRATA_WEDETECT_URL=http://127.0.0.1:8710
 set -euo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MONTAGE_ROOT="${MONTAGE_ROOT:-.}"
 REPO="${WEDETECT_REPO:-${MONTAGE_ROOT}/models/vendor/WeDetect}"
 WEIGHTS="${WEDETECT_WEIGHTS:-${PUBLIC_MODELS_ROOT}/_classified_by_task/Object_Detection}"
@@ -28,7 +29,7 @@ export PYTHONPATH="${REPO}${PYTHONPATH:+:${PYTHONPATH}}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 
-exec "${PY}" "${MONTAGE_ROOT}/methods/MemStrata/scripts/memstrata/servers/serve_wedetect.py" \
+exec "${PY}" "${HERE}/serve_wedetect.py" \
   --repo "${REPO}" \
   --ref_checkpoint "${REF_CKPT}" \
   --uni_checkpoint "${UNI_CKPT}" \

@@ -11,5 +11,5 @@ def memstrata_root() -> Path:
     for parent in current.parents:
         if parent.name == "MemStrata" and (parent / "src").is_dir():
             return parent
-    # Fallback to parents[3] based on: benchmarks/MemStrata/src/memstrata/lib/paths.py
+    # Fallback to parents[3] based on: src/memstrata/lib/paths.py
     return current.parents[3]
