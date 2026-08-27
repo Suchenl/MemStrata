@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Manual launcher for the persistent crop-acquisition server
-# (GroundingDINO + SAM3 + DINOv3, loaded once).
+# (WeDetect-Ref/optional SAM3 + DINOv3, loaded once).
 #
 # The production loop normally auto-starts this via
 # memstrata.skills.crop_acquisition.crop_client. This script is the
 # manual/debug entrypoint.
 #
-# SAM3 needs transformers>=5.9 (vendored dir prepended on PYTHONPATH).
+# WeDetect-Ref does not need SAM3. The optional SAM3 fallback needs
+# transformers>=5.9 (set MEMSTRATA_SAM3_DEPS to its directory).
 # Use a CPython 3.11 interpreter with torch: export MEMSTRATA_PYTHON=...
 #
 # Usage:
@@ -21,7 +22,11 @@ SERVER_DIR="${1:?usage: serve_crop_acq.sh <server_dir> [device] [idle_timeout]}"
 DEVICE="${2:-}"
 IDLE_TIMEOUT="${3:-1800}"
 
-export PYTHONPATH="${SAM3_DEPS}:${HERE}/src${PYTHONPATH:+:${PYTHONPATH}}"
+PYTHONPATH="${HERE}/src${PYTHONPATH:+:${PYTHONPATH}}"
+if [[ -d "${SAM3_DEPS}" ]]; then
+  PYTHONPATH="${SAM3_DEPS}:${PYTHONPATH}"
+fi
+export PYTHONPATH
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 

@@ -43,7 +43,9 @@ Path = `<PUBLIC_MODELS_ROOT>/<relative path>` unless an absolute path is noted.
 ### 1.2 Perception (crop acquisition / grounding)
 | Component | Weights/dependency | Location | Notes |
 |---|---|---|---|
-| SAM3 concept segmentation + DINOv3 + GroundingDINO | vendored `sam3_transformers59` (transformers 5.9, cp311 .so) | `<montage_root>/models/vendor/sam3_transformers59` | **⚠️ Currently outside MemStrata** (release needs it bundled, see §6). The crop server subprocess uses a py3.11 env |
+| WeDetect-Ref grounding | Separately licensed vendor service | Set `MEMSTRATA_WEDETECT_URL` (default `http://127.0.0.1:8710`) | Faithful default for named crops; it does not require the SAM3 compatibility bundle |
+| SAM3 concept segmentation (fallback) | Optional `transformers>=5.9` compatibility bundle | `MEMSTRATA_SAM3_DEPS` | Used only when WeDetect-Ref is unavailable, or when discovery is enabled |
+| DINOv3 + GroundingDINO | Checkpoints under `PUBLIC_MODELS_ROOT` | See `MODELS.md` | DINOv3 scores identity/novelty; missing GroundingDINO degrades to the available proposal path |
 | GroundingDINO weights | Resolved together with the crop server (missing weights degrade gracefully to kind-only retrieval) | Under `PUBLIC_MODELS_ROOT` | The bbox-only fallback is tagged `bbox_high_recall_no_mask` |
 
 ### 1.3 MLLM (planner / angle attributes / scoring judgment)
@@ -83,7 +85,7 @@ required conda env name.
 | Role | Typical stack |
 |---|---|
 | CPU tests / `recording` demo | `pip install -e ".[dev]"` (numpy, pillow, pytest) |
-| Perception / SAM3 crop server | CPython **3.11** + torch + vendored `models/vendor/sam3_transformers59` (transformers 5.9). Set `MEMSTRATA_PYTHON` if that is not your default `python3`. |
+| Perception / crop server | CPython **3.11** + torch + DINOv3; add `MEMSTRATA_SAM3_DEPS` only for the SAM3 fallback/discovery path. WeDetect-Ref runs separately over HTTP. |
 | Wan / LightX2V generation | torch + flash-attn matching the chosen backend (see the backend TOML) |
 | MLLM judge / IAMFlow HTTP | vLLM or any OpenAI-compatible server; point `*_ENDPOINT` env vars at it |
 
@@ -98,6 +100,8 @@ required conda env name.
 | `MEMSTRATA_QWEN3_EMBEDDING_ENDPOINT` / `_MODEL` / `_API_KEY` / `_WEIGHTS` | qwen3 text embed via server or local | empty → local weights |
 | `MEMSTRATA_ANGLE_CLASSIFIER` | Angle/attribute classifier `null`\|`heuristic`\|`vlm` | `null` (per-rep angle unknown, **stratified results must not be reported**) |
 | `MEMSTRATA_CONTEXT_JUDGER_BASE_URL` / `MEMSTRATA_CROP_ATTR_BASE_URL` / `..._MODEL` | planner / angle-attribute MLLM endpoint and model | see `mllm/planner.py`, `mllm/crop_attributes.py` |
+| `MEMSTRATA_WEDETECT_URL` | WeDetect-Ref describe→bbox service | empty → SAM3 fallback; set for faithful default |
+| `MEMSTRATA_SAM3_DEPS` | Optional SAM3 `transformers>=5.9` compatibility bundle | empty → no SAM3 bundle required when WeDetect-Ref is healthy |
 | `MEMSTRATA_SCORING_EMBEDDER_WEIGHTS` / `MEMSTRATA_WEIGHTS_ROOT` | Scoring-side encoder weights | see `vmem_bench/scoring/embedder.py` |
 | `MEMSTRATA_ALLOW_HF_DOWNLOAD` | =1 allows transformers online resolution (offline by default) | unset (offline; the crop server sets `HF_HUB_OFFLINE=1`) |
 | `MEMSTRATA_RETRIEVAL_VARIANT` / `MEMSTRATA_RETRIEVAL_TOPK` | Retrieval baseline family variant / top-k | see `retrieval_family_DESIGN.md` |
@@ -122,10 +126,11 @@ those numbers directly with the paper's frozen run.
 These are runtime integrations, not Python imports:
 
 - **WeDetect-Ref** is the faithful default crop grounder. Run the separately
-  licensed service and set `MEMSTRATA_WEDETECT_URL`; when it is unavailable,
-  MemStrata can use the optional SAM3 fallback.
-- The SAM3 fallback needs the separately supplied
-  `transformers>=5.9` compatibility bundle and `MEMSTRATA_SAM3_DEPS`.
+  licensed service and set `MEMSTRATA_WEDETECT_URL`. The crop server skips
+  loading SAM3 while this health check succeeds.
+- The optional SAM3 fallback needs a separately supplied `transformers>=5.9`
+  compatibility bundle in `MEMSTRATA_SAM3_DEPS`; it is not required for a
+  WeDetect-only production run.
 - FLUX, Wan/LightX2V, and Qwen weights are never bundled. Put them under
   `PUBLIC_MODELS_ROOT` exactly as listed in `MODELS.md`.
 

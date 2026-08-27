@@ -12,8 +12,9 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MONTAGE_ROOT="${MONTAGE_ROOT:-.}"
-REPO="${WEDETECT_REPO:-${MONTAGE_ROOT}/models/vendor/WeDetect}"
+MEMSTRATA_ROOT="$(cd "${HERE}/../../.." && pwd)"
+REPO="${WEDETECT_REPO:-${MEMSTRATA_ROOT}/models/vendor/WeDetect}"
+PUBLIC_MODELS_ROOT="${PUBLIC_MODELS_ROOT:?export PUBLIC_MODELS_ROOT=/path/to/hf-style-models}"
 WEIGHTS="${WEDETECT_WEIGHTS:-${PUBLIC_MODELS_ROOT}/_classified_by_task/Object_Detection}"
 PY="${WEDETECT_PYTHON:-python3}"
 

@@ -37,6 +37,7 @@ from memstrata.skills.crop_acquisition.orchestrator import (
     DEFAULT_IDENTITY_THRESHOLD,
     _MIN_SIDE_PX,
 )
+from memstrata.skills.crop_acquisition._common import sam3_deps_dir
 
 if TYPE_CHECKING:  # avoid heavy / cyclic imports at runtime
     from memstrata.bank import AssetBank
@@ -98,11 +99,8 @@ class ProposeIdentifyCropper:
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.montage_root = Path(montage_root).resolve()
         self.python = str(python)
-        self.sam3_deps = (
-            Path(sam3_deps).resolve()
-            if sam3_deps
-            else self.montage_root / "models" / "vendor" / "sam3_transformers59"
-        )
+        configured_sam3_deps = str(sam3_deps) if sam3_deps else sam3_deps_dir()
+        self.sam3_deps = Path(configured_sam3_deps).resolve() if configured_sam3_deps else None
         self.public_models_root = str(public_models_root or "${PUBLIC_MODELS_ROOT}")
         self.frame_pos = min(max(float(frame_pos), 0.0), 1.0)
         positions = frame_positions if frame_positions is not None else _DEFAULT_FRAME_POSITIONS
@@ -175,14 +173,13 @@ class ProposeIdentifyCropper:
 
     def _server_env(self) -> dict[str, str]:
         env = dict(os.environ)
-        # Vendored transformers>=5.9 first so SAM3 classes import, then the two src roots.
+        # Vendored transformers>=5.9 first when available, then this standalone repo's src.
         pythonpath = os.pathsep.join(
-            [
-                str(self.sam3_deps),
-                str(self.montage_root / "benchmarks" / "MemStrata" / "src"),
+            ([str(self.sam3_deps)] if self.sam3_deps else [])
+            + [
                 str(self.montage_root / "src"),
                 env.get("PYTHONPATH", ""),
-            ]
+            ],
         )
         env["PYTHONPATH"] = pythonpath
         env["MONTAGE_ROOT"] = str(self.montage_root)
