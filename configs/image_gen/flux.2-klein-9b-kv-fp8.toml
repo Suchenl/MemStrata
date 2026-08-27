@@ -12,6 +12,10 @@ family = "flux"
 model = "FLUX.2-klein-9b-kv-fp8"
 weights = "${PUBLIC_MODELS_ROOT}/black-forest-labs/FLUX.2-klein-9b-kv-fp8/flux-2-klein-9b-kv-fp8.safetensors"
 config = "${PUBLIC_MODELS_ROOT}/black-forest-labs/FLUX.2-klein-9b-kv"
+# Interpreter for the persistent FLUX server. A bare command (default) falls back
+# to the current interpreter (the env that has diffusers/Flux2KleinKVPipeline after
+# `pip install -e`). Point at a different env with an absolute path here, or override
+# without editing this file: export MEMSTRATA_FLUX_PYTHON=/path/to/env/bin/python
 python = "python3"
 capabilities = ["text_to_image", "image_to_image", "multi_image_to_image", "layout_anchor_control"]
 height = 1024

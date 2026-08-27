@@ -28,6 +28,27 @@ from memstrata.steps.generate.schemas import (
 from .base import apply_photographic_grain
 from memstrata.lib.prompt_standardizer import standardize_prompt
 
+
+def _resolve_flux_python(raw: object) -> str:
+    """Interpreter for the persistent FLUX server.
+
+    Precedence: ``MEMSTRATA_FLUX_PYTHON`` env override > an explicit path in the
+    config (absolute or relative) > the current interpreter. A *bare* command
+    name (e.g. the shipped default ``python = "python3"``) falls back to
+    ``sys.executable``, which is the env that has ``diffusers`` /
+    ``Flux2KleinKVPipeline`` installed after ``pip install -e``. This keeps the
+    default turnkey while still honoring an explicitly configured env.
+    """
+    env = os.environ.get("MEMSTRATA_FLUX_PYTHON", "").strip()
+    if env:
+        return env
+    s = str(raw).strip() if raw is not None else ""
+    if not s or s == "None":
+        return sys.executable
+    if "/" in s or os.sep in s:
+        return s
+    return sys.executable
+
 logger = logging.getLogger(__name__)
 
 
@@ -201,12 +222,12 @@ class FluxKleinImageBackend:
         log = open(log_path, "ab")  # noqa: SIM115 - handed to the child process
 
         # Build command
-        python = str(self.params.get("python", sys.executable))
+        python = _resolve_flux_python(self.params.get("python"))
         command = [
             python,
             "-m",
             "memstrata.steps.generate.image_backends.flux_persistent_server",
-            "--model_path", self.model_path,
+            "--model_path", os.path.expandvars(os.path.expanduser(self.model_path)),
             "--server_dir", str(server_dir),
             "--device", self.device,
             "--idle_timeout", str(self.params.get("server_idle_timeout", 1800)),
@@ -239,9 +260,10 @@ class FluxKleinImageBackend:
 
     def _ensure_pipeline(self, pipeline_cls: Any, torch: Any) -> Any:
         if self._pipe is None:
-            logger.info(f"Loading Flux2KleinKVPipeline from: {self.model_path}")
+            model_path = os.path.expandvars(os.path.expanduser(self.model_path))
+            logger.info(f"Loading Flux2KleinKVPipeline from: {model_path}")
             self._pipe = pipeline_cls.from_pretrained(
-                self.model_path,
+                model_path,
                 torch_dtype=torch.bfloat16,
             )
             self._pipe = self._pipe.to(self.device)
