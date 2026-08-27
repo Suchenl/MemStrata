@@ -1,7 +1,6 @@
 """Persistent FLUX.2 Klein inference server: build the model once, then serve image jobs.
 
-Vendored from Montage ``src/montage/models/image_generation/flux_persistent_server.py``
-(import paths rewritten to stay self-contained under ``benchmarks/MemStrata``). Launched
+Self-contained under the ``memstrata`` package. Launched
 once per production run (single GPU) or Stage 0, it builds ``Flux2KleinKVPipeline`` once
 and loops over a file job queue. This avoids reloading weights on every image task.
 """
@@ -50,9 +49,11 @@ def main() -> None:
     from memstrata.steps.generate.image_backends.base import apply_photographic_grain
     from memstrata.lib.prompt_standardizer import standardize_prompt
 
-    logging.info("Building Flux2KleinKVPipeline once (persistent server)...")
+    # Expand ${PUBLIC_MODELS_ROOT} / ~ so the default token works out of the box.
+    model_path = os.path.expandvars(os.path.expanduser(args.model_path))
+    logging.info("Building Flux2KleinKVPipeline once (persistent server) from %s...", model_path)
     pipe = Flux2KleinKVPipeline.from_pretrained(
-        args.model_path,
+        model_path,
         torch_dtype=torch.bfloat16,
     )
     pipe = pipe.to(args.device)
