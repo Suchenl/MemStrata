@@ -12,7 +12,7 @@ def repo_root() -> Path:
     for parent in current.parents:
         if (parent / "AGENTS.md").is_file() or (parent / ".git").exists():
             return parent
-    # Fallback to parents[5] based on: .../benchmarks/MemStrata/src/memstrata/lib/weights.py
+    # Fallback to parents[5] based on: .../src/memstrata/lib/weights.py
     return current.parents[5]
 
 
