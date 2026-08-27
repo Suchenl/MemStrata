@@ -26,6 +26,18 @@ fallback used when WeDetect-Ref is unreachable.
 | **DINOv3** (identity / novelty / keyframes) | `huggingface-cli download` (below) | `$PUBLIC_MODELS_ROOT/facebook/dinov3-vitb16-pretrain-lvd1689m` |
 | **SAM3** (fallback grounder only) | `huggingface-cli download` (below); needs the vendored `transformers>=5.9` bundle at `models/vendor/sam3_transformers59` on `PYTHONPATH` | `$PUBLIC_MODELS_ROOT/facebook/sam3` |
 
+WeDetect-Ref is intentionally not copied into this repository. Obtain the
+upstream GPL-licensed service separately, install its dependencies in its own
+environment, and point the launcher at it:
+
+```bash
+git clone https://github.com/WeChatCV/WeDetect.git "$HOME/vendor/WeDetect"
+export WEDETECT_REPO="$HOME/vendor/WeDetect"
+export WEDETECT_PYTHON=/path/to/your/wedetect-env/bin/python
+bash scripts/memstrata/servers/serve_wedetect.sh
+export MEMSTRATA_WEDETECT_URL=http://127.0.0.1:8710
+```
+
 ```bash
 huggingface-cli download facebook/dinov3-vitb16-pretrain-lvd1689m \
   --local-dir "$PUBLIC_MODELS_ROOT/facebook/dinov3-vitb16-pretrain-lvd1689m"
