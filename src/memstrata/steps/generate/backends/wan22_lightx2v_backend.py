@@ -13,6 +13,7 @@ weight paths, which the user is downloading).
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -245,8 +246,25 @@ def _reference_image_paths(task: MediaGenerationTask) -> list[Path]:
 
 
 def _resolve_python(raw: str) -> str:
+    # Env override wins: point at your lightx2v-env interpreter without editing shipped configs.
+    env = os.environ.get("MEMSTRATA_LIGHTX2V_PYTHON", "").strip()
+    if env:
+        return env
     if not raw or raw == "None":
-        raise ValueError("wan22_lightx2v backend requires `python` (path to the lightx2v-env interpreter)")
+        raise ValueError(
+            "wan22_lightx2v backend needs the lightx2v-env interpreter: set the config `python` "
+            "(a bare command resolved on PATH, or an absolute path) or export "
+            "MEMSTRATA_LIGHTX2V_PYTHON=/path/to/lightx2v-env/bin/python"
+        )
+    # Bare command (e.g. "python3"): resolve on PATH so a shipped default config stays portable.
+    if "/" not in raw and os.sep not in raw:
+        found = shutil.which(raw)
+        if found:
+            return found
+        raise ValueError(
+            f"wan22_lightx2v backend: `{raw}` not found on PATH; set an absolute `python` in the "
+            "config or export MEMSTRATA_LIGHTX2V_PYTHON=/path/to/lightx2v-env/bin/python"
+        )
     path = Path(raw)
     return str(path if path.is_absolute() else repo_root() / path)
 
