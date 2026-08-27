@@ -1,7 +1,7 @@
 """Shared SAM3 transformers loader for refine + concept segmentation.
 
 Vendored from bench S5 ``sam3_common``. The vendored-deps default is hard-resolved
-via ``memstrata.skills.crop_acquisition._common.sam3_deps_dir`` to the Montage
+via ``memstrata.skills.crop_acquisition._common.sam3_deps_dir`` to the upstream project
 ``models/vendor/sam3_transformers59`` dir (env ``MEMSTRATA_SAM3_DEPS`` overrides).
 """
 
@@ -13,7 +13,7 @@ from memstrata.skills.crop_acquisition._common import sam3_deps_dir
 
 
 def vendored_deps_dir() -> str:
-    """Vendored SAM3-capable transformers dir (env override, else Montage vendor)."""
+    """Vendored SAM3-capable transformers dir (env override, else upstream project vendor)."""
     return sam3_deps_dir()
 
 

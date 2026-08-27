@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def memstrata_root() -> Path:
-    """Return the absolute path to the MemStrata project root (benchmarks/MemStrata)."""
+    """Return the absolute path to the MemStrata project root (this repository)."""
     current = Path(__file__).resolve()
     for parent in current.parents:
         if parent.name == "MemStrata" and (parent / "src").is_dir():

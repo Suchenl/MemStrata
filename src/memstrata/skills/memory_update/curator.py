@@ -145,7 +145,7 @@ class MemoryPolicy:
     # a configured VLM only adjudicates the χ *gray zone* around β_τ. Off by default and
     # inert without a real judge (NullIdentityJudge abstains), so behavior is unchanged
     # until BOTH the flag is on AND a VLM judge is injected. See
-    # experiments/methods/MemStrata/20260725_vlm_vs_embedding_robustness.
+    # the original calibration workspace/20260725_vlm_vs_embedding_robustness.
     identity_vlm_enabled: bool = False
     # χ ≥ β_τ + shortcircuit_margin → accept SAME on the encoder alone (skip the VLM);
     # this is the high-precision ArcFace/DINOv3 fast path from the robustness study.
@@ -184,7 +184,7 @@ class MemoryPolicy:
         two people is the memory bank's first red line.
         """
         # Per-type similarity thresholds below are CALIBRATED for the DINOv3 encoder on the
-        # labelled LSMDC control set (experiments/methods/MemStrata/
+        # labelled LSMDC control set (the original calibration workspace/
         # 20260725_memstrata_write_path_calibration/calibration_result.json). They replaced the
         # earlier hand-tuned starting points:
         #   redundancy_by_type old: {"character": 0.94, "prop": 0.92, "location": 0.88}
@@ -934,7 +934,7 @@ class MemoryUpdater:
             medoid when intruders are a minority, but stronger (AUC 0.79 vs 0.74) when
             an asset is *majority-polluted* — there the single medoid can itself be the
             intruder. Opt-in fallback for high-mixing / distribution-shift regimes.
-        See experiments/methods/MemStrata/20260722_memstrata_cohesion_calibration/RESULTS.md.
+        See the original calibration workspace/20260722_memstrata_cohesion_calibration/RESULTS.md.
 
         Conservative isolation (philosophy §4): a flagged rep is **deprecated with a
         traceable ``deprecated_by`` marker (留痕), never silently deleted**, so it is

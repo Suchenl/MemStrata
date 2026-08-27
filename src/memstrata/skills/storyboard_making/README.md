@@ -1,11 +1,11 @@
 # Storyboard Making Skill
 
-> **Core definition**: this skill specifies how, within the Montage long-video
+> **Core definition**: this skill specifies how, within the upstream project long-video
 > production pipeline, to use the ultra-fast large model `FLUX.2-klein-9b-kv` to
 > directly generate a highly consistent, cleanly laid-out multi-shot combined
 > storyboard (Storyboard/Grid) via a single Text-to-Image (T2I) inference pass,
 > and then slice it with high precision automatically.
-> **Applicable scenarios**: Montage is a general long-video production system that
+> **Applicable scenarios**: upstream project is a general long-video production system that
 > supports many video styles — film, anime, advertising, game CG, sci-fi, art-house,
 > Chinese traditional style, and more. The design principles and the dimension
 > derivation formula in this skill apply to all visual styles, not just realistic
@@ -86,7 +86,7 @@ prompt path via `memstrata.lib.prompt_standardizer`'s `AI_BUZZWORDS` /
 
 ## 📐 Dimension reverse-engineering and proportional scaling formula
 
-In the Montage production pipeline, **the storyboard's physical generation size
+In the upstream project production pipeline, **the storyboard's physical generation size
 must be reverse-derived from the target video's size**, to ensure that each sliced
 panel can serve directly, proportionally (no stretch, no crop), as the first-frame
 condition of a video-generation model (such as Wan2.1-I2V, LTX-2.3).
@@ -130,7 +130,7 @@ or stretching required**.
 In the `experiments/probe/flux_klein_storyboard/run_cinematic_large.py` experiment
 we validated FLUX.2 Klein's generation capability at large resolutions (such as
 1536x1024 or 2048x1024). A large-resolution storyboard has major engineering and
-quality advantages in the Montage pipeline:
+quality advantages in the upstream project pipeline:
 - **Skips the super-resolution step**: for example, in a 2048x1024 storyboard, each
   panel of a 2x2 grid has a physical size of 1024x512 after slicing. This is
   already a very high-definition cinematic widescreen picture, and it **can serve
@@ -167,8 +167,8 @@ negative prompts are modularly configured in `styles.json`:
 ## 🛠️ Code integration and usage guide
 
 This skill is fully implemented in code, packaged under the
-`methods/MemStrata/src/memstrata/skills/storyboard_making` directory (the MemStrata
-production pipeline always calls it from here; `src/montage/skills/storyboard_making`
+`this repository/src/memstrata/skills/storyboard_making` directory (the MemStrata
+production pipeline always calls it from here; `the upstream source tree/skills/storyboard_making`
 is the original copy at the general system layer), containing:
 - `styles.json`: style templates and negative-prompt configuration.
 - `storyboard_maker.py`: the core business-logic implementation (dimension

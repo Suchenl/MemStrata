@@ -2,7 +2,7 @@
 
 Renders layout elements as solid color blocks on a dark background — the optimal
 control signal for FLUX.2 Klein. Vendored verbatim from
-``src/montage/skills/layout_anchor_processing/color_block_processor.py``.
+``the upstream source tree/skills/layout_anchor_processing/color_block_processor.py``.
 """
 
 from __future__ import annotations

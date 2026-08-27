@@ -6,7 +6,8 @@
 > here rather than maintaining their own list.
 >
 > Release red line (see [`../../AGENTS.md`](../../AGENTS.md) rule 1): `src/memstrata/`
-> and `src/vmem_bench/` **must not import code outside `benchmarks/VMem-Bench/`**.
+> must not import code from another repository. The benchmark package is a
+> separate project; integration code belongs in VMem-Bench adapters.
 > Third-party libraries and **weights loaded by path** do not count as coupling.
 > The end of this file maintains a "release self-containment checklist" listing the
 > cross-boundary dependencies that still remain.
@@ -101,24 +102,14 @@ required conda env name.
 | `MEMSTRATA_ALLOW_HF_DOWNLOAD` | =1 allows transformers online resolution (offline by default) | unset (offline; the crop server sets `HF_HUB_OFFLINE=1`) |
 | `MEMSTRATA_RETRIEVAL_VARIANT` / `MEMSTRATA_RETRIEVAL_TOPK` | Retrieval baseline family variant / top-k | see `retrieval_family_DESIGN.md` |
 
-## 4. Write-path threshold calibration (must be run when swapping encoders)
+## 4. Write-path threshold calibration
 
-The per-type thresholds in `MemoryPolicy.production()` (B_τ / γ_τ / β_τ / cohesion
-floor) are **encoder-relative** starting values, not measured values. After
-swapping the encoder (e.g. hash→dinov3) you must re-run:
-
-```bash
-PUBLIC_MODELS_ROOT=${PUBLIC_MODELS_ROOT} \
-python3 \
-  experiments/methods/MemStrata/20260725_memstrata_write_path_calibration/calibrate_write_path.py \
-  --labels experiments/methods/MemStrata/20260722_memstrata_cohesion_calibration/labels_lsmdc.json \
-  --encoder dinov3
-```
-
-- Labeled reference set: `experiments/methods/MemStrata/20260722_memstrata_cohesion_calibration/labels_lsmdc.json`
-- dinov3 cached embeddings already exist in the 20260722 directory (`embeddings_dinov3.json`, reusable and GPU-free)
-- GPU-free pipeline self-test: `--self-test`
-- The `suggested_policy` in the produced `calibration_result.json` is backfilled into `MemoryPolicy.production()`
+The per-type thresholds in `MemoryPolicy.production()` are
+**encoder-relative starting values**, not universal constants. The release
+does not ship private calibration movies or labels. If you replace the image
+encoder, calibrate on a licensed validation set from your own application,
+record the encoder and thresholds in your experiment log, and do not compare
+those numbers directly with the paper's frozen run.
 
 ## 5. Run requirements (GPU / remote)
 
@@ -126,17 +117,18 @@ python3 \
 - Remote jobs must use `setsid` (or equivalent) to survive SSH/tmux disconnects.
 - The judging API must include the full `/chat/completions` path.
 
-## 6. Release self-containment checklist (release blockers)
+## 6. External runtime services
 
-Before release, the following "outside MemStrata" dependencies must be eliminated
-(`src/memstrata/` must not import other repo paths):
+These are runtime integrations, not Python imports:
 
-- [ ] `models/vendor/sam3_transformers59` (crop server dependency) is outside `benchmarks/VMem-Bench/` — needs to be bundled or explicitly declared as an optional external dependency.
-- [ ] `src/memstrata/skills/embedding_deduplication/` (tests + README) `import montage.skills.embedding_deduplication` — needs to be vendored or removed.
-- [ ] `src/memstrata/skills/focus_segmentation/` (tests + README) `import montage.skills.focus_segmentation` — same as above.
-- [ ] `src/memstrata/skills/layout_anchor_processing/` is marked "vendored from montage" — confirm it is genuinely vendored with no runtime cross-references.
-- [ ] The video lightx2v weight directory is a to-be-assembled TODO: `.../Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step` (user is downloading).
+- **WeDetect-Ref** is the faithful default crop grounder. Run the separately
+  licensed service and set `MEMSTRATA_WEDETECT_URL`; when it is unavailable,
+  MemStrata can use the optional SAM3 fallback.
+- The SAM3 fallback needs the separately supplied
+  `transformers>=5.9` compatibility bundle and `MEMSTRATA_SAM3_DEPS`.
+- FLUX, Wan/LightX2V, and Qwen weights are never bundled. Put them under
+  `PUBLIC_MODELS_ROOT` exactly as listed in `MODELS.md`.
 
-> Verification command (should be empty): under `src/memstrata/` and
-> `src/vmem_bench/`, search for `import montage` / `from montage` / any output
-> writes that point to other repo paths.
+The source package itself is standalone: it does not import VMem-Bench or any
+other project package. The adapter that evaluates MemStrata lives in the
+VMem-Bench repository.

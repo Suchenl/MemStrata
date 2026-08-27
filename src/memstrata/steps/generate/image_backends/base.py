@@ -1,7 +1,7 @@
 """Image generation model protocol and common utilities.
 
-Vendored from Montage ``src/montage/models/image_generation/base.py`` (import paths
-rewritten to stay self-contained under ``benchmarks/MemStrata`` — no ``montage`` imports).
+Vendored from upstream project ``the upstream source tree/models/image_generation/base.py`` (import paths
+rewritten to stay self-contained under ``this repository`` — no ``montage`` imports).
 """
 
 from typing import Any, Protocol

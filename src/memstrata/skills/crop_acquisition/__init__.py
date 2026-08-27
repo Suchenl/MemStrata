@@ -3,7 +3,7 @@
 Vendored (copy + import-rewrite) from the benchmark's
 ``vmem_bench.annotation.pipeline.stages.s5_entities_visual_crop_acquisition`` so the
 production ``memstrata`` package obeys its hard rule: **zero imports of ``vmem_bench``**
-(``memstrata/docs/design_philosophy.md`` §5, ``benchmarks/MemStrata/AGENTS.md`` rule 2).
+(``memstrata/docs/design_philosophy.md`` §5, ``this repository/AGENTS.md`` rule 2).
 
 Public entry points (import submodules directly to keep heavy deps lazy):
   * ``orchestrator.acquire_entity_crop`` — targeted per-entity, novelty-first acquisition

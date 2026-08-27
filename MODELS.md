@@ -46,11 +46,11 @@ numbers (`MEMSTRATA_TRACKA_NAME_SOURCE=mllm`).
 
 | Role | Local path |
 |---|---|
-| MemStrata VLM (entity decompose / intent) | `$PUBLIC_MODELS_ROOT/Qwen/Qwen3.5-9B-Instruct` |
+| MemStrata VLM (entity decompose / intent) | `$PUBLIC_MODELS_ROOT/Qwen/Qwen3.5-9B` |
 
 ```bash
-huggingface-cli download Qwen/Qwen3.5-9B-Instruct \
-  --local-dir "$PUBLIC_MODELS_ROOT/Qwen/Qwen3.5-9B-Instruct"
+huggingface-cli download Qwen/Qwen3.5-9B \
+  --local-dir "$PUBLIC_MODELS_ROOT/Qwen/Qwen3.5-9B"
 ```
 
 ## 3. Production generators (only if you drop `--backend recording`)
@@ -63,7 +63,7 @@ exact paths:
 |---|---|---|
 | Keyframes (FLUX.2 [klein] 9B-KV FP8) | `$PUBLIC_MODELS_ROOT/black-forest-labs/FLUX.2-klein-9b-kv` (+ `.../FLUX.2-klein-9b-kv-fp8/flux-2-klein-9b-kv-fp8.safetensors`) | `configs/image_gen/flux.2-klein-9b-kv-fp8.toml` |
 | Video (Wan2.2-I2V-A14B, LightX2V 4-step distill) | `$PUBLIC_MODELS_ROOT/Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step` (`high_noise_model/` + `low_noise_model/`) | `configs/video_gen/wan22_i2v_a14b_lightx2v_4step.toml` |
-| Intent / decompose LLM | `$PUBLIC_MODELS_ROOT/Qwen/Qwen3.5-9B-Instruct` (same as §2) | — |
+| Intent / decompose LLM | `$PUBLIC_MODELS_ROOT/Qwen/Qwen3.5-9B` (same as §2) | — |
 
 Build the LightX2V-layout video dir from the two distilled safetensors + base
 Wan2.2-I2V-A14B components with the helper (no source edits):

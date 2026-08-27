@@ -1,7 +1,7 @@
 """FLUX.2 [klein] 9B-KV image generation and editing backend.
 
-Vendored from Montage ``src/montage/models/image_generation/flux_klein_backend.py``
-(import paths rewritten to stay self-contained under ``benchmarks/MemStrata`` — no
+Vendored from upstream project ``the upstream source tree/models/image_generation/flux_klein_backend.py``
+(import paths rewritten to stay self-contained under ``this repository`` — no
 ``montage`` imports; the model code / weights are still loaded by path). This is the
 keyframe (Layout Anchor) image generator for the keyframe-first main pipeline:
 FLUX produces the start / end / mid keyframes, then Wan2.2-I2V-A14B (+ SVI / Morphic

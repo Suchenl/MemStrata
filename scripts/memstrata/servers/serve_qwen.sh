@@ -15,7 +15,7 @@ KIND="${1:?usage: serve_qwen.sh <text|vision> <gpu> <port>}"
 GPU="${2:?gpu id}"
 PORT="${3:?port}"
 
-PUBLIC_MODELS_ROOT="${PUBLIC_MODELS_ROOT:-${PUBLIC_MODELS_ROOT}}"
+PUBLIC_MODELS_ROOT="${PUBLIC_MODELS_ROOT:?export PUBLIC_MODELS_ROOT=/path/to/hf-style-models}"
 
 case "${KIND}" in
   text)

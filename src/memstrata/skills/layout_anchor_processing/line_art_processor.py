@@ -2,7 +2,7 @@
 
 Renders layout elements as thin outlines on a clean white background — the optimal
 control signal for Qwen-Image-Edit. Vendored verbatim from
-``src/montage/skills/layout_anchor_processing/line_art_processor.py``.
+``the upstream source tree/skills/layout_anchor_processing/line_art_processor.py``.
 """
 
 from __future__ import annotations

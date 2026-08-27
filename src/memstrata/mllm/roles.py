@@ -214,7 +214,7 @@ ROLE_REGISTRY: dict[str, RoleSpec] = {
         impl_ref="memstrata/skills/layout_anchor_processing/planner.py::LayoutPlanner (R3 via MllmRoleRunner)",
         notes="Coordinates normalized [0,1000]; shape in {human,rectangle,ellipse,line}. "
               "Renders color_block for FLUX (line_art for Qwen-Image-Edit). Vendored from "
-              "montage.skills.layout_anchor_processing; live-verified against Qwen3.5-9B.",
+              "upstream skills.layout_anchor_processing; live-verified against Qwen3.5-9B.",
         schema_fields=("elements",),
     ),
     "crop_region_assigner": RoleSpec(

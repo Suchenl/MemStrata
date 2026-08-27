@@ -2,7 +2,7 @@
 
 Only rewrite vs. bench: ``hf_cache_dir`` now comes from the vendored
 ``memstrata.skills.crop_acquisition._common`` (which hard-resolves the HF hub cache
-to the Montage monorepo ``models/model_weights/hub``). torch/transformers stay lazy.
+to the upstream workspace ``models/model_weights/hub``). torch/transformers stay lazy.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ class GroundingDinoProposer:
             self._device = self._device or ("cuda" if torch.cuda.is_available() else "cpu")
             cache = hf_cache_dir()
             # Offline GPU nodes: never hit huggingface.co; hub snapshot lives under
-            # Montage models/model_weights/hub (see _common.repo_root / hf_cache_dir).
+            # upstream project models/model_weights/hub (see _common.repo_root / hf_cache_dir).
             self._processor = AutoProcessor.from_pretrained(
                 self.model_id, cache_dir=cache, local_files_only=True
             )

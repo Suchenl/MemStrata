@@ -244,8 +244,8 @@ class HeliosBackend:
         env.setdefault("TRANSFORMERS_OFFLINE", "1")
         # HF/kernels caches MUST hold the Helios weights + the shimmed FA2 kernel snapshot.
         # Force-set (not setdefault): these default to the *MemStrata* repo root, whose
-        # models/model_weights/hub lacks the FA2 kernel; the real cache is the Montage root.
-        # `benchmarks/MemStrata` -> Montage is two parents up.
+        # models/model_weights/hub lacks the FA2 kernel; the real cache is the upstream project root.
+        # `this repository` -> upstream project is two parents up.
         default_mw = repo_root().parent.parent / "models" / "model_weights"
         hf_home = str(self.params.get("hf_home") or default_mw)
         hub_cache = str(self.params.get("kernels_cache") or (Path(hf_home) / "hub"))

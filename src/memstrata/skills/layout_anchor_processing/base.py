@@ -1,6 +1,6 @@
 """Base classes and utilities for layout anchor processing.
 
-Vendored verbatim from ``src/montage/skills/layout_anchor_processing/base.py``
+Vendored verbatim from ``the upstream source tree/skills/layout_anchor_processing/base.py``
 (only the package location changed) so MemStrata carries no ``montage`` import.
 """
 

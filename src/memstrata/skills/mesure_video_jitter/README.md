@@ -103,7 +103,7 @@ At native resolution the picture has 4.3× the motion, yet the per-frame
 acceleration is 2.9× lower and the ratio differs by 12.5×. The jitter comes from
 deviating from the checkpoint's native resolution, not from the model itself. The
 fix is native rendering + a single downsampling pass at delivery; see
-`methods/MemStrata/configs/video_gen/wan22_ti2v5b_turbo.toml`.
+`this repository/configs/video_gen/wan22_ti2v5b_turbo.toml`.
 
 Note that the 704x1280 row is still tagged `jittery`: absolute accel rises with
 the amount of motion, and its motion was large to begin with. Only by looking at
@@ -163,7 +163,7 @@ for r in compare(["a.mp4", "b.mp4"]):
 Command line (this is exactly what these measurements used):
 
 ```bash
-PYTHONPATH=methods/MemStrata/src python -m memstrata.skills.mesure_video_jitter \
+PYTHONPATH=this repository/src python -m memstrata.skills.mesure_video_jitter \
   <clip.mp4> ... [--within-shot] [--max-frames 200]
 ```
 
