@@ -38,6 +38,6 @@ sample_guide_scale = 1    # CFG-distilled => 关掉 guidance，省一半前向
 sample_shift = 5
 continuation_cond_frames = 9
 serve_persistent = true   # 常驻后台，见 .cursor/rules/persistent-model-serving.mdc
-# BDY/shared-storage cold loads can exceed the default 20min ready wait; KML stays ~5min.
+# BDY/shared-storage cold loads can exceed the default 20min ready wait; remote stays ~5min.
 server_ready_timeout = 3600
 output_glob = "out_video.mp4"

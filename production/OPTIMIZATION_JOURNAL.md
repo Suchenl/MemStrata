@@ -67,7 +67,7 @@ bench 双档打分作为 stretch，若 Stage-1 可跑再补（记在后续条目
 
 ### [it0] 2026-07-24 ~16:32 — 启动 3-chunk 冒烟（lighthouse）
 
-- **动作**：kml-a800 node1 tmux `mem_smoke` 起 `run_overnight.sh 0001_lighthouse_keeper 3 smoke3`，morphic+FLUX+force-recompose+crop_server。
+- **动作**：gpu-a800 node1 tmux `mem_smoke` 起 `run_overnight.sh 0001_lighthouse_keeper 3 smoke3`，morphic+FLUX+force-recompose+crop_server。
 - **目的**：先验证整条链路（Qwen→FLUX→lightx2v→crop→记忆增长）能完整跑完 3 chunk，再上全长。
 - **观测**：待通知（run.log EXIT / 每 chunk / 错误）。
 - **待办**：冒烟通过→上全 16 chunk + 其余剧本；失败→按 monitor 症状表定位修复并记录。
@@ -342,7 +342,7 @@ frozen/memoryless 退化 SUT 对照证明指标可区分。
 **代码落地（防泄漏默认化）**：`production/run.py` 的 `bench_mode` 默认改为 **True**；关闭 oracle 现在必须显式
 `--oracle-assisted`（帮助文本标注：仅诊断、任何评测均不合法）。每个 run 写 `run_manifest.json` 的 `gt_leakage`，
 bench-mode 下一旦检出泄漏即 `assert` 中止。新脚本 `scripts/memstrata/run_bench_eval.sh` 循环三片写入 `bench/` run-tag
-（保留旧 `optCA/` 供 A/B）。三片重跑（kml-h800 node1，backend `wan22_i2v_a14b_lightx2v_4step`，`--force-recompose`）
+（保留旧 `optCA/` 供 A/B）。三片重跑（gpu-h800 node1，backend `wan22_i2v_a14b_lightx2v_4step`，`--force-recompose`）
 **均 `gt_leakage=none`**，判官同参（qwen3-vl-32b，k=1，temp=0）。
 
 #### oracle(optCA) vs real(bench) 逐片对照
@@ -376,8 +376,8 @@ bench-mode 下一旦检出泄漏即 `assert` 中止。新脚本 `scripts/memstra
 - backend 事实：`bench/`=`wan22_i2v_a14b_lightx2v_4step`（**无 morphic**）；`optCA/`(含 `_showcase_audio/*_optCA_with_dialogue.mp4`)=`..._4step_morphic`（**带 morphic 热插拔 LoRA**）。
 
 **常驻服务（新 agent 可直接复用，省启动）**
-- kml-h800 node1：MLLM(:8000,GPU0) + S5 crop server(GPU1) + FLUX/LightX2V(GPU2-7)，均还开着。
-- 本地 kml-dtmachine：Track B 判官 VLM `qwen3-vl-32b` @ `127.0.0.1:8110`（GPU1）。
+- gpu-h800 node1：MLLM(:8000,GPU0) + S5 crop server(GPU1) + FLUX/LightX2V(GPU2-7)，均还开着。
+- 本地 remote-gpu-host：Track B 判官 VLM `qwen3-vl-32b` @ `127.0.0.1:8110`（GPU1）。
 
 **下一步两个真实靶心（据干净数，非文本代理）**
 1. **读路径 recall**（最大缺口，0002 角色 0.417）：无 GT 时，router/compose 只靠 prompt 提名+记忆库，把该出场的必现实体**全部**召回并 compose 进关键帧。落点：`GenerationRouter`（`run.py` 读路径，bench-mode 已给它传空 `referenced_entities`）+ `skills/intent_compose`(读路径) + `skills/memory_retrieval`。

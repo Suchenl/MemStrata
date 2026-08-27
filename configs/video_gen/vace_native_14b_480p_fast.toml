@@ -30,5 +30,5 @@ output_glob = "out_video.mp4"
 continuation_cond_frames = 9
 # Persistent serving (.cursor/rules/persistent-model-serving.mdc): build the 14B once, reuse per chunk.
 serve_persistent = true
-# BDY/shared-storage cold loads can exceed the default 20min ready wait; KML stays ~5min.
+# BDY/shared-storage cold loads can exceed the default 20min ready wait; remote stays ~5min.
 server_ready_timeout = 3600
