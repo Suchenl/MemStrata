@@ -30,7 +30,7 @@ from typing import Any
 
 
 def memstrata_root() -> Path:
-    # .../src/memstrata/production/run.py -> parents[3] = benchmarks/MemStrata
+    # .../src/memstrata/production/run.py -> parents[3] = this repository
     return Path(__file__).resolve().parents[3]
 
 

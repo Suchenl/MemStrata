@@ -1,6 +1,6 @@
 """Image generation / keyframe backends (keyframe-first stage 1).
 
-Vendored self-contained from Montage ``models/image_generation`` (no ``montage`` imports).
+Vendored self-contained from upstream project ``models/image_generation`` (no ``montage`` imports).
 The keyframe-first main pipeline uses these to synthesise Layout Anchor keyframes (FLUX),
 which the video backends then expand into video (Wan2.2-I2V-A14B + SVI / Morphic LoRA).
 """

@@ -1,6 +1,6 @@
 # layout_anchor_processing (+ Crop2Image)
 
-Vendored/adapted from `montage.skills.layout_anchor_processing`. The renderers are
+Vendored/adapted from `upstream skills.layout_anchor_processing`. The renderers are
 verbatim (PIL-only, no `montage` dependency); the planner is rewired to
 `memstrata.mllm.MllmRoleRunner` so it honours the `layout_planner` (R3) contract, and
 a new `crop2image` module adds the R4 crop→region + collage step.

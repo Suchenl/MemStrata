@@ -1,4 +1,4 @@
-"""Layout Anchor Processing (vendored from montage.skills.layout_anchor_processing).
+"""Layout Anchor Processing (vendored from upstream skills.layout_anchor_processing).
 
 Planning (R3 MLLM role) + parsing/scaling/rendering of structured layout anchors into
 color-block (FLUX.2 Klein) or line-art (Qwen-Image-Edit) composition blueprints. The

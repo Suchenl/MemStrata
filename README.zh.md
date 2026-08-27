@@ -208,7 +208,7 @@ JSON（结构与基准 gt 的 `entities` 同源），并把视觉记忆按同根
 - **写路径身份门控（VLM-first，已实现）**：`MemoryUpdater._reconcile_identity` 用编码器分 χ 做 shortlist 与高精度短路（χ≥β_τ+δ⁺→直接合并），
   清晰拒（χ≤β_τ−δ⁻→新建），只把 χ *灰区*交给 VLM 仲裁（`mllm/identity_judge.py`，温度 0、按模型标定 θ）；**强模糊 crop 一律 defer 为新的临时记录**（所有判定器在强模糊都会误合并）；
   判定器弃权/低置信则回落到确定性 χ≥β_τ。默认 `NullIdentityJudge` 弃权 → 决策与旧规则逐位一致；`policy.identity_vlm_enabled`（生产已开）+ 注入真 judge（`MEMSTRATA_IDENTITY_JUDGE=vlm`）才激活。
-  依据见控制实验 `experiments/methods/MemStrata/20260725_vlm_vs_embedding_robustness`（通用编码器最弱、固定阈值脆、8B 强模糊 false-merge 炸→32B/θ=0.90 更稳），论文 §4.5 / Sec. exp-idgate。
+  依据见控制实验 `the original experiment workspace (not shipped)`（通用编码器最弱、固定阈值脆、8B 强模糊 false-merge 炸→32B/θ=0.90 更稳），论文 §4.5 / Sec. exp-idgate。
 
 ### VLM 调用预算（读写不对称）
 
@@ -231,7 +231,7 @@ JSON（结构与基准 gt 的 `entities` 同源），并把视觉记忆按同根
 > 调用 1/2 与实体数量无关；调用 3 只对*自我发现 ∧ χ 灰区*触发，且编码器短路/清晰拒/强模糊 defer 已先滤掉绝大多数，
 > 故 k 通常很小。确定性预筛把绝大多数无效 crop 挡在 VLM 之前；读侧优先 0/1 次，写侧 2 次/chunk 起、身份灰区按需 +k。
 
-### 落地步骤（已批准，全部在 `methods/MemStrata` 内、不碰 bench 公平性）
+### 落地步骤（已批准，全部在 `the MemStrata repository` 内、不碰 bench 公平性）
 
 1. **改名**：`skills/memory_curation` → `skills/memory_update`；类 `AssetCurator` → **`MemoryUpdater`**
    （保留 `AssetCurator = MemoryUpdater` 与 `memory_curation` shim 兼容旧 import）；`steps/curate.py` 转发不变；
@@ -255,14 +255,14 @@ JSON（结构与基准 gt 的 `entities` 同源），并把视觉记忆按同根
 
 ## docs 治理（已批准 / 本次一起执行）
 
-`docs/` 目前仍是拆分前的混合态，含大量 **bench 专属**文档，迁往 `benchmarks/VMem-Bench/docs/`：
+`docs/` 目前仍是拆分前的混合态，含大量 **bench 专属**文档，迁往 `the VMem-Bench repository/docs/`：
 
 | 处置 | 目录/文件 | 说明 |
 |---|---|---|
-| **保留（方法侧）** | `docs/method/*`、`docs/overview/`、`docs/operations/`、`docs/glossary.md` | 更新路径引用（很多仍指向 `benchmarks/MemStrata/`） |
+| **保留（方法侧）** | `docs/method/*`、`docs/overview/`、`docs/operations/`、`docs/glossary.md` | 更新路径引用（很多仍指向 `the former monorepo path/`） |
 | **迁往 VMem-Bench** | `docs/benchmark/*`、`docs/baselines/*`、`docs/design/bench/*` | 这些是基准协议/baseline/公平性，属评测侧 |
 | **分拣** | `docs/experiments/*` | 方法侧实验计划留下，bench 实验计划迁走 |
-| **更新纲领路径** | `src/memstrata/docs/design_philosophy.md` | 顶部引用 `sut_design.md` / `benchmarks/MemStrata/docs/crop_principles.md` 已失效，改指 `docs/method/design.md` 与本包内 crop 契约 |
+| **更新纲领路径** | `src/memstrata/docs/design_philosophy.md` | 顶部引用 `sut_design.md` / `the former monorepo path/docs/crop_principles.md` 已失效，改指 `docs/method/design.md` 与本包内 crop 契约 |
 
 ---
 
@@ -274,4 +274,4 @@ PYTHONPATH=src python3 -m memstrata.production.run --backend recording --decompo
 PYTHONPATH=src python3 -m memstrata.production.run --backend oracle --decompose none --no-flux --no-autoserve --segments 2
 ```
 
-真实 GPU 闭环（Wan / FLUX / Qwen）需要自备权重，见 [`docs/operations/models_and_environments.md`](docs/operations/models_and_environments.md)。论文表数字认 git 分支 `paper-reproduction`，不认随意的 `main`。仓库里部分历史文档仍写着旧 monorepo 路径（`methods/MemStrata`），在本仓里都指仓库根。
+真实 GPU 闭环（Wan / FLUX / Qwen）需要自备权重，见 [`docs/operations/models_and_environments.md`](docs/operations/models_and_environments.md)。论文表数字认 git 分支 `paper-reproduction`，不认随意的 `main`。本文件保留了部分历史设计记录；实际运行请以本仓库当前路径和 README 为准。

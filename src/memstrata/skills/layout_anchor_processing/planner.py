@@ -1,7 +1,7 @@
 """Layout Anchor Planning (role R3).
 
-Adapted from ``src/montage/skills/layout_anchor_processing/planner.py``: the layout
-schema + prompt are kept, but the model call is rewired from Montage's
+Adapted from ``the upstream source tree/skills/layout_anchor_processing/planner.py``: the layout
+schema + prompt are kept, but the model call is rewired from upstream project's
 ``ModelRegistry`` to the MemStrata ``MllmRoleRunner`` so this carries no ``montage``
 dependency and honours the ``layout_planner`` (R3) sampling/schema contract declared
 in ``memstrata.mllm.roles``.

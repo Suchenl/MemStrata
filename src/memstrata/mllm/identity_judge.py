@@ -3,7 +3,7 @@
 The write path decides "is this discovered observation the SAME entity as an existing
 record?" Historically that was a pure encoder-cosine + Dice-text score χ against a
 per-type floor β_τ (see ``MemoryUpdater.identity_score``). A controlled 600-pair
-robustness study (``experiments/methods/MemStrata/20260725_vlm_vs_embedding_robustness``)
+robustness study (``the original calibration workspace/20260725_vlm_vs_embedding_robustness``)
 showed those thresholds are brittle under occlusion/blur/low-light: the generic encoder
 is the weak link and calibrated floors drift. This module adds the VLM adjudicator used
 in the χ *gray zone*, keeping the fast read path and the encoder short-circuit intact.

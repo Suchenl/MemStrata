@@ -72,7 +72,7 @@
 > （28% 无脸需回退），且引入 insightface/onnxruntime 依赖与 per-kind 路由成本，收益不抵成本。
 > 两种编码器都**没有**高精度硬阈值，故②只能是**便宜预筛**，身份的权威裁决仍是命名锚定 + VLM。
 > 仅当后续错误分析出现"VLM 也漏掉的 character-vs-character 混杂"时，才按 kind 开启 ArcFace。
-> 详见 `experiments/methods/MemStrata/20260722_memstrata_cohesion_calibration/RESULTS.md`。
+> 详见 `the original calibration workspace/20260722_memstrata_cohesion_calibration/RESULTS.md`。
 
 三道闸对应公理 4（低混杂），且刻意**不误伤公理 5（高多样）**：
 - ①只杀"没信息"的（暗/平），不碰暗但有结构的正常低光镜头；

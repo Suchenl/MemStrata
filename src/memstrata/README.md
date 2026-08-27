@@ -17,7 +17,7 @@ memstrata/
 
 Public API: `from memstrata import MemStrata, MediaTaskGenerator, …`
 
-Production run / generator smoke (from `benchmarks/MemStrata`; logic in
+Production run / generator smoke (from `this repository`; logic in
 `memstrata.production.run`, launched by `scripts/memstrata/run_production.sh`):
 
 ```bash

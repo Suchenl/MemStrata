@@ -1,4 +1,4 @@
-"""Production-screenplay adapter (the Montage-native flow of interface_flows.md §D).
+"""Production-screenplay adapter (the upstream project-native flow of interface_flows.md §D).
 
 Reads a ``production_screenplay`` JSON (see data/Screenplay/products/<lang>/<id>.json)
 and turns it into the two things the MemStrata closed loop consumes:
