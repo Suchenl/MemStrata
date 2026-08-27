@@ -20,7 +20,11 @@ FLUX keyframe into a chunk video; the external stratified memory supplies long-r
    git clone https://github.com/ModelTC/LightX2V && cd LightX2V
    pip install -e .          # + follow its README for the attention kernel (sage_attn2 / flash-attn)
    ```
-   Then set `python = ".../envs/<env>/bin/python"` in the TOML.
+   Then tell MemStrata which interpreter runs LightX2V, one of:
+   - set `python = ".../envs/<env>/bin/python"` in the TOML, or
+   - `export MEMSTRATA_LIGHTX2V_PYTHON=.../envs/<env>/bin/python` (overrides the TOML), or
+   - leave the default `python = "python3"` and launch the loop *from* the LightX2V env
+     (the bare command is resolved on `PATH`).
 
 2. **Lay out the weights.** The two files
    (`wan2.2_i2v_A14b_high_noise_lightx2v_4step_720p_260412.safetensors`,

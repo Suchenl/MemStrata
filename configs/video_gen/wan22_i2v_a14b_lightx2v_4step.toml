@@ -8,7 +8,7 @@
 #   1. Install LightX2V into an env (see README_wan22_lightx2v.md) and set `python` below.
 #   2. Build the LightX2V-layout model dir from the two distilled safetensors + base
 #      Wan2.2-I2V-A14B components:
-#        bash benchmarks/MemStrata/src/memstrata/steps/generate/backends/setup_lightx2v_weights.sh \
+#        bash src/memstrata/steps/generate/backends/setup_lightx2v_weights.sh \
 #          <high_noise.safetensors> <low_noise.safetensors>
 #      That writes `model` below (a dir with high_noise_model/ + low_noise_model/ + base t5/vae).
 #   3. `montage`/run.py: pass --backend wan22_i2v_a14b_lightx2v_4step.
@@ -30,6 +30,12 @@ model_name = "i2v-A14B-moe-distill-4step"
 # LightX2V is installed (editable, --no-deps) into a Python with torch<=2.8 and flash_attn2
 # (LightX2V pins torch<=2.8). This keeps one interpreter and does not disturb the native_wan
 # path (which runs generate.py in a subprocess, never imports lightx2v).
+#
+# `python` points at that lightx2v-env interpreter. It may be:
+#   - a bare command resolved on PATH (default below; works when you launch from the lightx2v env), or
+#   - an absolute path, e.g. python = "/path/to/envs/lightx2v/bin/python".
+# You can also override without editing this file:
+#   export MEMSTRATA_LIGHTX2V_PYTHON=/path/to/envs/lightx2v/bin/python
 python = "python3"
 
 capabilities = ["image_to_video"]
