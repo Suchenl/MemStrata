@@ -11,7 +11,7 @@ discovery), for each entity:
 1. Isolate a crop from the *generated* chunk via the pluggable `Cropper` protocol.
 2. Type-route the encoding (`RoleRoutedEmbedding`: face / location / general by `AssetType`).
 3. Optionally resolve spatial/state angles (`memstrata.mllm` angle classifier).
-4. Emit one `Observation` (`[image + angle]`) per entity, ready for the curate/落库 step.
+4. Emit one `Observation` (`[image + angle]`) per entity, ready for the curate/commit-to-bank step.
 
 It deliberately does **not** write to the bank — admission, diversity strata, redundancy,
 and lifecycle are the curate step's job (`memstrata.steps.curate.MemoryUpdater`).

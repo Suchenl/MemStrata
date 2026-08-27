@@ -27,6 +27,6 @@ PYTHONPATH=src python3 -m memstrata.production.run --backend recording --decompo
 PYTHONPATH=src python3 -m memstrata.production.run --backend helios_distilled_i2v --flux --force-recompose
 ```
 
-Design docs (unified under the subproject `docs/`): [`philosophy.md`](../../docs/method/philosophy.md)（最高纲领）,
-[`design.md`](../../docs/method/design.md)（实现规格）, [`generator_wiring.md`](../../docs/method/generator_wiring.md),
-[`mllm_roles.md`](../../docs/method/mllm_roles.md)（MLLM 角色目录 / 采样参数规格）.
+Design docs (unified under the subproject `docs/`): [`philosophy.md`](../../docs/method/philosophy.md) (highest-level charter; Chinese),
+[`design.md`](../../docs/method/design.md) (implementation spec; Chinese), [`generator_wiring.md`](../../docs/method/generator_wiring.md) (Chinese),
+[`mllm_roles.md`](../../docs/method/mllm_roles.md) (MLLM role catalog / sampling-parameter spec; Chinese).
