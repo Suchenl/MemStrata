@@ -6,7 +6,7 @@
 # anything leaks, run.py aborts. Output run-tag defaults to "bench" so the earlier oracle-assisted
 # "optCA" runs are preserved for the oracle-vs-real A/B table.
 #
-# Designed for a multi-GPU quota node (kml-h800 node1: 8 free GPUs). Pins MLLM->GPU0, crop(S5)->GPU1,
+# Designed for a multi-GPU quota node (gpu-h800 node1: 8 free GPUs). Pins MLLM->GPU0, crop(S5)->GPU1,
 # FLUX+video auto-pick GPUs 2-7. The MLLM at :8000 is shared/reused across all stories (reuse-first).
 #
 # Usage:  bash scripts/memstrata/run_bench_eval.sh [run_tag] [screenplay1 screenplay2 ...]

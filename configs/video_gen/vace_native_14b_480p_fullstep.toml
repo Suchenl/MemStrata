@@ -28,6 +28,6 @@ sample_shift = 16
 sample_guide_scale = 5
 continuation_cond_frames = 9
 serve_persistent = true
-# BDY/shared-storage cold loads can exceed the default 20min ready wait; KML stays ~5min.
+# BDY/shared-storage cold loads can exceed the default 20min ready wait; remote stays ~5min.
 server_ready_timeout = 3600
 output_glob = "out_video.mp4"

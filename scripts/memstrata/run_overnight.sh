@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Overnight MemStrata production launcher (one screenplay -> one run dir + stable log + EXIT sentinel).
 #
-# Designed to run under tmux on a multi-GPU node (kml-a800 node1: 8x80GB). Pins the four services
+# Designed to run under tmux on a multi-GPU node (gpu-a800 node1: 8x80GB). Pins the four services
 # to distinct GPUs so nothing OOM-contends:
 #   MLLM (Qwen3.5-9B) -> GPU0 ; crop-acquisition (S5) -> GPU1 ; FLUX + video auto-pick GPUs 2-7.
 # Writes everything under a FIXED run dir so the local notification watcher can tail one path.
