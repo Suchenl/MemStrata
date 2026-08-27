@@ -33,7 +33,7 @@
    建立记忆，但组当前上下文前看不到当前金标）。headline 指标是 **VisualFidelity**（按实体类型路由的
    多 embedder）。
 
-因果顺序、指标定义、schema 权威见 [`benchmarks/VMem-Bench/docs/benchmark/`](../../../../benchmarks/VMem-Bench/docs/benchmark/)（`schemas_and_contracts.md` /
+因果顺序、指标定义、schema 权威见 [`benchmarks/VMem-Bench/docs/benchmark/`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/)（`schemas_and_contracts.md` /
 `scoring.md` / `design_principles.md`）。
 
 ## baselines（对照系统）
@@ -42,14 +42,14 @@
 主定量表为**因果**系统（`helios / longlive_rag / memflow / iamflow / decmem`，与论文 setting 一致）；
 脚本化 / agentic 系统（ViMax / MovieAgent / VideoMemory / StoryMem / Memento / MM-StoryAgent）为
 非因果，移出定量主表、仅在附录做定性说明。选择与公平性的**当前权威**见
-[`baselines/fairness_decisions.md`](../../../../benchmarks/VMem-Bench/docs/baselines/fairness_decisions.md)；实现见
-[`baselines/track_a.md`](../../../../benchmarks/VMem-Bench/docs/baselines/track_a.md)、策略/历史见
-[`baselines/strategy.md`](../../../../benchmarks/VMem-Bench/docs/baselines/strategy.md)。
+[`baselines/fairness_decisions.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/baselines/fairness_decisions.md)；实现见
+[`baselines/track_a.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/baselines/track_a.md)、策略/历史见
+[`baselines/strategy.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/baselines/strategy.md)。
 
 ## 当前状态与下一步去哪看
 
 - **金标现状**：BBB 金标已 **FROZEN**，52 个 chunk；生产标注管线为 **S1–S7**。标注怎么造出来的权威
-  事实底稿见 [`benchmark/annotation_pipeline.md`](../../../../benchmarks/VMem-Bench/docs/benchmark/annotation_pipeline.md)。
+  事实底稿见 [`benchmark/annotation_pipeline.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/benchmark/annotation_pipeline.md)。
 - **交付顺序与验收 gate**（freeze → 可复现实验 → 回填论文）见
   [`../experiments/buildplan.md`](../experiments/buildplan.md)。
 

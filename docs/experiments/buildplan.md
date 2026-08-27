@@ -18,9 +18,9 @@ pointer is [`assets/docs/hot.md`](../../../../assets/docs/hot.md).
 ## Gold gate
 
 The authoritative S1–S7 annotation protocol is
-[`benchmark/annotation_pipeline.md`](../../../../benchmarks/VMem-Bench/docs/benchmark/annotation_pipeline.md)
-(scoring/replay is in [`benchmark/scoring.md`](../../../../benchmarks/VMem-Bench/docs/benchmark/scoring.md)).
-The freeze/review gates are in [`benchmark/annotation_pipeline.md`](../../../../benchmarks/VMem-Bench/docs/benchmark/annotation_pipeline.md);
+[`benchmark/annotation_pipeline.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/benchmark/annotation_pipeline.md)
+(scoring/replay is in [`benchmark/scoring.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/benchmark/scoring.md)).
+The freeze/review gates are in [`benchmark/annotation_pipeline.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/benchmark/annotation_pipeline.md);
 the three-role mental model is in [`overview/README.md`](../overview/README.md). A sample is not
 finished because an automation run exited successfully: it must pass the human-review
 and strict-freeze gates.

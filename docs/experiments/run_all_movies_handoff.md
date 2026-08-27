@@ -1,8 +1,8 @@
 # 运行交接：22 部 frozen BlenderOpenMovies × 全系统
 
 > 给「跑实验的 agent」的自包含指令。**为什么这么跑**见
-> [`baselines/fairness_decisions.md`](../../../../benchmarks/VMem-Bench/docs/baselines/fairness_decisions.md)；实验矩阵与 E 运行手册见
-> [`fairness_experiment_plan.md`](../../../../benchmarks/VMem-Bench/docs/experiments/fairness_experiment_plan.md)。本文只讲**怎么跑 + 保留哪些产物**。
+> [`baselines/fairness_decisions.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/baselines/fairness_decisions.md)；实验矩阵与 E 运行手册见
+> [`fairness_experiment_plan.md`](https://github.com/Suchenl/VMem-Bench/blob/main/docs/experiments/fairness_experiment_plan.md)。本文只讲**怎么跑 + 保留哪些产物**。
 
 ## 目标
 

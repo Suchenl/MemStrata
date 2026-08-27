@@ -54,7 +54,7 @@ CLI：
 运行逻辑在 `src/memstrata/production/run.py`（模块 `memstrata.production.run`），`scripts/memstrata/run_production.sh` 只是薄 bash 入口。管线依赖的服务由 `src/memstrata/production/services.py` 声明式管理：真实闭环所需的 Qwen MLLM 端点会被 **reuse-first** 自动拉起（已在跑则复用、绝不 kill 别人；`--mllm-gpu/--mllm-port` 可配，`--no-autoserve` 关闭）；FLUX/Helios/Wan/crop-acq server 各自在 backend 内自启，无需外部拉。
 
 ```bash
-cd benchmarks/MemStrata
+cd MemStrata
 PYTHONPATH=src python3 -m memstrata.production.run --list-backends
 # 无 GPU 后端冒烟（--decompose none 跳过 S5 crop server）：
 PYTHONPATH=src python3 -m memstrata.production.run --backend recording --decompose none --chunks 2
