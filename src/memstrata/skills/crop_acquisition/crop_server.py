@@ -1,9 +1,9 @@
 """Persistent crop-acquisition inference server (file-queue protocol).
 
-Mirrors the file-queue pattern of
-``memstrata/steps/generate/backends/helios_persistent_server.py``: the ~model cold start
-(GroundingDINO + SAM3 + DINOv3) is paid ONCE, then the process loops over pending job
-JSONs and writes result JSONs, so the production loop never reloads models per entity.
+Mirrors the file-queue pattern of the persistent generation servers: the model cold start
+(GroundingDINO/WeDetect-Ref + optional SAM3 fallback + DINOv3) is paid ONCE, then the
+process loops over pending job JSONs and writes result JSONs, so the production loop
+never reloads models per entity.
 
 Protocol (single-producer / single-consumer):
   ``<server_dir>/pending/<job_id>.json``  request  (written atomically by the client)
@@ -24,10 +24,9 @@ Result JSON:
 Heavy imports (torch / transformers / SAM3) happen only inside ``build_models`` /
 ``serve`` — importing this module is cheap and does NOT require transformers>=5.9.
 
-LAUNCH (SAM3 needs the vendored transformers>=5.9 prepended on PYTHONPATH):
+LAUNCH (SAM3 fallback needs transformers>=5.9; WeDetect-Ref does not):
 
-  PYTHONPATH=./models/vendor/sam3_transformers59:\
-src:src \
+PYTHONPATH=src \
   python3 \
     -m memstrata.skills.crop_acquisition.crop_server --server_dir <dir>
 
@@ -85,15 +84,18 @@ def _normalize_device(device: str | None) -> str | None:
 
 
 class _Models:
-    """Lazily-constructed bundle of the three perception models (built once)."""
+    """Lazily-constructed perception bundle; WeDetect avoids loading SAM3."""
 
     def __init__(self, *, device: str | None = None) -> None:
         # Imported here (not at module top) so the client/orchestrator import stays light.
         from memstrata.skills.crop_acquisition.grounding_dino import GroundingDinoProposer
-        from memstrata.skills.crop_acquisition.sam3_concept import Sam3ConceptSegmenter
         from memstrata.skills.crop_acquisition.embedding import DinoV3Embedder
+        from memstrata.skills.crop_acquisition.wedetect_client import WeDetectRefGrounder
 
         device = _normalize_device(device)
+        self.device = device
+        self.grounder = WeDetectRefGrounder.from_env()
+        self.segmenter = None
 
         logging.info("[crop_acq] loading GroundingDINO ...")
         self.detector = None
@@ -106,12 +108,22 @@ class _Models:
                 "[crop_acq] GroundingDINO unavailable; continuing with SAM3+DINOv3 only (%r)",
                 exc,
             )
-        logging.info("[crop_acq] loading SAM3 concept segmenter ...")
-        self.segmenter = Sam3ConceptSegmenter(device=device)
-        self.segmenter._ensure_loaded()
+        if self.grounder is not None:
+            logging.info("[crop_acq] WeDetect-Ref is healthy; SAM3 fallback remains lazy")
+        else:
+            self._ensure_segmenter()
         logging.info("[crop_acq] loading DINOv3 embedder ...")
         self.embedder = DinoV3Embedder(device=device)
         self.embedder._ensure_loaded()
+
+    def _ensure_segmenter(self) -> None:
+        if self.segmenter is not None:
+            return
+        from memstrata.skills.crop_acquisition.sam3_concept import Sam3ConceptSegmenter
+
+        logging.info("[crop_acq] loading SAM3 concept segmenter ...")
+        self.segmenter = Sam3ConceptSegmenter(device=self.device)
+        self.segmenter._ensure_loaded()
 
 
 def _run_discovery_job(models: _Models, request: dict[str, Any]) -> dict[str, Any]:
@@ -122,6 +134,7 @@ def _run_discovery_job(models: _Models, request: dict[str, Any]) -> dict[str, An
     """
     from memstrata.skills.crop_acquisition.discovery import discover_entities
 
+    models._ensure_segmenter()
     extra: dict[str, Any] = {}
     for key in ("max_per_kind", "min_mask_fill", "min_side_px", "min_area_fraction",
                 "iou_threshold"):
@@ -185,6 +198,7 @@ def _run_job(models: _Models, request: dict[str, Any]) -> dict[str, Any] | None:
         out_dir=request["out_dir"],
         segmenter=models.segmenter,
         detector=models.detector,
+        grounder=models.grounder,
         embedder=models.embedder,
         **extra,
     )
