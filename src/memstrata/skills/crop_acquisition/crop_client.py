@@ -101,7 +101,11 @@ class ProposeIdentifyCropper:
         self.python = str(python)
         configured_sam3_deps = str(sam3_deps) if sam3_deps else sam3_deps_dir()
         self.sam3_deps = Path(configured_sam3_deps).resolve() if configured_sam3_deps else None
-        self.public_models_root = str(public_models_root or "${PUBLIC_MODELS_ROOT}")
+        self.public_models_root = str(
+            public_models_root
+            or os.environ.get("PUBLIC_MODELS_ROOT")
+            or "${PUBLIC_MODELS_ROOT}"
+        )
         self.frame_pos = min(max(float(frame_pos), 0.0), 1.0)
         positions = frame_positions if frame_positions is not None else _DEFAULT_FRAME_POSITIONS
         cleaned = [min(max(float(p), 0.0), 1.0) for p in positions]

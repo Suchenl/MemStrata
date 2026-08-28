@@ -134,6 +134,17 @@ class _Bank:
         return None
 
 
+def test_server_env_preserves_public_models_root(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("PUBLIC_MODELS_ROOT", "/tmp/public-models")
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+    )
+
+    assert cropper._server_env()["PUBLIC_MODELS_ROOT"] == "/tmp/public-models"
+
+
 class _CapturingCropper(ProposeIdentifyCropper):
     def __init__(self, *args, frame_paths: list[Path], **kwargs) -> None:
         super().__init__(*args, **kwargs)
