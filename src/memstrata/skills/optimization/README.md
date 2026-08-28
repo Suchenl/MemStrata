@@ -16,11 +16,11 @@ tool the agent uses to watch a run, diagnose which skill is misbehaving, and fix
 
 ```bash
 # during a live run (progress.json is written each chunk):
-python -m memstrata.skills.optimization.monitor --run-dir \
+python3 -m memstrata.skills.optimization.monitor --run-dir \
   this repository/production/outputs/<story>/<system>/<ts> --window 5
 
 # full JSON (for programmatic use):
-python -m memstrata.skills.optimization.monitor --run-dir <RUN_DIR> --json
+python3 -m memstrata.skills.optimization.monitor --run-dir <RUN_DIR> --json
 ```
 
 ## What it reads (no new plumbing needed)

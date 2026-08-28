@@ -10,7 +10,7 @@
 
 当前行为：
 
-- 从 `data/Screenplay/products/cn/*.json` 的 `production_screenplay.shots[*].audio_track.dialogue[]` 抽取对白。
+- 从 `production/screenplay/products/cn/*.json` 的 `production_screenplay.shots[*].audio_track.dialogue[]` 抽取对白。
 - 使用 `gTTS` 或 `espeak-ng` 生成单句音频。
 - 按 shot `duration_sec` 累积计划时间，再把总时长等比缩放到实际视频时长。
 - 用 `ffmpeg adelay + amix` 叠到静音底轨，最后 mux 到 long video。
@@ -458,8 +458,8 @@ hf download FunAudioLLM/CosyVoice-ttsfrd \
 2. 新增 showcase 专用 CLI：
 
 ```bash
-python -m scripts.showcase.audio_pipeline.cli \
-  --screenplay data/Screenplay/products/cn/0001_lighthouse_keeper.json \
+python3 -m scripts.showcase.audio_pipeline.cli \
+  --screenplay production/screenplay/products/cn/0001_lighthouse_keeper.json \
   --video production/outputs/0001_lighthouse_keeper/memstrata/optCA/review/long_video.mp4 \
   --tts-backend cosyvoice2 \
   --out-dir production/outputs/_showcase_audio/0001_lighthouse_keeper/optCA

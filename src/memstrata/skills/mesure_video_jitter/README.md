@@ -163,7 +163,7 @@ for r in compare(["a.mp4", "b.mp4"]):
 Command line (this is exactly what these measurements used):
 
 ```bash
-PYTHONPATH=this repository/src python -m memstrata.skills.mesure_video_jitter \
+PYTHONPATH=this repository/src python3 -m memstrata.skills.mesure_video_jitter \
   <clip.mp4> ... [--within-shot] [--max-frames 200]
 ```
 

@@ -54,8 +54,8 @@ on the fly. It has three stages:
    the current gold before composing the current context). The headline metric is
    **VisualFidelity** (a multi-embedder routed by entity type).
 
-For the causal ordering, metric definitions, and authoritative schema, see
-[`benchmarks/VMem-Bench/docs/benchmark/`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/)
+For the causal ordering, metric definitions, and authoritative schema, see the
+[public VMem-Bench benchmark docs](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/)
 (`schemas_and_contracts.md` / `scoring.md` / `design_principles.md`).
 
 ## baselines (control systems)

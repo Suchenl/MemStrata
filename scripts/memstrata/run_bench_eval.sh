@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MoVE-Bench Track B — REAL (bench-mode) regeneration of a screenplay set.
+# MemStrata bench-mode regeneration of a screenplay set.
 #
 # Every eval run MUST be bench-mode (no GT leakage): production/run.py now defaults to bench_mode,
 # so we pass NO --oracle-assisted here. Each run writes run_manifest.json with gt_leakage=none; if
@@ -10,29 +10,32 @@
 # FLUX+video auto-pick GPUs 2-7. The MLLM at :8000 is shared/reused across all stories (reuse-first).
 #
 # Usage:  bash scripts/memstrata/run_bench_eval.sh [run_tag] [screenplay1 screenplay2 ...]
-#   Defaults to run_tag=bench over the three CN stress screenplays.
+#   Defaults to run_tag=bench over the three bundled CN stress screenplays.
 set -uo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # benchmarks/MemStrata
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # the MemStrata repository
 cd "$HERE"
 
 RUN_TAG="${1:-bench}"; shift || true
 SCREENPLAYS=("$@")
 if [ "${#SCREENPLAYS[@]}" -eq 0 ]; then
   SCREENPLAYS=(
-    data/Screenplay/products/cn/0001_lighthouse_keeper.json
-    data/Screenplay/products/cn/0002_night_market_courier.json
-    data/Screenplay/products/cn/0003_desert_archaeologist.json
+    production/screenplay/products/cn/0001_lighthouse_keeper.json
+    production/screenplay/products/cn/0002_night_market_courier.json
+    production/screenplay/products/cn/0003_desert_archaeologist.json
   )
 fi
 
 BACKEND="${BACKEND:-wan22_i2v_a14b_lightx2v_4step}"   # production default (no morphic)
 PY="${PY:-python3}"
-export PUBLIC_MODELS_ROOT="${PUBLIC_MODELS_ROOT:-${PUBLIC_MODELS_ROOT}}"
+if [ -n "${PUBLIC_MODELS_ROOT:-}" ]; then
+  export PUBLIC_MODELS_ROOT
+fi
 export PYTHONPATH="src:${PYTHONPATH:-}"
 
 MASTER="$HERE/production/outputs/_bench_eval_${RUN_TAG}.log"
 : > "$MASTER"
+overall_rc=0
 echo "[bench-eval] tag=$RUN_TAG backend=$BACKEND stories=${#SCREENPLAYS[@]} (BENCH-MODE / no oracle)" | tee -a "$MASTER"
 
 for SP in "${SCREENPLAYS[@]}"; do
@@ -51,9 +54,13 @@ for SP in "${SCREENPLAYS[@]}"; do
     --run-dir "$RUN_DIR" \
     >> "$LOG" 2>&1
   rc=$?
+  if [ "$rc" -ne 0 ] && [ "$overall_rc" -eq 0 ]; then
+    overall_rc="$rc"
+  fi
   # audit the manifest actually says no leakage
   LEAK="$($PY -c "import json,sys;print(json.load(open('$RUN_DIR/run_manifest.json')).get('gt_leakage'))" 2>/dev/null || echo "no_manifest")"
   echo "[bench-eval] <<< $STORY EXIT:$rc gt_leakage=$LEAK" | tee -a "$MASTER"
 done
 
 echo "[bench-eval] ALL_DONE tag=$RUN_TAG" | tee -a "$MASTER"
+exit "$overall_rc"

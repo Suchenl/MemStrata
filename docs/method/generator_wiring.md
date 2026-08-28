@@ -17,13 +17,13 @@ Date: 2026-07-17
 | `oracle.py` / `recording.py` | 轻量本地后端 |
 | `factory.py` | `build_video_backend(name, output_dir=...)` |
 
-TOML 配置镜像：`methods/MemStrata/configs/video_gen/*.toml`
+TOML 配置文件：`configs/video_gen/*.toml`
 
 ## 图像关键帧后端（keyframe-first 第一阶段，2026-07-22 vendored）
 
 主生产管线是 **keyframe-first 两阶段解耦**：图像模型先合成 Layout Anchor 关键帧，视频后端
-（Wan2.2-I2V-A14B + SVI / Morphic LoRA）再展开成视频。图像这一环 vendored 自 Montage
-`src/montage/models/image_generation/`（import 重写、零 `montage` 依赖）：
+（Wan2.2-I2V-A14B + SVI / Morphic LoRA）再展开成视频。图像后端已直接随本仓库提供，
+位于 `src/memstrata/steps/generate/image_backends/`，不依赖 Montage：
 
 | 模块（`steps/generate/image_backends/`） | 覆盖 |
 |---|---|
@@ -32,8 +32,10 @@ TOML 配置镜像：`methods/MemStrata/configs/video_gen/*.toml`
 | `base.py` | `ImageGenerationModel` 协议 + `apply_photographic_grain` / `preprocess_de_ai_prompt` |
 | `factory.py` | `build_image_backend(name, output_dir=...)` / `list_image_backend_names()` |
 
-TOML 配置：`methods/MemStrata/configs/image_gen/*.toml`（当前 `flux.2-klein-9b-kv-fp8`，
-`family=flux`；`python` 指向 `envs/MultiShotMaster`，与视频侧 `envs/vace` 分属两个环境 / 两张卡）。
+TOML 配置：`configs/image_gen/*.toml`（当前 `flux.2-klein-9b-kv-fp8`）。
+`python` 应指向包含 FLUX 依赖的解释器；视频侧可以使用另一个包含 Wan
+依赖的解释器，具体通过 `MEMSTRATA_FLUX_PYTHON` 与
+`MEMSTRATA_LIGHTX2V_PYTHON` 配置。
 `build_image_backend` 消费 `MediaTaskType.{REFERENCE_IMAGE,KEYFRAME,IMAGE_EDIT}` 任务，产出
 `media_type="image"` 的 `GenerationArtifact`。跨 env/GPU 编排（FLUX 出关键帧 → Wan 展开）属
 Phase 3，尚未落地。
@@ -57,13 +59,13 @@ CLI：
 cd MemStrata
 PYTHONPATH=src python3 -m memstrata.production.run --list-backends
 # 无 GPU 后端冒烟（--decompose none 跳过 S5 crop server）：
-PYTHONPATH=src python3 -m memstrata.production.run --backend recording --decompose none --chunks 2
-PYTHONPATH=src python3 -m memstrata.production.run --backend oracle --decompose none --chunks 2
+PYTHONPATH=src python3 -m memstrata.production.run --backend recording --decompose none --segments 2
+PYTHONPATH=src python3 -m memstrata.production.run --backend oracle --decompose none --segments 2
 # 真模型闭环（需 GPU + 权重；默认 --decompose crop_server，记忆从生成视频增长）：
 PYTHONPATH=src python3 -m memstrata.production.run --backend wan_t2v --crop-acq-device 7
 PYTHONPATH=src python3 -m memstrata.production.run --backend helios_distilled_i2v --flux --force-recompose
 # 或直接用 bash 入口（输出落 production/outputs/<story>/<system>/<时间戳>/）：
-bash scripts/memstrata/run_production.sh data/Screenplay/products/cn/0000_detective_mystery.json helios_distilled_i2v memstrata
+bash scripts/memstrata/run_production.sh production/screenplay/products/en/0000_detective_mystery.json helios_distilled_i2v memstrata
 ```
 
 ## 协议

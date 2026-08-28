@@ -9,7 +9,7 @@
 #   bash scripts/memstrata/run_production.sh \
 #     [SCREENPLAY] [BACKEND] [SYSTEM]
 # Env overrides:
-#   PY           python interpreter (default: python3)
+#   PY           python3 interpreter (default: python3)
 #   FLUX=1       add FLUX I2I keyframe fusion
 #   FORCE=1      recompose a fresh keyframe every shot (film-quality)
 #   SEGMENTS=N   limit shots (0/unset = whole screenplay; CHUNKS is a legacy alias)

@@ -17,7 +17,7 @@ Every **N segments** (default N=3–5; smaller early when things are shaky):
 1. **Observe.** Run the monitor on the live run dir:
 
 ```bash
-python -m memstrata.skills.optimization.monitor --run-dir <RUN_DIR> --window 5
+python3 -m memstrata.skills.optimization.monitor --run-dir <RUN_DIR> --window 5
 ```
 
    It reads `progress.json` (written each chunk), `bank.json`, and `review/` and prints a

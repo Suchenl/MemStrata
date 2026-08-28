@@ -2,7 +2,7 @@
 
 Stratified memory for **causal long video generation**. A real run needs a **GPU**, generator / encoder / VLM weights, and ffmpeg. Paper tables additionally need [VMem-Bench](https://github.com/Suchenl/VMem-Bench).
 
-> 中文方法详解见 [`README.zh.md`](README.zh.md).
+> Chinese documentation: [`README.zh.md`](README.zh.md).
 
 ## Getting started
 
@@ -12,9 +12,9 @@ Clone the two repos **next to each other**:
 git clone https://github.com/Suchenl/MemStrata.git
 git clone https://github.com/Suchenl/VMem-Bench.git
 cd MemStrata
-python -m pip install -e ".[dev]"
+python3 -m pip install -e ".[dev]"
 export PUBLIC_MODELS_ROOT="$HOME/public_models"   # see MODELS.md
-python scripts/memstrata/doctor.py
+python3 scripts/memstrata/doctor.py
 ```
 
 Default production path (documented, not hard-wired): FLUX.2 Klein 9B-KV keyframes → Wan2.2-I2V-A14B LightX2V 4-step.
@@ -22,7 +22,7 @@ Default production path (documented, not hard-wired): FLUX.2 Klein 9B-KV keyfram
 ```bash
 # downloads: MODELS.md
 bash scripts/memstrata/run_production.sh
-python -m memstrata.production.run --list-backends
+python3 -m memstrata.production.run --list-backends
 ```
 
 Weights: [`MODELS.md`](MODELS.md). Paper numbers: [`REPRODUCE.md`](REPRODUCE.md) on branch `paper-reproduction`. Gold: [huggingface.co/datasets/Suchenl/VMem-Bench](https://huggingface.co/datasets/Suchenl/VMem-Bench).
@@ -61,18 +61,25 @@ Guiding principle: **combine fast and slow thinking**. Anything solvable determi
    - **D. self-discovered** — *slow*: entities that appear but were not in the prompt; type-limited discovery (`VlmEntityDecomposer`) → drop those already covered by A/B/C → re-id and store. Naming is **never** fabricated by the proposer.
 3. **Memory Update** — fold each `Observation` into the stratified `AssetBank`: identity anchoring/re-id (χ) → novelty dedup within a compatible stratum → state-conflict eviction (kept as history) → per-type budget \(B_\tau\) attribute-diversity selection → per-chunk cohesion self-audit. Follows **WHO-before-WHERE**: evidence must first prove "this is the entity, and it is clearly visible" before it can compete on angle/state diversity.
 
-### Output: a live memory snapshot
+### Output: a portable memory package
 
-The write path's deliverable is a human-readable `memory.json` (schema `memstrata-memory-1.0`; entity → state → visual memory, sharing its structure with the benchmark gold `entities`), atomically rewritten after every chunk, alongside a co-rooted `visual/` image library and the concatenated `long_video.mp4` that all timestamps are measured against.
+The write path's deliverable is a human-readable `membank/` package. It contains
+`memory.json` (schema `memstrata-memory-1.0`; entity → state → visual memory),
+the co-rooted `visual/` image library, and the concatenated
+`long_video.mp4` that all timestamps are measured against. The package is
+separate from per-segment pipeline logs and can be copied as one unit.
 
 ```
 <run_dir>/
-├── long_video.mp4     # each generated segment is appended to the tail
-├── memory.json        # memory snapshot (updated every step)
-└── visual/
-    ├── characters/<asset_id>/states/<state>/*.png
-    ├── props/<asset_id>/states/<state>/*.png
-    └── locations/<asset_id>/states/<state>/*.png
+├── pipeline/                 # internal per-segment records
+├── review/                   # review video and review views
+└── membank/                  # portable deliverable
+    ├── long_video.mp4        # assembled film; timestamp anchor
+    ├── memory.json           # snapshot, refreshed after the run
+    └── visual/
+        ├── characters/<asset_id>/states/<state>/*.png
+        ├── props/<asset_id>/states/<state>/*.png
+        └── locations/<asset_id>/states/<state>/*.png
 ```
 
 See [`README.zh.md`](README.zh.md) for the full `memory.json` schema, the write-side quality-gate plan, and the VLM call budget (Chinese).
@@ -80,7 +87,7 @@ See [`README.zh.md`](README.zh.md) for the full `memory.json` schema, the write-
 ## Self-check
 
 ```bash
-python -m pytest -q
+python3 -m pytest -q
 PYTHONPATH=src python3 -m memstrata.production.run --backend recording --decompose none --no-flux --no-autoserve --segments 2
 PYTHONPATH=src python3 -m memstrata.production.run --backend oracle --decompose none --no-flux --no-autoserve --segments 2
 ```
