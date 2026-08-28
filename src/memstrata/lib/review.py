@@ -27,6 +27,58 @@ def _ffmpeg() -> str | None:
         return shutil.which("ffmpeg")
 
 
+def _probe_meta(path: Path) -> dict[str, Any]:
+    """Return clip duration/fps, or an empty dict when probing is unavailable."""
+    try:
+        import imageio_ffmpeg
+
+        reader = imageio_ffmpeg.read_frames(str(path))
+        try:
+            meta = reader.__next__()
+        finally:
+            reader.close()
+        return {"duration": float(meta["duration"]), "fps": float(meta["fps"])}
+    except Exception:
+        pass
+    probe = shutil.which("ffprobe")
+    if probe is None:
+        return {}
+    try:
+        output = subprocess.run(
+            [probe, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=duration,avg_frame_rate", "-of", "csv=p=0", str(path)],
+            check=True, capture_output=True, text=True, timeout=30,
+        ).stdout.strip()
+        rate, _, duration = output.partition(",")
+        numerator, _, denominator = rate.partition("/")
+        return {"duration": float(duration), "fps": float(numerator) / float(denominator or 1)}
+    except Exception:
+        return {}
+
+
+def _segment_durations(review_dir: Path) -> list[float]:
+    """Return per-clip durations in segment order, cached by filename and size."""
+    cache_path = review_dir / "durations.json"
+    try:
+        cache = json.loads(cache_path.read_text())
+    except Exception:
+        cache = {}
+    durations: list[float] = []
+    dirty = False
+    for segment in sorted((review_dir / "segments").glob("seg_*.mp4")):
+        key = f"{segment.name}:{segment.stat().st_size}"
+        if key not in cache:
+            cache[key] = _probe_meta(segment).get("duration", 0.0)
+            dirty = True
+        durations.append(float(cache[key]))
+    if dirty:
+        try:
+            cache_path.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+    return durations
+
+
 def _resolve(src: str | Path | None) -> Path | None:
     """Resolve an artifact path (absolute, or relative to cwd) to an existing file.
     Some summary fields are labels (e.g. 'flux_i2i'), not paths -> return None."""
@@ -168,6 +220,10 @@ def organize_run(run_dir: str | Path, rows: list[dict[str, Any]] | None = None,
         organize_segment(run_dir, row)
     long_video = _stitch(review)
     _write_index(review, rows, title=title)
+    durations = _segment_durations(review)
     return {"review_dir": str(review),
             "segments": len(list((review / "segments").glob("seg_*.mp4"))),
-            "long_video": str(long_video) if long_video else None}
+            "long_video": str(long_video) if long_video else None,
+            "segment_durations": durations,
+            "duration_sec": sum(durations) if durations else None,
+            "fps": _probe_meta(long_video).get("fps") if long_video else None}

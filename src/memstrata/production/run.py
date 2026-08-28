@@ -24,6 +24,7 @@ import argparse
 import datetime as _dt
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,33 @@ def _crop_acquisition_digest(run_dir: Path) -> dict[str, Any] | None:
         "miss_rate": (misses / attempts) if attempts else None,
         "sources": dict(sorted(sources.items())),
     }
+
+
+def _anchor_membank_to_film(mem: Any, run_dir: Path, info: dict[str, Any]) -> None:
+    """Make ``membank/`` a movable memory package anchored to the assembled film."""
+    membank = run_dir / "membank"
+    membank.mkdir(parents=True, exist_ok=True)
+    source = info.get("long_video")
+    if source and Path(source).is_file():
+        src = Path(source)
+        dst = membank / "long_video.mp4"
+        if not dst.is_file() or dst.stat().st_size != src.stat().st_size:
+            shutil.copy2(src, dst)
+        mem.long_video_path = str(dst)
+    if info.get("fps"):
+        mem.fps = float(info["fps"])
+    if info.get("duration_sec") is not None:
+        mem.long_video_duration_sec = float(info["duration_sec"])
+    starts: dict[int, float] = {}
+    start = 0.0
+    for index, duration in enumerate(info.get("segment_durations") or []):
+        starts[index] = round(start, 3)
+        start += float(duration)
+    if starts:
+        mem.segment_start_sec = starts
+    # The incremental snapshot was written before the film was assembled; refresh its
+    # video header and absolute timestamps now that the timeline is known.
+    mem.write_memory_snapshot()
 
 
 def build_pipeline(
@@ -171,7 +199,8 @@ def build_pipeline(
         persist_path=run_dir / "bank.json", policy=policy, bank=bank, generator=generator,
         curator=curator, decomposer=decomposer, embedder=emb,
         angle_classifier=angle_classifier, crop_attribute_classifier=crop_attr_classifier,
-        run_dir=run_dir / "pipeline")
+        run_dir=run_dir / "pipeline", membank_dir=run_dir / "membank",
+        movie_id=str(screenplay.get("story_id", "")))
     return mem, generator, composer
 
 
@@ -371,6 +400,7 @@ def _run_loop(
         try:
             info = organize_run(run_dir, results, title=story_id)
             print(f"[prod] review: {info['segments']} segs -> {info['long_video']}", flush=True)
+            _anchor_membank_to_film(mem, run_dir, info)
         except Exception as exc:  # noqa: BLE001
             print(f"[prod] organize skipped: {exc!r}", flush=True)
 

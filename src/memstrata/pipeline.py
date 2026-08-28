@@ -123,6 +123,7 @@ class MemStrata:
         max_total_representations: int | None = None,
         attributes_when_angles_known: bool | None = None,
         run_dir: str | Path | None = None,
+        membank_dir: str | Path | None = None,
         persist_path: str | Path | None = None,
         movie_id: str = "",
         long_video_path: str | Path | None = None,
@@ -190,12 +191,18 @@ class MemStrata:
         self.run_dir = Path(run_dir) if run_dir else None
         if self.run_dir:
             self.run_dir.mkdir(parents=True, exist_ok=True)
+        # Keep per-segment pipeline dumps separate from the portable memory deliverable.
+        self.membank_dir = Path(membank_dir) if membank_dir else None
+        if self.membank_dir:
+            self.membank_dir.mkdir(parents=True, exist_ok=True)
         # Identity of the produced film and the grown long_video.mp4 the memory snapshot's
         # timeline is anchored to; the producer sets long_video_path as it concatenates.
         self.movie_id = str(movie_id or "")
         self.fps = fps
         self.long_video_path = str(long_video_path) if long_video_path else None
         self.long_video_duration_sec: float | None = None
+        # segment_id -> start second on the assembled film; filled by the production runner.
+        self.segment_start_sec: dict[int, float] = {}
         self.segment_log: list[dict[str, Any]] = []
 
     def _warn_on_unapplied_policy(
@@ -437,18 +444,43 @@ class MemStrata:
         the benchmark gt and is refreshed every segment so it stays a live, dynamically
         updated record. All ``sec`` values are on the grown ``long_video.mp4`` timeline
         (``self.long_video_path`` / ``self.long_video_duration_sec``, set by the producer).
-        No-op without a ``run_dir``.
+        Written to ``membank_dir`` when set, otherwise ``run_dir``; no-op without either.
         """
-        if self.run_dir is None:
+        target = self.membank_dir or self.run_dir
+        if target is None:
             return None
         return export_memory_snapshot(
             self.bank,
-            self.run_dir,
+            target,
             movie_id=self.movie_id,
             fps=self.fps,
+            rep_seconds=self._rep_seconds_on_film(),
             video_path=self.long_video_path,
             video_duration_sec=self.long_video_duration_sec,
         )
+
+    def _rep_seconds_on_film(self) -> dict[str, float] | None:
+        """Place representations on the assembled film timeline when the producer supplied it."""
+        if not self.segment_start_sec:
+            return None
+        fps = float(self.fps) if self.fps else 0.0
+        seconds: dict[str, float] = {}
+        for asset in self.bank.assets.values():
+            for rep in asset.representations:
+                start = self.segment_start_sec.get(int(rep.origin_segment_id))
+                if start is None:
+                    continue
+                offset = 0.0
+                if fps > 0:
+                    attrs = (getattr(rep, "annotations", {}) or {}).get("crop_attributes") or {}
+                    frame_index = attrs.get("frame_index")
+                    if frame_index is not None:
+                        try:
+                            offset = float(frame_index) / fps
+                        except (TypeError, ValueError):
+                            offset = 0.0
+                seconds[rep.representation_id] = round(start + offset, 3)
+        return seconds or None
 
     def write_stratification_summary(self, path: str | Path | None = None) -> Path | None:
         """Persist the stratification diagnostic (latest state + per-segment trend)."""
