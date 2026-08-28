@@ -9,7 +9,7 @@
 #   bash scripts/memstrata/run_production.sh \
 #     [SCREENPLAY] [BACKEND] [SYSTEM]
 # Env overrides:
-#   PY           python interpreter (default: python3)
+#   PY           python3 interpreter (default: python3)
 #   FLUX=1       add FLUX I2I keyframe fusion
 #   FORCE=1      recompose a fresh keyframe every shot (film-quality)
 #   CHUNKS=N     limit shots (0/unset = whole screenplay)
@@ -21,7 +21,7 @@
 #   EXTRA        extra args forwarded to `python -m memstrata.production.run`
 set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # benchmarks/MemStrata
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # the MemStrata repository
 cd "$HERE"
 
 SCREENPLAY="${1:-production/screenplay/products/en/0000_detective_mystery.json}"

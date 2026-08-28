@@ -10,7 +10,7 @@
 #   chunks=0 -> whole screenplay. run_tag names the output subdir (e.g. smoke3, full).
 set -uo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # benchmarks/MemStrata
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # the MemStrata repository
 cd "$HERE"
 
 SCREENPLAY="${1:?screenplay json}"
@@ -24,7 +24,9 @@ RUN_TAG="${4:-run}"
 BACKEND="${BACKEND:-wan22_i2v_a14b_lightx2v_4step}"
 PY="${PY:-python3}"
 
-export PUBLIC_MODELS_ROOT="${PUBLIC_MODELS_ROOT:-${PUBLIC_MODELS_ROOT}}"
+if [ -n "${PUBLIC_MODELS_ROOT:-}" ]; then
+  export PUBLIC_MODELS_ROOT
+fi
 export PYTHONPATH="src:${PYTHONPATH:-}"
 
 STORY="$(basename "$SCREENPLAY" .json)"
@@ -43,4 +45,6 @@ echo "[overnight] story=$STORY backend=$BACKEND chunks=$CHUNKS run_dir=$RUN_DIR"
   --mllm-gpu 0 --mllm-port 8000 \
   --run-dir "$RUN_DIR" \
   >> "$LOG" 2>&1
-echo "EXIT:$? run_dir=$RUN_DIR" | tee -a "$LOG"
+rc=$?
+echo "EXIT:$rc run_dir=$RUN_DIR" | tee -a "$LOG"
+exit "$rc"

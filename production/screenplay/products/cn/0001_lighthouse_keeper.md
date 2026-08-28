@@ -103,9 +103,9 @@ S7→S8 之间是数年时间跳跃。它把"长时缺席"和"状态变化"叠�
 
 ```bash
 # 校验 shots / 硬样本接线（不生成）
-PYTHONPATH=src python -c "
+PYTHONPATH=src python3 -c "
 from memstrata.adapters.screenplay import load_screenplay, iter_shots
-sp=load_screenplay('data/Screenplay/products/cn/0001_lighthouse_keeper.json')
+sp=load_screenplay('production/screenplay/products/cn/0001_lighthouse_keeper.json')
 shots=iter_shots(sp)
 apps=lambda e:[s.chunk_id for s in shots if e in s.referenced_entities]
 print('E2', apps('E2')); print('E3', apps('E3')); print('E6', apps('E6'))
@@ -114,5 +114,5 @@ print('avoid', [(s.chunk_id,s.forbidden_ids) for s in shots if s.forbidden_ids])
 
 # 正片生产（默认 lightx2v + FLUX 关键帧）
 bash scripts/memstrata/run_production.sh \
-  data/Screenplay/products/cn/0001_lighthouse_keeper.json
+  production/screenplay/products/cn/0001_lighthouse_keeper.json
 ```

@@ -47,7 +47,7 @@ FLUX keyframe into a chunk video; the external stratified memory supplies long-r
 
 ## Use in the closed loop
 ```bash
-python experiments/e2e/memstrata_helios_loop/run.py \
+python3 -m memstrata.production.run \
   --backend wan22_i2v_a14b_lightx2v_4step --flux --force-recompose ...
 ```
 i2v (`recompose_*`) is the only supported mode (the loop runs `--force-recompose`, a fresh

@@ -49,7 +49,7 @@ one-to-one onto them:
 - [`design.md`](method/design.md) (Chinese): the implementation specification aligned with the paper's four-step loop (including the D6 zero-import boundary, planner fallback constraints, visual strata, Track A adapter).
 - [`generator_wiring.md`](method/generator_wiring.md) (Chinese): the video-generator backend inventory and wiring.
 
-### benchmark/ (Bench = the authoritative `vmem_bench` protocol; **moved to [`benchmarks/VMem-Bench/docs/benchmark/`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/)**)
+### benchmark/ (Bench = the authoritative `vmem_bench` protocol; maintained in the public [VMem-Bench benchmark docs](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/))
 - [`running_eval.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/running_eval.md): the **end-to-end run manual** — how to take a film from frozen gold all the way to a score (Stage 1 produces context → Stage 2 VLM scores). Read this first if you want to "run one film".
 - [`design_principles.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/design_principles.md): the design principles for this benchmark (including the general benchmark-methodology charter).
 - [`schemas_and_contracts.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/schemas_and_contracts.md): data contracts and metric definitions (**the authoritative schema source**; for the headline metric see `scoring.md`).
@@ -63,7 +63,7 @@ one-to-one onto them:
 - [`pitfalls.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/pitfalls.md): incident-and-fix records from running (institutional memory).
 - [`references.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/benchmark/references.md): references and the 2026 landscape.
 
-### baselines/ (other systems compared against the SUT on the **same benchmark**; **moved to [`benchmarks/VMem-Bench/docs/baselines/`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/baselines/)**)
+### baselines/ (other systems compared against the SUT on the **same benchmark**; maintained in the public [VMem-Bench baseline docs](https://github.com/Suchenl/VMem-Bench/tree/main/docs/baselines/))
 - [`fairness_decisions.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/baselines/fairness_decisions.md): the **final decisions on fair baseline comparison** (frozen 2026-07-22, currently authoritative).
 - [`track_a.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/baselines/track_a.md): Track A = the implementation of real retrieval / memory operating on GT visuals (including each baseline's weight source and placement).
 - [`strategy.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/baselines/strategy.md): baseline strategy and the historical selection record (selection is governed by `fairness_decisions.md`).
@@ -72,13 +72,15 @@ one-to-one onto them:
 
 ### experiments/
 - [`buildplan.md`](experiments/buildplan.md) (Chinese): the paper-facing delivery order and acceptance gates.
-- [`fairness_experiment_plan.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/experiments/fairness_experiment_plan.md): the **fairness experiment plan** (name-anchored / description-only input sets, multi-embedder, k sweep, causal coverage). **(Bench side, moved to `benchmarks/VMem-Bench/docs/experiments/`)**
-- [`generator_in_the_loop_eval_plan.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/experiments/generator_in_the_loop_eval_plan.md): the **generator-in-the-loop evaluation design (discussion draft)** — long-range consistency degradation curves, sample size, and the division of labor with the Track A main table. **(Bench side, moved to `benchmarks/VMem-Bench/docs/experiments/`)**
+- [`fairness_experiment_plan.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/experiments/fairness_experiment_plan.md): the **fairness experiment plan** (name-anchored / description-only input sets, multi-embedder, k sweep, causal coverage). **(Bench-side document)**
+- [`generator_in_the_loop_eval_plan.md`](https://github.com/Suchenl/VMem-Bench/tree/main/docs/experiments/generator_in_the_loop_eval_plan.md): the **generator-in-the-loop evaluation design (discussion draft)** — long-range consistency degradation curves, sample size, and the division of labor with the Track A main table. **(Bench-side document)**
 - [`open_source_movie_track_decomposition.md`](experiments/open_source_movie_track_decomposition.md) (Chinese), [`ablation_study/`](experiments/ablation_study/) (Chinese).
 
-### paper/
-- [`paper_organization.md`](paper/paper_organization.md) (Chinese): the contribution / baseline / table contract.
-- [`_insight.md`](paper/_insight.md) (Chinese), [`0_abstract.md`](paper/0_abstract.md) (Chinese), [`1_introduction.md`](paper/1_introduction.md) (Chinese), [`2_related_work.md`](paper/2_related_work.md) (Chinese).
+### Paper
+The manuscript is maintained separately from this code repository. For the
+frozen experiment protocol and reproduction entry points, use
+[`REPRODUCE.md`](../REPRODUCE.md) and the public
+[VMem-Bench documentation](https://github.com/Suchenl/VMem-Bench).
 
 ## Not inside docs/ (deliberately left in place; only registered here as pointers)
 

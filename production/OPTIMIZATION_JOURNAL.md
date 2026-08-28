@@ -47,8 +47,8 @@ bench 双档打分作为 stretch，若 Stage-1 可跑再补（记在后续条目
 - `f1`[headline]、`avoidance_ok`（是否规避了 forbidden/废弃证据）、`budget`（context 规模）。
 - `redundancy_sim`（可选，DINOv3 ViT-B/16 CLS 自相似，钉死同 scoring_v2 §4.4）、`memory_growth`。
 
-用法：`python -m memstrata.skills.optimization.metrics --run-dir <RUN_DIR> [--redundancy] [--json]` → 写 `<run>/metrics.json`。
-诊断/决策：`python -m memstrata.skills.optimization.monitor --run-dir <RUN_DIR>` → 症状→skill→registry 旋钮。
+用法：`python3 -m memstrata.skills.optimization.metrics --run-dir <RUN_DIR> [--redundancy] [--json]` → 写 `<run>/metrics.json`。
+诊断/决策：`python3 -m memstrata.skills.optimization.monitor --run-dir <RUN_DIR>` → 症状→skill→registry 旋钮。
 
 ---
 
@@ -385,7 +385,7 @@ bench-mode 下一旦检出泄漏即 `assert` 中止。新脚本 `scripts/memstra
 
 **复现（生成→评分）**
 ```
-bash scripts/memstrata/run_bench_eval.sh bench data/Screenplay/products/cn/0002_night_market_courier.json
+bash scripts/memstrata/run_bench_eval.sh bench production/screenplay/products/cn/0002_night_market_courier.json
 CUDA_VISIBLE_DEVICES="" PYTHONPATH=src python3 -m vmem_bench.scoring.end2end_coverage \
   --gt data/MoVE-Bench/trackB/gt/0002_night_market_courier.json \
   --run production/outputs/0002_night_market_courier/memstrata/bench

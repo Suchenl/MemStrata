@@ -1,11 +1,11 @@
 # 语义召回 + 帧级自审 · 设计方案（DRAFT，待审）
 
 > 状态：**提案，未实现**。记录一个读侧检索增强 + 记忆库自审的方向，先审后做。
-> 关联：`methods/MemStrata/src/memstrata/skills/intent_understanding/`（读侧 fast/slow）、
+> 关联：`src/memstrata/skills/intent_understanding/`（读侧 fast/slow）、
 > `skills/memory_retrieval/`（`name_match` + `retrievers.py` 基线臂）、
 > `skills/memory_update/curator.py`（写侧 reconcile + cohesion 自审）、
 > `skills/memory_update/snapshot.py`（`memory.json` 导出）、
-> `benchmarks/VMem-Bench/docs/benchmark/sut_pixel_channel_DESIGN.md`（契约侧的姊妹提案）。
+> [VMem-Bench 的契约侧姊妹提案](https://github.com/Suchenl/VMem-Bench/blob/main/docs/benchmark/sut_pixel_channel_DESIGN.md)。
 
 ## 0. 现状（先对齐事实）
 

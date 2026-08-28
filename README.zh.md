@@ -111,19 +111,23 @@ $$(q_n,\tilde p_n,\mathcal{C}_n)=\mathcal{R}(g_n,\mathcal{M}_n)\ \to\ x_n=G_\the
 → 状态冲突淘汰（留痕）→ per-type 预算 B_τ 的属性多样性选择 → 每 chunk 回溯 cohesion 自审隔离内鬼。
 遵循 WHO-before-WHERE：一条证据先证明"是本实体且看得清"，才有资格参与角度/状态多样性竞争。
 
-#### 记忆快照（对外产物）：动态更新的 JSON + 同根 `visual/` 图库
+#### 记忆包（对外产物）：`membank/` + 同根 `visual/` 图库
 
-记忆更新的**对外产物**不再是杂乱的 rep-centric dump，而是一份**人类可读、随每步动态更新**的记忆快照
-JSON（结构与基准 gt 的 `entities` 同源），并把视觉记忆按同根目录的 `visual/` 分层存放：
+记忆更新的**对外产物**不再是杂乱的 rep-centric dump，而是一份**可整体复制的
+`membank/` 记忆包**。其中包含人类可读、随运行更新的记忆快照 JSON（结构与基准
+gold 的 `entities` 同源）、同根目录的 `visual/` 分层图库，以及作为时间轴基准的成片：
 
 ```
 <run_dir>/
-├── long_video.mp4                     # 成片：每生成一段就拼接到尾部（记忆的时间轴基准）
-├── memory.json                        # 记忆快照（每步更新）
-└── visual/
-    ├── characters/<asset_id>/states/<state>/*.png
-    ├── props/<asset_id>/states/<state>/*.png
-    └── locations/<asset_id>/states/<state>/*.png
+├── pipeline/                          # 内部的分段流水线记录
+├── review/                            # 审核视图与审核成片
+└── membank/                           # 可移动的对外记忆包
+    ├── long_video.mp4                 # 成片；所有时间戳以此为准
+    ├── memory.json                    # 运行后刷新的记忆快照
+    └── visual/
+        ├── characters/<asset_id>/states/<state>/*.png
+        ├── props/<asset_id>/states/<state>/*.png
+        └── locations/<asset_id>/states/<state>/*.png
 ```
 
 `memory.json` schema（`memstrata-memory-1.0`）：
@@ -154,7 +158,7 @@ JSON（结构与基准 gt 的 `entities` 同源），并把视觉记忆按同根
 ```
 
 要点：
-- **同级成片 `long_video.mp4`**：每生成一段就拼到尾部；`memory.json` 里所有 `sec`/`first_seen_sec` 都以**这条成片的时间轴**为准，`video.duration_sec` 记录当前总时长。
+- **`membank/long_video.mp4`**：每生成一段就拼到尾部；`memory.json` 里所有 `sec`/`first_seen_sec` 都以**这条成片的时间轴**为准，`video.duration_sec` 记录当前总时长。
 - **实体 → 状态 → 视觉记忆**三级；每个状态各自挂**相对路径**图片（同根 `visual/…/states/<state>/`）。
 - **时间记忆**：实体级 `first_seen_sec` + 每个状态的 `first_seen_sec` 与 `appearances[{sec, chunk}]`（初次 + 每次出现），**尽量精细到秒**（秒不可得时退化记 chunk）。
 - 状态键来自 `state_angle`（default/changed/damaged）或意图指定的具名新状态；描述取该状态的观测/意图描述。
@@ -255,21 +259,22 @@ JSON（结构与基准 gt 的 `entities` 同源），并把视觉记忆按同根
 
 ## docs 治理（已批准 / 本次一起执行）
 
-`docs/` 目前仍是拆分前的混合态，含大量 **bench 专属**文档，迁往 `the VMem-Bench repository/docs/`：
+`docs/` 目前仍是拆分前的混合态，含少量历史 **bench 专属**文档；基准侧的权威版本
+位于公开的 [VMem-Bench 文档](https://github.com/Suchenl/VMem-Bench/tree/main/docs)：
 
 | 处置 | 目录/文件 | 说明 |
 |---|---|---|
-| **保留（方法侧）** | `docs/method/*`、`docs/overview/`、`docs/operations/`、`docs/glossary.md` | 更新路径引用（很多仍指向 `the former monorepo path/`） |
-| **迁往 VMem-Bench** | `docs/benchmark/*`、`docs/baselines/*`、`docs/design/bench/*` | 这些是基准协议/baseline/公平性，属评测侧 |
+| **保留（方法侧）** | `docs/method/*`、`docs/overview/`、`docs/operations/`、`docs/glossary.md` | 方法、运行与术语说明 |
+| **以 VMem-Bench 为准** | `docs/benchmark/*`、`docs/baselines/*`、`docs/design/bench/*` | 基准协议、baseline 与公平性以公开 Bench 仓库为准 |
 | **分拣** | `docs/experiments/*` | 方法侧实验计划留下，bench 实验计划迁走 |
-| **更新纲领路径** | `src/memstrata/docs/design_philosophy.md` | 顶部引用 `sut_design.md` / `the former monorepo path/docs/crop_principles.md` 已失效，改指 `docs/method/design.md` 与本包内 crop 契约 |
+| **更新纲领路径** | `src/memstrata/docs/design_philosophy.md` | 以 `docs/method/design.md` 与公开 VMem-Bench crop 契约为准 |
 
 ---
 
 ## 运行自检
 
 ```bash
-python -m pytest -q
+python3 -m pytest -q
 PYTHONPATH=src python3 -m memstrata.production.run --backend recording --decompose none --no-flux --no-autoserve --segments 2
 PYTHONPATH=src python3 -m memstrata.production.run --backend oracle --decompose none --no-flux --no-autoserve --segments 2
 ```

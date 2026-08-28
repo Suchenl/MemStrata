@@ -55,7 +55,7 @@ cat <<'EOF'
   REPO=${MONTAGE_ROOT}/models/vendor/WeDetect
   WEIGHTS=${PUBLIC_MODELS_ROOT}/_classified_by_task/Object_Detection
   cd "$REPO"
-  python infer_wedetect_ref.py \
+  python3 infer_wedetect_ref.py \
     --wedetect_ref_checkpoint "$WEIGHTS/WeDetect-Ref-2B" \
     --wedetect_uni_checkpoint "$WEIGHTS/WeDetect/wedetect_base_uni.pth" \
     --image assets/demo.jpeg \
