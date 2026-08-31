@@ -147,12 +147,15 @@ class FluxKleinImageBackend:
                 "generator": generator,
             }
 
-            # Run pipeline
+            # Run pipeline. FLUX.2 klein accepts a LIST of reference images (native multi-image
+            # composition), so feed ALL selected crops, not just the first — the model composes
+            # the scene from every reference. A single ref stays single-image I2I.
             if ref_paths:
-                logger.info("Running FLUX.2-klein-9b-kv in IMAGE-TO-IMAGE mode")
-                ref_image = Image.open(ref_paths[0]).convert("RGB")
-                kwargs["image"] = ref_image
-                notes.append(f"conditioned_on={ref_paths[0].name}")
+                ref_images = [Image.open(p).convert("RGB") for p in ref_paths]
+                mode_label = "MULTI-IMAGE" if len(ref_images) > 1 else "IMAGE-TO-IMAGE"
+                logger.info("Running FLUX.2-klein-9b-kv in %s mode (%d refs)", mode_label, len(ref_images))
+                kwargs["image"] = ref_images if len(ref_images) > 1 else ref_images[0]
+                notes.append("conditioned_on=" + ",".join(p.name for p in ref_paths))
             else:
                 logger.info("Running FLUX.2-klein-9b-kv in TEXT-TO-IMAGE mode")
 

@@ -60,7 +60,7 @@ Started by `scripts/memstrata/servers/serve_qwen.sh` using vLLM as an OpenAI-com
 | Component | Weights | Location | Notes |
 |---|---|---|---|
 | Video i2v (default backend) | Wan2.2-I2V-A14B lightx2v 4-step distill | `${PUBLIC_MODELS_ROOT}/Wan-AI/Wan2.2-I2V-A14B-lightx2v-4step` | Assembled by `setup_lightx2v_weights.sh` from two distilled safetensors + the base model; config at `configs/video_gen/wan22_i2v_a14b_lightx2v_4step.toml` |
-| Keyframe fusion | FLUX.2 klein (`flux.2-klein-9b-kv-fp8`) | See the corresponding image backend config | R3/R4 collage → FLUX I2I, can be turned off with `--no-flux` |
+| Keyframe fusion | FLUX.2 klein (`flux.2-klein-9b-kv-fp8`) | See the corresponding image backend config | Default: native FLUX.2 multi-image composition (crops fed straight to FLUX, no Qwen). Legacy R3/R4 collage → FLUX I2I via `MEMSTRATA_KEYFRAME_MODE=collage`. Turn keyframes off with `--no-flux` |
 
 ### 1.5 Audio (showcase / audio MVP, weights under the extended root `Audio/`)
 Root: `${PUBLIC_MODELS_ROOT}/Audio`

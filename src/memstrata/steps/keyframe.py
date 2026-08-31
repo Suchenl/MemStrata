@@ -3,22 +3,31 @@ and a reference-conditioned video generator.
 
 The generator (Helios / SVI) continues a segment from a single *scene keyframe*, but the
 memory bank stores per-entity **crops**, not scenes. This module turns the crops that
-``compose`` selected for a segment into one coherent photorealistic keyframe:
+``compose`` selected for a segment into one coherent photorealistic keyframe.
 
-    prompt + selected crops
-        --R3 (LayoutPlanner, MLLM)-->  color-block layout regions
-        --R4 (assign, MLLM) + composite-->  collage (real crops pasted into regions)
-        --FLUX.2 Klein I2I fuse-->          one coherent scene keyframe
+Default (``MEMSTRATA_KEYFRAME_MODE=native``): native FLUX.2 multi-image composition —
+
+    prompt + selected crops --FLUX.2 Klein (multi-image)--> one coherent scene keyframe
+
+The crops are fed straight to FLUX as multiple reference images; FLUX composes the scene
+itself. No Qwen layout planning / collage assembly, so the run needs only the FLUX server
+(no Qwen MLLM endpoint for keyframes).
+
+Legacy (``MEMSTRATA_KEYFRAME_MODE=collage``): the older Qwen-canvas path —
+
+    prompt + crops --R3 (LayoutPlanner, MLLM)--> layout regions
+                   --R4 (assign, MLLM) + composite--> collage --FLUX.2 I2I fuse--> keyframe
 
 The keyframe is then handed to the video backend as ``controls['composed_references']``
 (a single fused image) instead of the raw crops, so Helios animates a real scene while
-identities come from memory. R3/R4 run on the single multimodal Qwen3.5-9B; the FLUX
-fusion runs on the vendored FLUX image backend (its own env/persistent server).
+identities come from memory. The FLUX step runs on the vendored FLUX image backend (its
+own env / persistent server); collage mode additionally needs the multimodal Qwen3.5-9B.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -150,6 +159,76 @@ class KeyframeComposer:
             self._cache[segment_id] = record
             return record
 
+        # Default: native FLUX multi-image composition — feed the selected crops straight to
+        # FLUX.2 as multiple reference images; the model composes one coherent scene keyframe
+        # from prompt + crops. No Qwen layout planning (R3) or collage assembly (R4). The legacy
+        # Qwen-canvas collage path is kept behind MEMSTRATA_KEYFRAME_MODE=collage.
+        mode = (os.environ.get("MEMSTRATA_KEYFRAME_MODE", "native") or "native").strip().lower()
+        if mode != "collage":
+            return self._compose_native(prompt, crops, segment_id=segment_id)
+        return self._compose_collage(
+            prompt, crops, segment_id=segment_id, segment_dir=segment_dir, use_mllm=use_mllm
+        )
+
+    def _compose_native(
+        self,
+        prompt: str,
+        crops: list[CropRef],
+        *,
+        segment_id: int,
+    ) -> dict[str, Any] | None:
+        """Native FLUX multi-image keyframe: the selected memory crops are handed to FLUX.2 as
+        multiple reference images, and FLUX composes the scene directly. No Qwen involved."""
+        if self.image_backend is None:
+            logger.warning(
+                "KeyframeComposer: native mode needs a FLUX image backend; skipping keyframe."
+            )
+            return None
+        references = [{"image": c.image_path} for c in crops]
+        task = MediaGenerationTask(
+            task_id=f"kf_{segment_id:03d}",
+            segment_id=f"kf_{segment_id:03d}",
+            task_type=MediaTaskType.KEYFRAME,
+            plan_version=1,
+            model_name="flux_klein",
+            prompt=prompt,
+            controls={
+                "composed_references": references,
+                "width": self.width,
+                "height": self.height,
+                "steps": self.steps,
+                "seed": self.seed,
+            },
+        )
+        artifact = self.image_backend.generate(task)
+        logger.info(
+            "KeyframeComposer: segment %s keyframe (flux_multi_i2i, n_crops=%d) -> %s",
+            segment_id, len(crops), artifact.object_uri,
+        )
+        record = {
+            "keyframe": artifact.object_uri,
+            "fused": "flux_multi_i2i",
+            "collage": None,
+            "anchor": None,
+            "elements": [],
+            "assignments": [],
+            "n_crops": len(crops),
+        }
+        self._cache[segment_id] = record
+        return record
+
+    def _compose_collage(
+        self,
+        prompt: str,
+        crops: list[CropRef],
+        *,
+        segment_id: int,
+        segment_dir: Path,
+        use_mllm: bool = True,
+    ) -> dict[str, Any] | None:
+        """Legacy Qwen-canvas path (opt-in via MEMSTRATA_KEYFRAME_MODE=collage): R3 layout →
+        color-block anchor → R4 crop assignment → collage → FLUX I2I fuse. Requires the Qwen
+        MLLM endpoint (see ``required_services``)."""
         # R3: layout regions from the prompt.
         elements = self.planner.plan_layout(prompt)
         anchor = self.color_block.render_anchor(

@@ -185,9 +185,10 @@ def build_pipeline(
 
     video_backend = build_video_backend(
         backend_name, output_dir=run_dir / "media", run_id=system, models_config=cfg)
-    # The keyframe composer (R3/R4[/FLUX]) itself calls the MLLM, so it is only attached for
-    # real runs; the lightweight backend smoke (decompose="none", no FLUX) skips it entirely,
-    # exactly like the old oracle smoke -> no GPU / no MLLM server needed.
+    # The keyframe composer is attached for real runs (flux keyframe or the crop_server path);
+    # the lightweight backend smoke (decompose="none", no FLUX) skips it entirely -> no GPU
+    # needed. In the default native keyframe mode it composes multi-image on FLUX with no MLLM;
+    # only the legacy MEMSTRATA_KEYFRAME_MODE=collage path calls the Qwen MLLM (R3/R4).
     composer = None
     if flux or decompose == "crop_server":
         image_backend = None

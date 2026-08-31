@@ -11,7 +11,7 @@ picks among them, and the choice is re-validated against feasibility with a safe
 | `continue_ar` | continue from prior video window | same scene, no cut, all referenced entities on prev last frame | `video=[style_anchor + ~73 recent frames]`, `history_sizes=[16,2,1]`, `keep_first_frame=True` |
 | `reanchor_lastframe` | prev last frame as i2v anchor + new prompt | same place, new beat, no entity to introduce | `image=<prev_last_frame>` |
 | `recompose_partial` | paste returning crop onto prev last frame, then i2v | scene mostly same, must inject ONE returning asset | `image=<composited_last_frame>` |
-| `recompose_keyframe` | fresh FLUX keyframe from memory crops (R3→R4→FLUX) | scene cut / new location / time jump / returning asset absent from prev frame / chunk 0 | `image=<flux_keyframe>` |
+| `recompose_keyframe` | fresh FLUX keyframe from memory crops (default: native FLUX multi-image; legacy R3→R4→FLUX collage via `MEMSTRATA_KEYFRAME_MODE=collage`) | scene cut / new location / time jump / returning asset absent from prev frame / chunk 0 | `image=<flux_keyframe>` |
 
 ## Hard constraints (rule layer, not the model)
 

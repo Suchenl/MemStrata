@@ -165,10 +165,15 @@ def required_services(
     """Which externally-managed services this run configuration needs.
 
     Only the Qwen MLLM endpoint qualifies today (video/image/crop servers self-start inside
-    their backends). It is needed whenever the keyframe composer is attached (``flux`` or the
-    real ``crop_server`` decompose path both use R3/R4) or the router uses the MLLM.
+    their backends). It is needed when the ``crop_server`` decompose path names/decomposes via
+    the MLLM, when the router uses the MLLM, or when the keyframe composer runs in the legacy
+    ``collage`` mode (R3/R4). The default native FLUX keyframe path composes multi-image with no
+    Qwen, so ``flux`` alone no longer pulls in the MLLM endpoint.
     """
-    needs_mllm = flux or decompose == "crop_server" or use_router_mllm
+    legacy_keyframe = flux and (
+        os.environ.get("MEMSTRATA_KEYFRAME_MODE", "native").strip().lower() == "collage"
+    )
+    needs_mllm = legacy_keyframe or decompose == "crop_server" or use_router_mllm
     specs: list[ServiceSpec] = []
     if needs_mllm:
         specs.append(qwen_mllm_spec(gpu=mllm_gpu, port=mllm_port))

@@ -104,8 +104,10 @@ def main() -> None:
                     "generator": generator,
                 }
                 if ref_paths:
-                    ref_image = Image.open(ref_paths[0]).convert("RGB")
-                    kwargs["image"] = ref_image
+                    # Native multi-image: FLUX.2 klein takes a list of reference images and
+                    # composes from all of them. Feed every ref (single ref stays single I2I).
+                    ref_images = [Image.open(p).convert("RGB") for p in ref_paths]
+                    kwargs["image"] = ref_images if len(ref_images) > 1 else ref_images[0]
 
                 result = pipe(**kwargs)
                 image = result.images[0]

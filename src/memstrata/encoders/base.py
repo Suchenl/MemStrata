@@ -390,10 +390,17 @@ class HashEmbedding:
         # references but no pixels) must NOT be read: ``Path("")`` resolves to ``.``
         # (the cwd, a directory) and ``read_bytes()`` would raise IsADirectoryError.
         # Fall back to hashing the string handle so each distinct reference stays
-        # deterministic and distinguishable.
+        # deterministic and distinguishable. Long non-path handles (e.g. a full prompt
+        # passed via ``embed_text``) are common: ``Path.is_file()`` does NOT swallow
+        # ENAMETOOLONG (errno 36), so guard it and treat any stat failure as "not a file".
         text = str(image)
-        path = Path(text) if text else None
-        seed = path.read_bytes() if (path is not None and path.is_file()) else text.encode("utf-8")
+        is_file = False
+        if text:
+            try:
+                is_file = Path(text).is_file()
+            except OSError:
+                is_file = False
+        seed = Path(text).read_bytes() if is_file else text.encode("utf-8")
         components: Vector = []
         counter = 0
         while len(components) < self.dim:

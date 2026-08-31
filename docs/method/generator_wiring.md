@@ -40,6 +40,17 @@ TOML 配置：`configs/image_gen/*.toml`（当前 `flux.2-klein-9b-kv-fp8`）。
 `media_type="image"` 的 `GenerationArtifact`。跨 env/GPU 编排（FLUX 出关键帧 → Wan 展开）属
 Phase 3，尚未落地。
 
+### 关键帧合成：默认原生 FLUX 多图组合
+
+`KeyframeComposer`（`steps/keyframe.py`）把该段选中的记忆 crop 合成一张场景关键帧。
+**默认走原生 FLUX 多图组合**（`MEMSTRATA_KEYFRAME_MODE=native`）：直接把多张 crop 作为
+FLUX.2 klein 的多张参考图喂入，由 FLUX 自行组合，不再用 Qwen 规划色块布局 / 拼贴 collage
+——因此关键帧阶段**不需要 Qwen MLLM 端点**（见 `production/services.py`）。冷启动 / 全首次
+出现（该段无 crop）时退化为 FLUX 文生图 bootstrap。
+
+旧的 Qwen-canvas 路径（R3 色块布局 → R4 crop→region 分配 → collage → FLUX I2I 融合）保留为
+`MEMSTRATA_KEYFRAME_MODE=collage` 可选项，仅该模式需要 Qwen MLLM 端点。
+
 ## 调用方式
 
 ```python
