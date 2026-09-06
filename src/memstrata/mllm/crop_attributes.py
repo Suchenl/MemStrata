@@ -139,6 +139,8 @@ def _batch_crop_attribute_schema(*, with_target: bool) -> dict[str, Any]:
 
 CLASSIFY_PROMPT = (
     "You classify one entity crop for a stratified visual memory bank.\n"
+    "Judge only the pixels. The requested entity name is deliberately withheld because it "
+    "is not visual evidence; do not infer identity or appearance from prior text.\n"
     "Pick exactly one value from each closed enum. Do not invent labels.\n\n"
     "spatial_angle: front | side | back | top | unknown\n"
     "state_angle: default | changed | damaged | unknown\n"
@@ -159,7 +161,6 @@ CLASSIFY_PROMPT = (
     "  only what persists across shots — never the momentary action, camera, or background.\n"
     "  Empty string if the crop shows too little to describe.\n\n"
     "Entity kind: {kind}\n"
-    "Entity name: {name}\n"
     "Return JSON only."
 )
 
@@ -179,7 +180,8 @@ BATCH_CLASSIFY_PROMPT = (
     "description: one short English clause naming the stable, recognizable appearance;\n"
     "  empty string if the crop shows too little.\n"
     "{target_clause}"
-    "Per-image context (image_index: kind / name / target):\n"
+    "Judge each image from its pixels; requested entity names are deliberately withheld.\n"
+    "Per-image context (image_index: kind / target):\n"
     "{items_block}\n"
     "Return JSON only."
 )
@@ -549,7 +551,8 @@ class VlmCropAttributeClassifier:
                 reasoning="unreadable_image",
             )
 
-        prompt = CLASSIFY_PROMPT.format(kind=kind or "unknown", name=name or "unknown")
+        _ = name  # Names are not visual evidence and would bias crop descriptions.
+        prompt = CLASSIFY_PROMPT.format(kind=kind or "unknown")
         messages = [
             {
                 "role": "user",
@@ -627,7 +630,6 @@ class VlmCropAttributeClassifier:
                 target = targets[index] if index < len(targets) else None
                 item_lines.append(
                     f"  image {index}: {fields['kind'] or 'unknown'} / "
-                    f"{fields['name'] or 'unknown'} / "
                     f"target={target or 'none'}"
                 )
                 content.append(

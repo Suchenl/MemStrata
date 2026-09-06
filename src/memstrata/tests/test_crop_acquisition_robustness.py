@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
 from memstrata.bank import AssetType
+from memstrata.mllm.identity_judge import IdentityVerdict, JUDGE_PROMPT
 from memstrata.skills.crop_acquisition.crop_client import ProposeIdentifyCropper
 from memstrata.skills.crop_acquisition.orchestrator import (
     DEFAULT_IDENTITY_THRESHOLD,
+    DEFAULT_IDENTITY_VERIFICATION_THRESHOLD,
     _concepts_for,
     _grounding_phrases_for,
     acquire_entity_crop,
@@ -53,6 +56,22 @@ class _Embedder:
     def embed_batch(self, paths: list[Path]) -> list[list[float]]:
         assert len(paths) <= len(self.vectors)
         return self.vectors[: len(paths)]
+
+
+class _IdentityVerifier:
+    def __init__(self, *, same: bool | None, confidence: float = 0.99) -> None:
+        self.verdict = IdentityVerdict(
+            same=same,
+            confidence=confidence,
+            source="test",
+            reasoning="visual comparison",
+        )
+        self.calls: list[tuple[str, list[str], str]] = []
+
+    def judge(self, crop, references, *, kind="", name_a="", name_b=""):  # noqa: ANN001
+        assert name_a == "" and name_b == ""
+        self.calls.append((str(crop), list(references), kind))
+        return self.verdict
 
 
 def test_close_up_character_crop_is_not_area_filtered(tmp_path: Path) -> None:
@@ -119,6 +138,101 @@ def test_identity_similarity_ranks_before_novelty(tmp_path: Path) -> None:
     assert result is not None
     assert result["identity_sim"] > 0.99
     assert result["novelty_score"] < 0.01
+
+
+def test_image_only_verifier_rejects_wrong_entity_despite_passing_dino(
+    tmp_path: Path,
+) -> None:
+    frame = _frame(tmp_path / "frame.jpg")
+    reference = _frame(tmp_path / "big_rabbit_reference.jpg")
+    segmenter = _Segmenter([_mask(10, 10, 50, 50)])
+    # Reproduces the failure shape: 0.548 passes the deliberately lenient 0.25 recall gate.
+    embedder = _Embedder([[0.548, 0.836]])
+    verifier = _IdentityVerifier(same=False)
+
+    result = acquire_entity_crop(
+        frame,
+        entity_name="大兔子",
+        entity_kind="character",
+        entity_description="a brown big rabbit",
+        exemplar_vectors=[[1.0, 0.0]],
+        existing_rep_vectors=[],
+        exemplar_image_paths=[reference],
+        out_dir=tmp_path / "out",
+        segmenter=segmenter,
+        detector=None,
+        embedder=embedder,
+        identity_verifier=verifier,
+        identity_verification_required=True,
+    )
+
+    assert result is None
+    assert len(verifier.calls) == 1
+    assert verifier.calls[0][2] == "character"
+
+
+def test_image_only_verifier_preserves_cross_view_recall(tmp_path: Path) -> None:
+    frame = _frame(tmp_path / "frame.jpg")
+    reference = _frame(tmp_path / "hero_front_reference.jpg")
+    segmenter = _Segmenter([_mask(10, 10, 50, 50)])
+    # A novel view barely clears DINO recall, then visual reference adjudication confirms it.
+    embedder = _Embedder([[0.30, 0.954]])
+    verifier = _IdentityVerifier(same=True, confidence=0.95)
+
+    result = acquire_entity_crop(
+        frame,
+        entity_name="Hero",
+        entity_kind="character",
+        exemplar_vectors=[[1.0, 0.0]],
+        existing_rep_vectors=[[1.0, 0.0]],
+        exemplar_image_paths=[reference],
+        out_dir=tmp_path / "out",
+        segmenter=segmenter,
+        detector=None,
+        embedder=embedder,
+        identity_verifier=verifier,
+        identity_verification_required=True,
+    )
+
+    assert result is not None
+    assert math.isclose(result["identity_sim"], 0.30, abs_tol=1e-3)
+    assert result["identity_verification"] == {
+        "gate": "applied",
+        "same": True,
+        "confidence": 0.95,
+        "source": "test",
+        "reasoning": "visual comparison",
+        "reference_count": 1,
+        "threshold": DEFAULT_IDENTITY_VERIFICATION_THRESHOLD,
+    }
+
+
+def test_required_identity_verification_fails_closed_on_abstention(tmp_path: Path) -> None:
+    frame = _frame(tmp_path / "frame.jpg")
+    reference = _frame(tmp_path / "reference.jpg")
+    result = acquire_entity_crop(
+        frame,
+        entity_name="Hero",
+        entity_kind="character",
+        exemplar_vectors=[[1.0, 0.0]],
+        existing_rep_vectors=[],
+        exemplar_image_paths=[reference],
+        out_dir=tmp_path / "out",
+        segmenter=_Segmenter([_mask(10, 10, 50, 50)]),
+        detector=None,
+        embedder=_Embedder([[1.0, 0.0]]),
+        identity_verifier=_IdentityVerifier(same=None),
+        identity_verification_required=True,
+    )
+
+    assert result is None
+
+
+def test_identity_judge_prompt_is_name_free_and_handles_animal_characters() -> None:
+    prompt = JUDGE_PROMPT.format(kind="character", n=2)
+    assert "entity name" in prompt.lower()
+    assert "animal" in prompt
+    assert "{name" not in JUDGE_PROMPT
 
 
 def test_location_and_gdino_prompts_use_categories_not_names() -> None:
@@ -204,6 +318,11 @@ def test_client_submits_multi_frame_pool_and_writes_summary(tmp_path: Path) -> N
     assert cropper.last_request["frame_paths"] == [str(p.resolve()) for p in frames]
     assert cropper.last_request["frame_positions"] == [0.2, 0.8]
     assert cropper.last_request["identity_threshold"] == DEFAULT_IDENTITY_THRESHOLD
+    assert cropper.last_request["identity_verification_required"] is False
+    assert (
+        cropper.last_request["identity_verification_threshold"]
+        == DEFAULT_IDENTITY_VERIFICATION_THRESHOLD
+    )
     assert cropper.last_request["entity_description"] == "person in a blue jacket"
     summary = json.loads((tmp_path / "work" / "crop_acquisition_summary.json").read_text())
     assert summary["config"]["identity_threshold"] == DEFAULT_IDENTITY_THRESHOLD

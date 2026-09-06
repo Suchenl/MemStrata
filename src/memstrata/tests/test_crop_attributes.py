@@ -5,6 +5,8 @@ from __future__ import annotations
 from memstrata.bank import SpatialAngle, StateAngle
 from memstrata.mllm.angle_classifier import HeuristicAngleClassifier
 from memstrata.mllm.crop_attributes import (
+    BATCH_CLASSIFY_PROMPT,
+    CLASSIFY_PROMPT,
     CropAttributePack,
     HeuristicCropAttributeClassifier,
     Lighting,
@@ -31,6 +33,13 @@ def test_null_pack_unknown() -> None:
     assert pack.segment_id == 3
     assert pack.frame_index == 10
     assert "crop_attributes" in pack.to_annotations()
+
+
+def test_attribute_prompts_withhold_requested_entity_names() -> None:
+    assert "{name}" not in CLASSIFY_PROMPT
+    assert "Entity name:" not in CLASSIFY_PROMPT
+    assert "kind / name" not in BATCH_CLASSIFY_PROMPT
+    assert "deliberately withheld" in CLASSIFY_PROMPT
 
 
 def test_pack_roundtrip() -> None:

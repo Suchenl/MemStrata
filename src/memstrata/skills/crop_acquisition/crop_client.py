@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any
 
 from memstrata.skills.crop_acquisition.orchestrator import (
     DEFAULT_IDENTITY_THRESHOLD,
+    DEFAULT_IDENTITY_VERIFICATION_THRESHOLD,
     _MIN_SIDE_PX,
 )
 from memstrata.skills.crop_acquisition._common import sam3_deps_dir
@@ -89,6 +90,8 @@ class ProposeIdentifyCropper:
         frame_positions: tuple[float, ...] | list[float] | None = None,
         auto_start: bool = True,
         identity_threshold: float = DEFAULT_IDENTITY_THRESHOLD,
+        identity_verification_required: bool = False,
+        identity_verification_threshold: float = DEFAULT_IDENTITY_VERIFICATION_THRESHOLD,
         job_timeout: float = 1800.0,
         server_ready_timeout: float = 1200.0,
         device: str = "",
@@ -119,6 +122,8 @@ class ProposeIdentifyCropper:
         self.frame_positions = tuple(dict.fromkeys(cleaned)) or (self.frame_pos,)
         self.auto_start = bool(auto_start)
         self.identity_threshold = float(identity_threshold)
+        self.identity_verification_required = bool(identity_verification_required)
+        self.identity_verification_threshold = float(identity_verification_threshold)
         self.job_timeout = float(job_timeout)
         self.server_ready_timeout = float(server_ready_timeout)
         self.device = str(device)
@@ -377,6 +382,8 @@ class ProposeIdentifyCropper:
                 "grounding_backend": self.grounding_backend,
                 "require_wedetect": self.require_wedetect,
                 "identity_threshold": self.identity_threshold,
+                "identity_verification_required": self.identity_verification_required,
+                "identity_verification_threshold": self.identity_verification_threshold,
                 "frame_positions": list(self.frame_positions),
                 "min_side_px": int(self.extra_acquire_kwargs.get("min_side_px", _MIN_SIDE_PX)),
                 "max_character_bbox_area": self.extra_acquire_kwargs.get("max_character_bbox_area", 1.0),
@@ -441,6 +448,8 @@ class ProposeIdentifyCropper:
             "existing_rep_image_paths": existing_rep_image_paths,
             "out_dir": str(out_dir),
             "identity_threshold": self.identity_threshold,
+            "identity_verification_required": self.identity_verification_required,
+            "identity_verification_threshold": self.identity_verification_threshold,
             **self.extra_acquire_kwargs,
         }
         try:
@@ -488,6 +497,7 @@ class ProposeIdentifyCropper:
                     "identity_threshold": payload.get("identity_threshold", self.identity_threshold),
                     "identity_sim": payload.get("identity_sim"),
                     "identity_gate": payload.get("identity_gate"),
+                    "identity_verification": payload.get("identity_verification"),
                     "novelty_score": payload.get("novelty_score"),
                     "source": payload.get("source"),
                     "source_detail": payload.get("source_detail"),

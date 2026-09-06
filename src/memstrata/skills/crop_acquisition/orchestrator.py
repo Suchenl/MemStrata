@@ -58,6 +58,10 @@ LOCATION_CONCEPTS = DISCOVERY_CONCEPTS["location"]
 # want to record. When nothing clears it, the right outcome is a miss for this segment, not
 # writing an unrelated person into the bank.
 DEFAULT_IDENTITY_THRESHOLD = 0.25
+# Reuse the calibrated production identity-judge confidence floor. This is deliberately
+# separate from the lenient DINOv3 recall floor above: DINO proposes plausible cross-view
+# candidates; an image-only query↔reference judgment decides whether one may be banked.
+DEFAULT_IDENTITY_VERIFICATION_THRESHOLD = 0.90
 _MAX_CHARACTER_BBOX_AREA = 1.0     # close-ups are valid; near-full-frame is caught by QA
 _MIN_MASK_FILL = 0.18              # adaptive floor; thin poses/long props get a lower gate
 _MIN_SIDE_PX = 16
@@ -407,12 +411,16 @@ def acquire_entity_crop(
     concepts: tuple[str, ...] | None = None,
     exemplar_vectors: list[list[float]],
     existing_rep_vectors: list[list[float]],
+    exemplar_image_paths: list[str | Path] | None = None,
     out_dir: str | Path,
     banked_states: set[str] | None = None,
     segmenter: Any | None = None,
     detector: Any | None = None,
     grounder: Any | None = None,
     embedder: Any | None = None,
+    identity_verifier: Any | None = None,
+    identity_verification_required: bool = False,
+    identity_verification_threshold: float = DEFAULT_IDENTITY_VERIFICATION_THRESHOLD,
     identity_threshold: float = DEFAULT_IDENTITY_THRESHOLD,
     max_candidates: int = 8,
     max_character_bbox_area: float = _MAX_CHARACTER_BBOX_AREA,
@@ -423,7 +431,10 @@ def acquire_entity_crop(
     """Acquire the most NOVEL identity-correct crop for one named entity.
 
     Returns ``{crop_path, bbox, mask_path, identity_sim, novelty_score, source}`` or
-    ``None`` when no identity-OK, QA-passing candidate exists.
+    ``None`` when no identity-OK, QA-passing candidate exists. For an established identity,
+    ``identity_verification_required`` adds a second, image-only candidate↔reference gate.
+    Any verifier rejection, low-confidence answer, exception, or abstention fails closed.
+    First sightings have no reference identity and therefore skip this gate.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -517,11 +528,56 @@ def acquire_entity_crop(
     ranked = rank_acquisition_candidates(kept, banked_states=banked_states)
 
     # 5) crop QA (dark / low-information) as a final guard; walk best→worst.
+    reference_paths = [
+        str(Path(path))
+        for path in (exemplar_image_paths or [])
+        if path and Path(path).is_file()
+    ]
+    verify_against_references = bool(identity_verification_required and use_identity_gate)
+    if verify_against_references and (identity_verifier is None or not reference_paths):
+        return None
     for cand in ranked:
         crop_path = Path(cand["crop_path"])
         qa = audit_crop(crop=crop_path, bbox_norm=cand["bbox_norm"], kind=entity_kind)
         if not qa.accepted:
             continue
+
+        verification: dict[str, Any] = {
+            "gate": "off_first_sighting" if not use_identity_gate else "not_required",
+        }
+        if verify_against_references:
+            try:
+                verdict = identity_verifier.judge(
+                    str(crop_path),
+                    reference_paths,
+                    kind=entity_kind,
+                )
+                same = getattr(verdict, "same", None)
+                confidence = float(getattr(verdict, "confidence", 0.0) or 0.0)
+                verification = {
+                    "gate": "applied",
+                    "same": same,
+                    "confidence": confidence,
+                    "source": str(getattr(verdict, "source", "unknown") or "unknown"),
+                    "reasoning": str(getattr(verdict, "reasoning", "") or "")[:200],
+                    "reference_count": len(reference_paths),
+                    "threshold": float(identity_verification_threshold),
+                }
+            except Exception as exc:  # noqa: BLE001 - verifier failures reject this candidate
+                verification = {
+                    "gate": "error",
+                    "same": None,
+                    "confidence": 0.0,
+                    "reasoning": str(exc)[:200],
+                    "reference_count": len(reference_paths),
+                    "threshold": float(identity_verification_threshold),
+                }
+            if not (
+                verification.get("same") is True
+                and float(verification.get("confidence") or 0.0)
+                >= identity_verification_threshold
+            ):
+                continue
 
         # 6) Save the chosen masked crop into out_dir (stable name). Keep CJK/word chars so
         # two differently-named entities in the same out_dir don't collide on "crop__.png"
@@ -545,6 +601,7 @@ def acquire_entity_crop(
             "mask_path": mask_path,
             "identity_sim": cand.get("identity_sim"),
             "identity_gate": identity_gate,
+            "identity_verification": verification,
             "novelty_score": float(cand["novelty_score"]),
             "source": cand["source"],
             "source_detail": {
@@ -560,6 +617,8 @@ def acquire_entity_crop(
             "frame_position": cand.get("frame_position"),
             "candidate_count": len(candidates),
             "identity_threshold": float(identity_threshold),
+            "identity_verification_required": bool(identity_verification_required),
+            "identity_verification_threshold": float(identity_verification_threshold),
             "min_side_px": int(min_side_px),
             "max_character_bbox_area": float(max_character_bbox_area),
             "min_mask_fill": float(min_mask_fill),
@@ -576,5 +635,6 @@ __all__ = [
     "PROP_CONCEPTS",
     "LOCATION_CONCEPTS",
     "DEFAULT_IDENTITY_THRESHOLD",
+    "DEFAULT_IDENTITY_VERIFICATION_THRESHOLD",
     "_MIN_SIDE_PX",
 ]

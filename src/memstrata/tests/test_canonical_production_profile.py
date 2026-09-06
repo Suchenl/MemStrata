@@ -74,6 +74,26 @@ def test_paper_profile_rejects_behavior_changing_overrides(tmp_path: Path) -> No
         )
 
 
+def test_mllm_production_enables_image_only_crop_identity_verification(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from memstrata.production import realized
+    from memstrata.encoders import HashEmbedding
+    from memstrata.skills.crop_acquisition.wedetect_client import WeDetectRefGrounder
+
+    monkeypatch.setattr(WeDetectRefGrounder, "healthy", lambda self: True)
+    monkeypatch.setattr(realized, "_openai_model_ready", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(realized, "build_image_embedding", lambda **_kwargs: HashEmbedding())
+    mem = build_realized_segment_pipeline(
+        run_dir=tmp_path,
+        profile="paper_tracka_202607",
+    )
+
+    cropper = mem.decomposer.cropper
+    assert cropper.identity_verification_required is True
+    assert cropper.server_env["MEMSTRATA_CROP_IDENTITY_MODEL"] == "Qwen3.5-9B-Instruct"
+
+
 def test_strict_profile_fails_before_silent_mllm_degradation(
     monkeypatch, tmp_path: Path
 ) -> None:
@@ -123,6 +143,7 @@ def test_finalize_persists_manifest_with_actual_backend_counts(tmp_path: Path) -
     snapshot = mem.finalize({"system": "memstrata"})
 
     assert result.observations == []
+    assert cropper.identity_verification_required is False
     assert mem.interpreter.max_reps_per_asset == 1
     assert mem.interpreter.slow_on_miss is True
     assert (tmp_path / "bank.json").is_file()

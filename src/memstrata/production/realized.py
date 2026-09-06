@@ -165,13 +165,17 @@ def build_realized_segment_pipeline(
     server_env = {
         "MEMSTRATA_WEDETECT_URL": configured_url,
         "MEMSTRATA_REQUIRE_WEDETECT": "1" if strict_wedetect else "0",
+        "MEMSTRATA_CROP_IDENTITY_BASE_URL": configured_mllm_url,
+        "MEMSTRATA_CROP_IDENTITY_MODEL": configured_mllm_model,
     }
+    verify_crop_identity = naming == "mllm"
     cropper = ProposeIdentifyCropper(
         bank=bank,
         server_dir=root / "crop_acq_server",
         work_dir=root / "observations",
         device=str(crop_acq_device),
         identity_threshold=float(identity_threshold),
+        identity_verification_required=verify_crop_identity,
         frame_pos=float(frame_pos),
         server_env=server_env,
         grounding_backend="wedetect_ref",
@@ -220,6 +224,10 @@ def build_realized_segment_pipeline(
             "mllm_base_url": configured_mllm_url,
             "mllm_model": configured_mllm_model,
             "require_mllm": strict_mllm,
+            "crop_identity_verification": {
+                "required_for_established_identity": verify_crop_identity,
+                "mode": "image_only_query_to_references",
+            },
         },
         policy=policy,
         bank=bank,

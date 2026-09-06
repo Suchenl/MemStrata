@@ -91,6 +91,7 @@ class _Models:
         from memstrata.skills.crop_acquisition.grounding_dino import GroundingDinoProposer
         from memstrata.skills.crop_acquisition.embedding import DinoV3Embedder
         from memstrata.skills.crop_acquisition.wedetect_client import WeDetectRefGrounder
+        from memstrata.mllm.identity_judge import VlmIdentityJudge
 
         device = _normalize_device(device)
         self.device = device
@@ -98,6 +99,10 @@ class _Models:
             "1", "true", "on", "yes",
         }
         self.grounder = WeDetectRefGrounder.from_env(required=require_wedetect)
+        self.identity_verifier = VlmIdentityJudge(
+            base_url=os.environ.get("MEMSTRATA_CROP_IDENTITY_BASE_URL"),
+            model=os.environ.get("MEMSTRATA_CROP_IDENTITY_MODEL"),
+        )
         self.segmenter = None
 
         logging.info("[crop_acq] loading GroundingDINO ...")
@@ -172,6 +177,8 @@ def _run_job(models: _Models, request: dict[str, Any]) -> dict[str, Any] | None:
         "frame_paths",
         "frame_positions",
         "entity_description",
+        "identity_verification_required",
+        "identity_verification_threshold",
     ):
         if key in request:
             extra[key] = request[key]
@@ -198,11 +205,13 @@ def _run_job(models: _Models, request: dict[str, Any]) -> dict[str, Any] | None:
         entity_kind=str(request["entity_kind"]),
         exemplar_vectors=exemplar_vectors,
         existing_rep_vectors=existing_rep_vectors,
+        exemplar_image_paths=list(request.get("exemplar_image_paths") or []),
         out_dir=request["out_dir"],
         segmenter=models.segmenter,
         detector=models.detector,
         grounder=models.grounder,
         embedder=models.embedder,
+        identity_verifier=models.identity_verifier,
         **extra,
     )
 
