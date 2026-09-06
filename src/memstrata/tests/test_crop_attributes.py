@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import memstrata.mllm.crop_attributes as crop_attributes_module
 from memstrata.bank import SpatialAngle, StateAngle
 from memstrata.mllm.angle_classifier import HeuristicAngleClassifier
 from memstrata.mllm.crop_attributes import (
@@ -12,6 +13,7 @@ from memstrata.mllm.crop_attributes import (
     Lighting,
     NullCropAttributeClassifier,
     ShotSize,
+    VlmCropAttributeClassifier,
 )
 from memstrata.lib.dedup import select_angle_diverse, select_attribute_diverse
 
@@ -40,6 +42,47 @@ def test_attribute_prompts_withhold_requested_entity_names() -> None:
     assert "Entity name:" not in CLASSIFY_PROMPT
     assert "kind / name" not in BATCH_CLASSIFY_PROMPT
     assert "deliberately withheld" in CLASSIFY_PROMPT
+
+
+def test_vlm_batch_prompt_reaches_one_call_and_preserves_target_verdict(
+    monkeypatch,
+) -> None:
+    classifier = VlmCropAttributeClassifier()
+    calls: list[bool] = []
+    monkeypatch.setattr(
+        crop_attributes_module,
+        "_image_data_url",
+        lambda _path: "data:image/jpeg;base64,test",
+    )
+
+    def fake_call(_messages, *, with_target):  # noqa: ANN001
+        calls.append(with_target)
+        return {
+            "items": [{
+                "spatial_angle": "front",
+                "state_angle": "default",
+                "shot_size": "close_up",
+                "lighting": "day",
+                "occlusion": "none",
+                "pose": "standing",
+                "identity_visible": True,
+                "description": "gray rabbit",
+                "confidence": 0.99,
+                "reasoning": "visible target features",
+                "matches_target": True,
+            }]
+        }
+
+    monkeypatch.setattr(classifier, "_call_batch_api", fake_call)
+    packs = classifier.classify_batch(
+        [{"image_path": "/tmp/rabbit.png", "kind": "character"}],
+        target_descriptions=["large gray rabbit"],
+    )
+
+    assert calls == [True]
+    assert len(packs) == 1
+    assert packs[0].source == "vlm_batch"
+    assert packs[0].extra["matches_target"] is True
 
 
 def test_pack_roundtrip() -> None:

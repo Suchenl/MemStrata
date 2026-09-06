@@ -167,7 +167,7 @@ CLASSIFY_PROMPT = (
 BATCH_CLASSIFY_PROMPT = (
     "You classify a BATCH of entity crops for a stratified visual memory bank.\n"
     "The user message contains N images IN ORDER. Return a JSON object of the form\n"
-    '  {"items": [ {..attributes for image 1..}, {..for image 2..}, ... ]}\n'
+    '  {{"items": [ {{..attributes for image 1..}}, {{..for image 2..}}, ... ]}}\n'
     "with EXACTLY one attribute object per image, in the SAME order as the images.\n"
     "For every image, pick exactly one value from each closed enum (do not invent):\n\n"
     "spatial_angle: front | side | back | top | unknown\n"
