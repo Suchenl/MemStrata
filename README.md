@@ -23,7 +23,14 @@ Default production path (documented, not hard-wired): FLUX.2 Klein 9B-KV keyfram
 # downloads: MODELS.md
 bash scripts/memstrata/run_production.sh
 python3 -m memstrata.production.run --list-backends
+# Audited Track-A behavior: MLLM naming, DINOv3, top-1 read, slow miss recovery,
+# and required WeDetect-Ref grounding (fails instead of changing backend if unavailable).
+python3 -m memstrata.production.run --profile paper_tracka_202607
 ```
+
+The ordinary `production` profile uses the same WeDetect-first path but may fall
+back to SAM3/GroundingDINO. `run_manifest.json` records the configured profile,
+actual acquisition backend counts, and fallback reasons.
 
 Weights: [`MODELS.md`](MODELS.md). Paper numbers: [`REPRODUCE.md`](REPRODUCE.md) on branch `paper-reproduction`. Gold: [huggingface.co/datasets/Suchenl/VMem-Bench](https://huggingface.co/datasets/Suchenl/VMem-Bench).
 

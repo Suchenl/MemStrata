@@ -17,6 +17,17 @@
 （包名 `vmem_bench`）**零相互导入、互不外部引用**（自包含硬约束见 [`AGENTS.md`](AGENTS.md)）。
 评测只在 VMem-Bench 仓库的 `scripts/evaluate_baselines/` adapter 里把本方法当黑盒 import。
 
+正式 Track-A 复现使用显式生产档案：
+
+```bash
+python3 -m memstrata.production.run --profile paper_tracka_202607
+```
+
+该档案固定 MLLM 命名、DINOv3、每实体读取 1 个表示、慢路径 miss 恢复，并要求
+WeDetect-Ref 健康可用；服务缺失或运行中失联会直接失败。普通 `production` 档案仍以
+WeDetect 为权威 grounding 后端，但允许回落 SAM3/GroundingDINO，并在
+`run_manifest.json` 记录实际后端计数与回落原因。
+
 **最高纲领**是 [`src/memstrata/docs/design_philosophy.md`](src/memstrata/docs/design_philosophy.md)
 （六条库质量公理 + WHO-before-WHERE 准入原则）；任何记忆相关取舍先服从它，本文件与之冲突时以纲领为准。
 

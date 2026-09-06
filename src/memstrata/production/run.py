@@ -121,10 +121,11 @@ def build_pipeline(
     decompose: str = "crop_server",
     crop_acq_device: str = "",
     models_config: Path | None = None,
-    embedder_provider: str = "",
+    profile: str = "production",
+    embedder_provider: str | None = None,
     angle_classifier_mode: str = "",
     discovery: bool = False,
-    write_naming: str = "perception",
+    write_naming: str | None = None,
     resume: bool = False,
 ):
     """Assemble the seeded bank + generator (+keyframe) + MemStrata.for_production.
@@ -137,13 +138,7 @@ def build_pipeline(
     included — so the "stratified" bank ran with all-unknown angles, the crop-quality gate
     was off, and the bank-wide budget never applied.
     """
-    from memstrata.adapters.screenplay import seed_packet
-    from memstrata.bank import AssetBank
-    from memstrata.encoders import build_image_embedding
-    from memstrata.mllm.angle_classifier import build_angle_classifier
-    from memstrata.mllm.crop_attributes import build_crop_attribute_classifier
-    from memstrata.pipeline import MemStrata, build_curator, build_decomposer
-    from memstrata.skills.memory_update import MemoryPolicy
+    from memstrata.production.realized import build_realized_segment_pipeline
     from memstrata.steps.generate import MediaTaskGenerator
     from memstrata.steps.generate.backends import build_video_backend
     from memstrata.steps.keyframe import KeyframeComposer
@@ -151,37 +146,21 @@ def build_pipeline(
     cfg = models_config or (memstrata_root() / "configs")
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    policy = MemoryPolicy.production(discovery=bool(discovery))
-    # Angle/attribute classifiers come from one factory pair so MEMSTRATA_ANGLE_CLASSIFIER
-    # (and an explicit --angle-classifier) reach BOTH the decomposer and the curator.
-    mode = angle_classifier_mode or None
-    angle_classifier = build_angle_classifier(mode=mode)
-    crop_attr_classifier = build_crop_attribute_classifier(mode=mode)
-    # Embedding provider drives every similarity gate (near-duplicate, cohesion,
-    # reconciliation). The deterministic hash default keeps the no-GPU smoke runnable but
-    # is non-semantic, so those gates stay off until a real encoder is selected.
-    emb = build_image_embedding(provider=embedder_provider or "hash")
-
-    # Resuming an interrupted story means reopening its bank, not rebuilding it: the memory IS the
-    # persisted artifact, so a run that died at shot 40 can carry its 40 shots of accumulated
-    # identity forward instead of paying for them again.
-    persisted_bank = run_dir / "bank.json"
-    if resume and persisted_bank.is_file():
-        bank = AssetBank.load(persisted_bank)
-        print(f"[prod] RESUME: reopened bank with {len(bank.assets)} assets from {persisted_bank}",
-              flush=True)
-    else:
-        bank = AssetBank()
-    curator = build_curator(
-        bank,
-        policy=policy,
-        embedder=emb,
-        angle_classifier=angle_classifier,
-        crop_attribute_classifier=crop_attr_classifier,
+    mem = build_realized_segment_pipeline(
+        run_dir=run_dir,
+        profile=profile,
+        movie_id=str(screenplay.get("story_id", "")),
+        write_naming=write_naming,
+        discovery=bool(discovery),
+        crop_acq_device=str(crop_acq_device),
+        embedder_provider=embedder_provider,
+        angle_classifier_mode=angle_classifier_mode,
+        resume=resume,
+        seed_screenplay=screenplay,
     )
-    # A reopened bank already holds the seeds; re-ingesting them would fold duplicates back in.
-    if not (resume and persisted_bank.is_file()):
-        curator.ingest_packet(seed_packet(screenplay))
+    bank = mem.bank
+    if resume and (run_dir / "bank.json").is_file():
+        print(f"[prod] RESUME: reopened bank with {len(bank.assets)} assets", flush=True)
 
     video_backend = build_video_backend(
         backend_name, output_dir=run_dir / "media", run_id=system, models_config=cfg)
@@ -203,49 +182,11 @@ def build_pipeline(
         default_controls={"transition": "continue"},
         keyframe_composer=composer, log_dir=run_dir / "generator_logs")
 
-    decomposer = None
-    if decompose == "crop_server":
-        from memstrata.skills.crop_acquisition.crop_client import (
-            ProposeIdentifyCropper,
-            ServerConceptDiscoverer,
-        )
-        cropper = ProposeIdentifyCropper(
-            bank=bank, server_dir=run_dir / "crop_acq_server",
-            work_dir=run_dir / "observations", device=str(crop_acq_device))
-        discoverer = None
-        if policy.discovery and write_naming != "mllm":
-            # Reuses the cropper's already-running server, so discovery costs no extra
-            # model load — only extra proposals per frame.
-            #
-            # Skipped under mllm naming: the namer already returns the entities that are visible
-            # but unnamed by the prompt as UNANCHORED observations, which is the same D_T role,
-            # except they arrive with a label and a description. Running the concept proposer on
-            # top only added assets no shot can ask for — 4 of 24 in a measured 13-segment run
-            # were 'character_disc_c009_0'-style records.
-            discoverer = ServerConceptDiscoverer(
-                cropper, work_dir=run_dir / "discoveries")
-        # Write-side naming. Without it a first appearance can only enter memory through
-        # discovery, which never infers names, so every new entity is banked under a synthetic
-        # label (character_disc_c000_0) that the name-authoritative read path cannot resolve —
-        # measured: 23 anonymous assets over 21 segments and an empty selection despite a full
-        # bank. The namer binds the shot's own wording to entities it visually confirms, which is
-        # the same capability Track A selects with MEMSTRATA_TRACKA_NAME_SOURCE=mllm.
-        entity_namer = None
-        if write_naming == "mllm":
-            from memstrata.skills.decomposition.vlm_decomposer import VlmEntityDecomposer
+    if decompose == "none":
+        from memstrata.pipeline import build_decomposer
 
-            entity_namer = VlmEntityDecomposer()
-        decomposer = build_decomposer(
-            policy=policy, embedder=emb, cropper=cropper,
-            angle_classifier=angle_classifier, discoverer=discoverer,
-            entity_namer=entity_namer, namer_frame_dir=run_dir / "observations")
-
-    mem = MemStrata.for_production(
-        persist_path=run_dir / "bank.json", policy=policy, bank=bank, generator=generator,
-        curator=curator, decomposer=decomposer, embedder=emb,
-        angle_classifier=angle_classifier, crop_attribute_classifier=crop_attr_classifier,
-        run_dir=run_dir / "pipeline", membank_dir=run_dir / "membank",
-        movie_id=str(screenplay.get("story_id", "")))
+        mem.decomposer = build_decomposer(policy=mem.policy)
+    mem.generator = generator
     return mem, generator, composer
 
 
@@ -270,10 +211,11 @@ def run_production(
     mllm_port: int = 8000,
     stop_services: bool = False,
     bench_mode: bool = True,
-    embedder_provider: str = "",
+    profile: str = "production",
+    embedder_provider: str | None = None,
     angle_classifier_mode: str = "",
     discovery: bool = False,
-    write_naming: str = "perception",
+    write_naming: str | None = None,
     resume: bool = False,
 ) -> dict[str, Any]:
     from memstrata.adapters.screenplay import iter_shots, load_screenplay
@@ -312,7 +254,7 @@ def run_production(
             force_recompose=force_recompose, use_router_mllm=use_router_mllm, decompose=decompose,
             crop_acq_device=crop_acq_device, width=width, height=height,
             organize_run=organize_run, GenerationRouter=GenerationRouter, bench_mode=bench_mode,
-            embedder_provider=embedder_provider,
+            profile=profile, embedder_provider=embedder_provider,
             angle_classifier_mode=angle_classifier_mode, discovery=discovery,
             write_naming=write_naming, resume=resume)
     finally:
@@ -357,14 +299,15 @@ def _run_loop(
     *, screenplay, story_id, shots, n, run_dir, backend_name, system, flux, flux_backend,
     force_recompose, use_router_mllm, decompose, crop_acq_device, width, height,
     organize_run, GenerationRouter, bench_mode=False,
-    embedder_provider="", angle_classifier_mode="", discovery=False, write_naming="perception",
+    profile="production", embedder_provider=None, angle_classifier_mode="", discovery=False,
+    write_naming=None,
     resume=False,
 ) -> dict[str, Any]:
     mem, _generator, composer = build_pipeline(
         screenplay=screenplay, backend_name=backend_name, run_dir=run_dir, system=system,
         flux=flux, flux_backend=flux_backend, width=width, height=height,
         decompose=decompose, crop_acq_device=crop_acq_device,
-        embedder_provider=embedder_provider,
+        profile=profile, embedder_provider=embedder_provider,
         angle_classifier_mode=angle_classifier_mode, discovery=discovery,
         write_naming=write_naming, resume=resume)
     strat0 = mem.stratification()
@@ -458,6 +401,12 @@ def _run_loop(
                 used = attempt
                 break
             except Exception as exc:  # noqa: BLE001
+                from memstrata.skills.crop_acquisition.wedetect_client import (
+                    RequiredGrounderError,
+                )
+
+                if isinstance(exc, RequiredGrounderError):
+                    raise
                 last_error = exc
                 print(f"[prod] segment {i} mode={attempt} FAILED: {exc!r}", flush=True)
         # "onscreen" for the next segment: bench_mode uses the SUT's OWN selection (self-derived,
@@ -550,7 +499,7 @@ def _run_loop(
     crop_acq = _crop_acquisition_digest(run_dir)
     if crop_acq is not None:
         manifest["crop_acquisition"] = crop_acq
-    (run_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    mem.finalize(manifest)
     if bench_mode and gt_leakage != "none":
         raise AssertionError(f"bench_mode run consumed GT: {gt_consumed}")
 
@@ -569,6 +518,7 @@ def _run_loop(
                "embedder_is_semantic": mem.curator.embedder_is_semantic,
                "cohesion_floor": mem.curator.cohesion_floor,
                "discovery": mem.policy.discovery,
+               "production": mem.runtime_provenance(),
                "stratification": strat,
                "final_representations": {aid: len(a.representations) for aid, a in mem.bank.assets.items()}}
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -598,6 +548,12 @@ def main(argv: list[str] | None = None) -> int:
                          "stem of configs/video_gen/<name>.toml")
     ap.add_argument("--list-backends", action="store_true")
     ap.add_argument("--system", default="memstrata", help="system name for the output path")
+    ap.add_argument(
+        "--profile",
+        choices=["production", "paper_tracka_202607"],
+        default="production",
+        help="versioned production behavior profile; paper_tracka_202607 requires WeDetect",
+    )
     ap.add_argument("--segments", type=int, default=0, help="limit shots (0 = whole screenplay)")
     ap.add_argument("--flux", dest="flux", action="store_true", default=True,
                     help="add FLUX I2I keyframe fusion (DEFAULT ON — keyframes/first-frame need it)")
@@ -610,7 +566,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--decompose", choices=["crop_server", "none"], default="crop_server",
                     help="crop_server = real S5 GPU cropper (memory grows); none = no-GPU backend smoke")
     ap.add_argument("--crop-acq-device", default="", help="GPU index for the S5 crop server")
-    ap.add_argument("--write-naming", choices=["perception", "mllm"], default="perception",
+    ap.add_argument("--write-naming", choices=["perception", "mllm"], default=None,
                     help="mllm = MemStrata's VlmEntityDecomposer binds this shot's own prompt "
                          "names to entities it confirms in the generated frames, so a first "
                          "appearance is retrievable by name later; perception = generic labels "
@@ -634,7 +590,7 @@ def main(argv: list[str] | None = None) -> int:
                          "populate spatial/state strata + observation descriptions — with "
                          "'null' every rep stays unknown and NO stratification result may "
                          "be reported from the run.")
-    ap.add_argument("--embedder", default="hash",
+    ap.add_argument("--embedder", default=None,
                     help="image embedding provider for the similarity gates "
                          "(hash|dinov3|insightface|vpr). 'hash' is deterministic and "
                          "offline-safe but NON-semantic, so the cohesion gate and the "
@@ -668,7 +624,8 @@ def main(argv: list[str] | None = None) -> int:
             crop_acq_device=args.crop_acq_device, width=args.width, height=args.height,
             autoserve=not args.no_autoserve, mllm_gpu=args.mllm_gpu, mllm_port=args.mllm_port,
             stop_services=args.stop_services, bench_mode=args.bench_mode,
-            embedder_provider=args.embedder, angle_classifier_mode=args.angle_classifier,
+            profile=args.profile, embedder_provider=args.embedder,
+            angle_classifier_mode=args.angle_classifier,
             discovery=args.discovery, write_naming=args.write_naming, resume=args.resume)
     except Exception as exc:  # noqa: BLE001 — surface GPU/weight/config errors clearly
         print(json.dumps({"backend": args.backend, "error": repr(exc)}, ensure_ascii=False, indent=2))

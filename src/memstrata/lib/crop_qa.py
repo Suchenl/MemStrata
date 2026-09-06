@@ -68,4 +68,19 @@ def audit_crop(
     )
 
 
-__all__ = ["CropQualityReport", "audit_crop"]
+_QUALITY_SHARPNESS_HALF = 200.0
+_QUALITY_AREA_HALF = 90_000.0
+
+
+def reference_quality(report: CropQualityReport) -> float:
+    """Monotonic identity-reference quality in ``[0, 1)``."""
+    area = float(report.width) * float(report.height)
+    if area <= 0.0:
+        return 0.0
+    sharpness = max(float(report.sharpness), 0.0)
+    sharp_term = sharpness / (sharpness + _QUALITY_SHARPNESS_HALF)
+    area_term = area / (area + _QUALITY_AREA_HALF)
+    return float((sharp_term * area_term) ** 0.5)
+
+
+__all__ = ["CropQualityReport", "audit_crop", "reference_quality"]

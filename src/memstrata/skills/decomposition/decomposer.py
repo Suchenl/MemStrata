@@ -34,7 +34,7 @@ from typing import Any, Protocol
 
 from memstrata.bank import AssetType, SpatialAngle, StateAngle
 from memstrata.encoders import EmbeddingModel, HashEmbedding, RoleRoutedEmbedding, Vector
-from memstrata.lib.crop_qa import audit_crop
+from memstrata.lib.crop_qa import audit_crop, reference_quality
 from memstrata.mllm.angle_classifier import AngleClassification, AngleClassifier, NullAngleClassifier
 
 # ω_i — how an observation was acquired (paper Evidence Acquisition).
@@ -356,8 +356,12 @@ class RoleAwareDecomposer:
         if not crop:
             return None
         quality_meta: dict[str, Any] = {}
+        # Always measure sharpness/information: the report drives both admission and
+        # same-bucket quality replacement, preventing an early blurred crop from remaining
+        # the permanent identity anchor.
+        report = audit_crop(crop)
+        quality = reference_quality(report)
         if self.crop_quality_gate:
-            report = audit_crop(crop)
             quality_meta["crop_quality"] = report.to_dict()
             if not report.accepted:
                 return None
@@ -387,6 +391,7 @@ class RoleAwareDecomposer:
             entity_id=entity.entity_id,
             embedding=vector,
             encoder_route=route,
+            quality=quality,
             spatial_angle=spatial,
             state_angle=state,
             temporal_tag=entity.temporal_tag or f"segment_{segment_id}",

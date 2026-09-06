@@ -94,7 +94,10 @@ class _Models:
 
         device = _normalize_device(device)
         self.device = device
-        self.grounder = WeDetectRefGrounder.from_env()
+        require_wedetect = os.environ.get("MEMSTRATA_REQUIRE_WEDETECT", "").strip().lower() in {
+            "1", "true", "on", "yes",
+        }
+        self.grounder = WeDetectRefGrounder.from_env(required=require_wedetect)
         self.segmenter = None
 
         logging.info("[crop_acq] loading GroundingDINO ...")

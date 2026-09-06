@@ -252,20 +252,18 @@ def _attr_bucket(rep: AssetRepresentation) -> tuple[str, str, str, str, str]:
     different-pose evidence from being collapsed as redundant.
     """
     attrs = rep.annotations.get("crop_attributes")
-    if isinstance(attrs, dict):
-        return (
-            str(attrs.get("spatial_angle", SpatialAngle.UNKNOWN.value)),
-            str(attrs.get("state_angle", StateAngle.UNKNOWN.value)),
-            str(attrs.get("shot_size", "unknown")),
-            str(attrs.get("lighting", "unknown")),
-            str(attrs.get("pose", "unknown")),
-        )
+    pack = attrs if isinstance(attrs, dict) else {}
+
+    def _pick(key: str, fallback: str) -> str:
+        value = str(pack.get(key, "") or "").strip()
+        return value if value and value != "unknown" else str(fallback)
+
     return (
-        rep.spatial_angle.value,
-        rep.state_angle.value,
-        str(rep.annotations.get("shot_size", "unknown")),
-        str(rep.annotations.get("lighting", "unknown")),
-        str(rep.annotations.get("pose", "unknown")),
+        _pick("spatial_angle", rep.spatial_angle.value),
+        _pick("state_angle", rep.state_angle.value),
+        _pick("shot_size", rep.annotations.get("shot_size", "unknown")),
+        _pick("lighting", rep.annotations.get("lighting", "unknown")),
+        _pick("pose", rep.annotations.get("pose", "unknown")),
     )
 
 

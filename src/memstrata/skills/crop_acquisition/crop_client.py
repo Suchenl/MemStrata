@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -38,6 +39,9 @@ from memstrata.skills.crop_acquisition.orchestrator import (
     _MIN_SIDE_PX,
 )
 from memstrata.skills.crop_acquisition._common import sam3_deps_dir
+from memstrata.skills.crop_acquisition._common import public_models_root as default_public_models_root
+from memstrata.lib.paths import memstrata_root
+from memstrata.skills.crop_acquisition.wedetect_client import RequiredGrounderError
 
 if TYPE_CHECKING:  # avoid heavy / cyclic imports at runtime
     from memstrata.bank import AssetBank
@@ -45,12 +49,10 @@ if TYPE_CHECKING:  # avoid heavy / cyclic imports at runtime
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_MONTAGE_ROOT = "."
 # The vendored sam3_transformers59 bundle is compiled for CPython 3.11 (transformers 5.9 +
 # hf_hub/pydantic/regex/tiktoken .so are all cp311). The server subprocess therefore MUST
 # run under CPython 3.11 + torch. Override with MEMSTRATA_PYTHON. The *client* can still
 # run under any interpreter (it only samples frames + talks to the queue).
-_DEFAULT_PYTHON = os.environ.get("MEMSTRATA_PYTHON") or "python3"
 _DEFAULT_FRAME_POSITIONS = (0.2, 0.5, 0.8)
 
 
@@ -79,8 +81,8 @@ class ProposeIdentifyCropper:
         *,
         server_dir: str | Path,
         work_dir: str | Path = "/tmp/memstrata_crop_acq",
-        montage_root: str | Path = _DEFAULT_MONTAGE_ROOT,
-        python: str | Path = _DEFAULT_PYTHON,
+        montage_root: str | Path | None = None,
+        python: str | Path | None = None,
         sam3_deps: str | Path | None = None,
         public_models_root: str | Path | None = None,
         frame_pos: float = 0.8,
@@ -91,21 +93,26 @@ class ProposeIdentifyCropper:
         server_ready_timeout: float = 1200.0,
         device: str = "",
         extra_acquire_kwargs: dict[str, Any] | None = None,
+        server_env: dict[str, str] | None = None,
+        grounding_backend: str = "wedetect_ref",
+        require_wedetect: bool = False,
     ) -> None:
         self.bank = bank
         # Absolute paths — the server subprocess runs with a different cwd (see class docstring).
         self.server_dir = Path(server_dir).resolve()
         self.work_dir = Path(work_dir).resolve()
         self.work_dir.mkdir(parents=True, exist_ok=True)
-        self.montage_root = Path(montage_root).resolve()
-        self.python = str(python)
+        self.method_root = memstrata_root()
+        self.montage_root = Path(montage_root).resolve() if montage_root else self.method_root
+        self.python = str(
+            python
+            or os.environ.get("MEMSTRATA_CROP_PYTHON")
+            or os.environ.get("MEMSTRATA_PYTHON")
+            or sys.executable
+        )
         configured_sam3_deps = str(sam3_deps) if sam3_deps else sam3_deps_dir()
         self.sam3_deps = Path(configured_sam3_deps).resolve() if configured_sam3_deps else None
-        self.public_models_root = str(
-            public_models_root
-            or os.environ.get("PUBLIC_MODELS_ROOT")
-            or "${PUBLIC_MODELS_ROOT}"
-        )
+        self.public_models_root = str(public_models_root or default_public_models_root())
         self.frame_pos = min(max(float(frame_pos), 0.0), 1.0)
         positions = frame_positions if frame_positions is not None else _DEFAULT_FRAME_POSITIONS
         cleaned = [min(max(float(p), 0.0), 1.0) for p in positions]
@@ -116,6 +123,9 @@ class ProposeIdentifyCropper:
         self.server_ready_timeout = float(server_ready_timeout)
         self.device = str(device)
         self.extra_acquire_kwargs = dict(extra_acquire_kwargs or {})
+        self.server_env = dict(server_env or {})
+        self.grounding_backend = str(grounding_backend)
+        self.require_wedetect = bool(require_wedetect)
         self._proc: subprocess.Popen | None = None
         self._stats_by_entity: dict[str, dict[str, Any]] = {}
 
@@ -144,7 +154,7 @@ class ProposeIdentifyCropper:
         log = open(self.server_dir / "server.log", "ab")  # noqa: SIM115 - owned by child
         self._proc = subprocess.Popen(
             self._server_command(),
-            cwd=str(self.montage_root),
+            cwd=str(self.method_root),
             env=self._server_env(),
             stdout=log,
             stderr=log,
@@ -188,6 +198,7 @@ class ProposeIdentifyCropper:
         env["PYTHONPATH"] = pythonpath
         env["MONTAGE_ROOT"] = str(self.montage_root)
         env["PUBLIC_MODELS_ROOT"] = self.public_models_root
+        env.update(self.server_env)
         env.setdefault("HF_HUB_OFFLINE", "1")
         env.setdefault("TRANSFORMERS_OFFLINE", "1")
         return env
@@ -326,13 +337,23 @@ class ProposeIdentifyCropper:
     def _record_attempt(self, entity_id: str, *, hit: bool, payload: dict[str, Any] | None) -> None:
         row = self._stats_by_entity.setdefault(
             entity_id,
-            {"attempts": 0, "hits": 0, "misses": 0, "identity_sims": [], "sources": {}},
+            {
+                "attempts": 0,
+                "hits": 0,
+                "misses": 0,
+                "identity_sims": [],
+                "sources": {},
+                "fallbacks": {},
+            },
         )
         row["attempts"] += 1
         if hit:
             row["hits"] += 1
             source = str((payload or {}).get("source") or "unknown")
             row["sources"][source] = int(row["sources"].get(source, 0)) + 1
+            fallback = str(((payload or {}).get("source_detail") or {}).get("fallback_from") or "")
+            if fallback:
+                row["fallbacks"][fallback] = int(row["fallbacks"].get(fallback, 0)) + 1
             sim = (payload or {}).get("identity_sim")
             if sim is not None:
                 row["identity_sims"].append(float(sim))
@@ -353,6 +374,8 @@ class ProposeIdentifyCropper:
             }
         summary = {
             "config": {
+                "grounding_backend": self.grounding_backend,
+                "require_wedetect": self.require_wedetect,
                 "identity_threshold": self.identity_threshold,
                 "frame_positions": list(self.frame_positions),
                 "min_side_px": int(self.extra_acquire_kwargs.get("min_side_px", _MIN_SIDE_PX)),
@@ -362,6 +385,29 @@ class ProposeIdentifyCropper:
             "entities": entities,
         }
         _atomic_write_json(self.work_dir / "crop_acquisition_summary.json", summary)
+
+    def provenance(self) -> dict[str, Any]:
+        """Return configured backend policy and actual hit/fallback counts."""
+        backend_counts: dict[str, int] = {}
+        fallback_counts: dict[str, int] = {}
+        attempts = hits = misses = 0
+        for row in self._stats_by_entity.values():
+            attempts += int(row.get("attempts", 0))
+            hits += int(row.get("hits", 0))
+            misses += int(row.get("misses", 0))
+            for source, count in (row.get("sources") or {}).items():
+                backend_counts[source] = backend_counts.get(source, 0) + int(count)
+            for reason, count in (row.get("fallbacks") or {}).items():
+                fallback_counts[reason] = fallback_counts.get(reason, 0) + int(count)
+        return {
+            "requested_backend": self.grounding_backend,
+            "require_wedetect": self.require_wedetect,
+            "attempts": attempts,
+            "hits": hits,
+            "misses": misses,
+            "backend_counts": dict(sorted(backend_counts.items())),
+            "fallback_counts": dict(sorted(fallback_counts.items())),
+        }
 
     def crop(self, segment_video: str, entity: "NamedEntity", *, segment_id: int) -> dict | None:
         entity_id = getattr(entity, "entity_id", None) or f"{getattr(entity.kind, 'value', entity.kind)}_{entity.name}"
@@ -376,6 +422,10 @@ class ProposeIdentifyCropper:
         try:
             self._ensure_server()
         except Exception as exc:  # noqa: BLE001 - server failure must not abort the loop
+            if self.require_wedetect:
+                raise RequiredGrounderError(
+                    "required WeDetect crop server is unavailable"
+                ) from exc
             logger.warning("ProposeIdentifyCropper: server unavailable (%s)", exc)
             self._record_attempt(str(entity_id), hit=False, payload=None)
             return None
@@ -396,11 +446,19 @@ class ProposeIdentifyCropper:
         try:
             result = self._submit_and_wait(request)
         except Exception as exc:  # noqa: BLE001
+            if self.require_wedetect:
+                raise RequiredGrounderError(
+                    f"required WeDetect crop job failed for {entity_id}"
+                ) from exc
             logger.warning("ProposeIdentifyCropper: job failed for %s (%s)", entity_id, exc)
             self._record_attempt(str(entity_id), hit=False, payload=None)
             return None
 
         if result.get("status") != "ok":
+            if self.require_wedetect:
+                raise RequiredGrounderError(
+                    f"required WeDetect crop job failed for {entity_id}: {result.get('error')}"
+                )
             logger.info("ProposeIdentifyCropper: server error for %s: %s", entity_id, result.get("error"))
             self._record_attempt(str(entity_id), hit=False, payload=None)
             return None

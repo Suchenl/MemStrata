@@ -26,7 +26,7 @@ def test_healthy_wedetect_path_does_not_require_sam3(monkeypatch) -> None:
     monkeypatch.setattr(
         wedetect_client.WeDetectRefGrounder,
         "from_env",
-        classmethod(lambda cls: object()),
+        classmethod(lambda cls, *, required=False: object()),
     )
 
     models = crop_server._Models(device="cpu")

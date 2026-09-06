@@ -22,6 +22,10 @@ import urllib.request
 from pathlib import Path
 
 
+class RequiredGrounderError(RuntimeError):
+    """A formal run lost its required WeDetect-Ref backend."""
+
+
 class WeDetectRefGrounder:
     """Thin HTTP handle to the WeDetect-Ref service (referring-expression grounding)."""
 
@@ -32,14 +36,16 @@ class WeDetectRefGrounder:
         score_thre: float = 0.25,
         topk: int = 5,
         timeout: float = 60.0,
+        strict: bool = False,
     ) -> None:
         self.url = url.rstrip("/")
         self.score_thre = float(score_thre)
         self.topk = int(topk)
         self.timeout = float(timeout)
+        self.strict = bool(strict)
 
     @classmethod
-    def from_env(cls) -> "WeDetectRefGrounder | None":
+    def from_env(cls, *, required: bool = False) -> "WeDetectRefGrounder | None":
         """Build from ``MEMSTRATA_WEDETECT_URL`` (+ optional thresholds), or None.
 
         Returns None when the env var is unset OR the service does not answer a health
@@ -48,6 +54,8 @@ class WeDetectRefGrounder:
         """
         url = os.environ.get("MEMSTRATA_WEDETECT_URL", "").strip()
         if not url:
+            if required:
+                raise RequiredGrounderError("MEMSTRATA_WEDETECT_URL is required but unset")
             return None
         try:
             score = float(os.environ.get("MEMSTRATA_WEDETECT_SCORE_THRE", "0.25") or 0.25)
@@ -57,8 +65,12 @@ class WeDetectRefGrounder:
             topk = int(os.environ.get("MEMSTRATA_WEDETECT_TOPK", "5") or 5)
         except ValueError:
             topk = 5
-        grounder = cls(url, score_thre=score, topk=topk)
-        return grounder if grounder.healthy() else None
+        grounder = cls(url, score_thre=score, topk=topk, strict=required)
+        if grounder.healthy():
+            return grounder
+        if required:
+            raise RequiredGrounderError(f"WeDetect-Ref is required but unhealthy at {url}")
+        return None
 
     def healthy(self) -> bool:
         try:
@@ -97,7 +109,11 @@ class WeDetectRefGrounder:
             )
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # noqa: S310
                 data = json.loads(resp.read().decode("utf-8"))
-        except Exception:
+        except Exception as exc:
+            if self.strict:
+                raise RequiredGrounderError(
+                    f"WeDetect-Ref request failed at {self.url}"
+                ) from exc
             return []
         out: list[tuple[list[int], float]] = []
         boxes = data.get("boxes") or []
@@ -109,4 +125,4 @@ class WeDetectRefGrounder:
         return out
 
 
-__all__ = ["WeDetectRefGrounder"]
+__all__ = ["RequiredGrounderError", "WeDetectRefGrounder"]

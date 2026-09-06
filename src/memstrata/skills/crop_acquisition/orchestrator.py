@@ -271,11 +271,15 @@ def _propose_candidates(
 
     # --- WeDetect-Ref referring grounding (describe -> bbox, authoritative) ---
     query = _grounding_query(entity_name, entity_description) if grounder is not None else ""
+    fallback_from = "grounder_unavailable" if grounder is None else "empty_query"
     if grounder is not None and query:
         try:
             hits = grounder.ground(frame_path, query, kind=entity_kind)
         except Exception:
+            if getattr(grounder, "strict", False):
+                raise
             hits = []
+            fallback_from = "request_error"
         g_raw: list[dict[str, Any]] = []
         for ordinal, (bbox_norm, score) in enumerate(hits):
             if not bbox_norm or len(bbox_norm) != 4:
@@ -311,6 +315,7 @@ def _propose_candidates(
             # Description-grounded boxes win: do NOT also run the salience-ranked SAM3 path,
             # whose most-salient proposal would re-introduce the wrong-entity crop.
             return dedup_by_iou(g_raw, iou_threshold=iou_threshold)
+        fallback_from = "no_hit"
 
     # --- SAM3 concept proposals (masked) ---
     if segmenter is not None:
@@ -351,6 +356,7 @@ def _propose_candidates(
                     "concept": concept,
                     "mask_quality": quality.to_dict(),
                     "quality_profile": "masked_sam3_quality_gated",
+                    "fallback_from": fallback_from,
                 })
 
     # --- GroundingDINO phrase proposals (unmasked bbox) ---
@@ -383,6 +389,7 @@ def _propose_candidates(
                     "source": "grounding_dino",
                     "grounding_phrase": phrase,
                     "quality_profile": "bbox_high_recall_no_mask",
+                    "fallback_from": fallback_from,
                     "mask_quality": {"available": False, "reason": "gdino_bbox_only"},
                 })
 
@@ -545,6 +552,7 @@ def acquire_entity_crop(
                 "grounding_phrase": cand.get("grounding_phrase"),
                 "grounding_query": cand.get("grounding_query"),
                 "quality_profile": cand.get("quality_profile"),
+                "fallback_from": cand.get("fallback_from"),
                 "frame_index": cand.get("frame_index"),
                 "frame_position": cand.get("frame_position"),
             },

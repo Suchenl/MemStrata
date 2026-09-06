@@ -104,6 +104,15 @@ class SegmentResult:
     cohesion_report: list[dict[str, Any]] = field(default_factory=list)
 
 
+@dataclass(slots=True)
+class RealizedSegmentResult:
+    """Write-side result for an already-realized segment."""
+
+    observations: list[Observation]
+    touched_asset_ids: list[str]
+    cohesion_report: list[dict[str, Any]] = field(default_factory=list)
+
+
 class MemStrata:
     """One persistent asset bank + the four-step per-segment loop."""
 
@@ -127,11 +136,16 @@ class MemStrata:
         policy: MemoryPolicy | None = None,
         crop_quality_gate: bool | None = None,
         relation_hops: int | None = None,
+        read_max_reps_per_asset: int | None = None,
+        read_context_rep_budget: int | None = None,
         max_total_representations: int | None = None,
         attributes_when_angles_known: bool | None = None,
         run_dir: str | Path | None = None,
         membank_dir: str | Path | None = None,
         persist_path: str | Path | None = None,
+        manifest_path: str | Path | None = None,
+        production_profile: str = "",
+        production_provenance: dict[str, Any] | None = None,
         movie_id: str = "",
         long_video_path: str | Path | None = None,
         fps: float | None = None,
@@ -173,11 +187,15 @@ class MemStrata:
             # left at the pier" against a record named Petrel) still gets one bounded resolver
             # call instead of returning nothing.
             resolver = resolver or MllmIntentResolver(planner)
+        read_options: dict[str, Any] = {"context_rep_budget": read_context_rep_budget}
+        if read_max_reps_per_asset is not None:
+            read_options["max_reps_per_asset"] = read_max_reps_per_asset
         self.interpreter = IntentInterpreter(
             self.bank,
             resolver=resolver,
             plan_producer=plan_producer,
             mode=intent_mode,
+            **read_options,
             # Only fires when the plan, name matching AND description matching all missed, so it
             # costs one extra call on the rare segment that would otherwise compose nothing.
             slow_on_miss=slow_on_miss,
@@ -214,6 +232,9 @@ class MemStrata:
         self.membank_dir = Path(membank_dir) if membank_dir else None
         if self.membank_dir:
             self.membank_dir.mkdir(parents=True, exist_ok=True)
+        self.manifest_path = Path(manifest_path) if manifest_path else None
+        self.production_profile = str(production_profile or "")
+        self.production_provenance = dict(production_provenance or {})
         # Identity of the produced film and the grown long_video.mp4 the memory snapshot's
         # timeline is anchored to; the producer sets long_video_path as it concatenates.
         self.movie_id = str(movie_id or "")
@@ -223,6 +244,7 @@ class MemStrata:
         # segment_id -> that segment's start second on the grown film. The producer fills this
         # as it stitches; without it no representation can be placed on the film's timeline.
         self.segment_start_sec: dict[int, float] = {}
+        self.segment_duration_sec: dict[int, float] = {}
         self.segment_log: list[dict[str, Any]] = []
 
     def _warn_on_unapplied_policy(
@@ -358,51 +380,73 @@ class MemStrata:
             if segment_video is None and generation.video_path:
                 segment_video = generation.video_path
 
-        if oracle_observations is not None:
-            observations = oracle_observations
-        else:
-            observations = self.decomposer.decompose(
-                segment_id=segment_id,
-                named_entities=(
-                    named_entities if named_entities is not None else self._entities_for_request(request)
-                ),
-                segment_video=segment_video,
-                # The write-side namer binds this shot's own wording to entities it confirms in
-                # the generated frames, so a first appearance enters memory under the name the
-                # next shot will use for it. Ignored when no namer is configured.
-                prompt=prompt,
-            )
-
-        touched = self.curator.curate_observations(
-            observations,
+        write_result = self.observe_realized_segment(
             segment_id=segment_id,
+            segment_video=segment_video,
+            prompt=prompt,
+            named_entities=(
+                named_entities if named_entities is not None else self._entities_for_request(request)
+            ),
+            observations=oracle_observations,
             state_events=state_events,
             relations=relations,
         )
-
-        # Fourth, retroactive admission gate: the three admission gates only guard
-        # *incoming* evidence, so they cannot repair an asset whose first rep was the
-        # intruder. Sweeping after every segment stops a polluted identity from
-        # conditioning the next generation. No-ops unless a floor is set (which requires
-        # a semantic encoder), so the offline default is unchanged.
-        cohesion_report: list[dict[str, Any]] = []
-        if getattr(self.curator, "selfaudit_each_segment", False):
-            cohesion_report = self.curator.audit_cohesion(isolate=True)
 
         result = SegmentResult(
             segment_id=segment_id,
             request=request,
             context=context,
             generation=generation,
-            observations=observations,
-            touched_asset_ids=touched,
+            observations=write_result.observations,
+            touched_asset_ids=write_result.touched_asset_ids,
             model_calls=model_calls,
-            cohesion_report=cohesion_report,
+            cohesion_report=write_result.cohesion_report,
         )
         self._log_segment(result)
+        return result
+
+    def observe_realized_segment(
+        self,
+        *,
+        segment_id: int,
+        segment_video: str | None,
+        prompt: str = "",
+        named_entities: list[NamedEntity] | None = None,
+        observations: list[Observation] | None = None,
+        state_events: list[dict] | None = None,
+        relations: list[dict] | None = None,
+        source_start_sec: float | None = None,
+        source_duration_sec: float | None = None,
+        fps: float | None = None,
+    ) -> RealizedSegmentResult:
+        """Run the production decompose→curate path on an existing video segment."""
+        if source_start_sec is not None:
+            self.segment_start_sec[int(segment_id)] = float(source_start_sec)
+        if source_duration_sec is not None:
+            self.segment_duration_sec[int(segment_id)] = max(0.0, float(source_duration_sec))
+        if fps is not None:
+            self.fps = float(fps)
+
+        realized = observations
+        if realized is None:
+            realized = self.decomposer.decompose(
+                segment_id=segment_id,
+                named_entities=list(named_entities or []),
+                segment_video=segment_video,
+                prompt=prompt,
+            )
+        touched = self.curator.curate_observations(
+            realized,
+            segment_id=segment_id,
+            state_events=state_events,
+            relations=relations,
+        )
+        cohesion_report: list[dict[str, Any]] = []
+        if getattr(self.curator, "selfaudit_each_segment", False):
+            cohesion_report = self.curator.audit_cohesion(isolate=True)
         if self.persist_path is not None:
             self.bank.save(self.persist_path)
-        return result
+        return RealizedSegmentResult(realized, touched, cohesion_report)
 
     def stratification(self) -> dict[str, Any]:
         """Current stratification-fill diagnostic for the bank (see the report docstring)."""
@@ -507,6 +551,30 @@ class MemStrata:
             video_duration_sec=self.long_video_duration_sec,
         )
 
+    def runtime_provenance(self) -> dict[str, Any]:
+        """Return the configured profile plus observed acquisition backend counts."""
+        payload = dict(self.production_provenance)
+        payload["profile"] = self.production_profile or payload.get("profile", "")
+        cropper = getattr(self.decomposer, "cropper", None)
+        if cropper is not None and hasattr(cropper, "provenance"):
+            payload["crop_acquisition"] = cropper.provenance()
+        return payload
+
+    def finalize(self, manifest: dict[str, Any] | None = None) -> Path | None:
+        """Persist the bank, snapshot, and auditable production provenance."""
+        if self.persist_path is not None:
+            self.bank.save(self.persist_path)
+        snapshot = self.write_memory_snapshot()
+        if self.manifest_path is not None:
+            payload = dict(manifest or {})
+            payload["production"] = self.runtime_provenance()
+            payload["finalized"] = True
+            self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            self.manifest_path.write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+        return snapshot
+
     def _rep_seconds_on_film(self) -> dict[str, float] | None:
         """Place every representation on the grown film's timeline.
 
@@ -533,8 +601,21 @@ class MemStrata:
                             offset = float(frame_index) / fps
                         except (TypeError, ValueError):
                             offset = 0.0
+                if offset == 0.0:
+                    annotations = getattr(rep, "annotations", {}) or {}
+                    frame_position = annotations.get("frame_position")
+                    duration = self.segment_duration_sec.get(int(rep.origin_segment_id))
+                    if frame_position is not None and duration is not None:
+                        try:
+                            offset = max(0.0, min(1.0, float(frame_position))) * duration
+                        except (TypeError, ValueError):
+                            offset = 0.0
                 seconds[rep.representation_id] = round(start + offset, 3)
         return seconds or None
+
+    def representation_seconds(self) -> dict[str, float]:
+        """Public temporal-identity map for exports and benchmark adapters."""
+        return dict(self._rep_seconds_on_film() or {})
 
     def write_stratification_summary(self, path: str | Path | None = None) -> Path | None:
         """Persist the stratification diagnostic (latest state + per-segment trend)."""
