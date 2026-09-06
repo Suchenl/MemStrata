@@ -17,6 +17,7 @@ from memstrata.bank.schema import (
     AssetRepresentation,
     AssetType,
     LifecycleStatus,
+    SpatialAngle,
     StateAngle,
 )
 from memstrata.pipeline import MemStrata
@@ -40,6 +41,7 @@ def _bank_with_reps(tmp_path: Path) -> AssetBank:
                     asset_id="Elias",
                     object_uri=str(img),
                     origin_segment_id=0,
+                    spatial_angle=SpatialAngle.FRONT,
                     state_angle=StateAngle.DEFAULT,
                 ),
                 AssetRepresentation(
@@ -47,6 +49,7 @@ def _bank_with_reps(tmp_path: Path) -> AssetBank:
                     asset_id="Elias",
                     object_uri=str(img),
                     origin_segment_id=2,
+                    spatial_angle=SpatialAngle.SIDE,
                     state_angle=StateAngle.DEFAULT,
                 ),
             ],
@@ -70,6 +73,9 @@ def test_snapshot_goes_to_membank_root_not_pipeline_dir(tmp_path):
     assert written == tmp_path / "run" / "membank" / "memory.json"
     assert (tmp_path / "run" / "membank" / "visual").is_dir()
     assert not (tmp_path / "run" / "pipeline" / "memory.json").exists()
+    state = json.loads(written.read_text())["entities"]["Elias"]["states"]["default"]
+    assert set(state["views"]) == {"front", "side"}
+    assert all("/states/default/views/" in path for path in state["images"])
 
 
 def test_run_dir_stays_the_target_when_no_membank_dir_given(tmp_path):

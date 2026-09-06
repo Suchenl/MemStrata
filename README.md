@@ -84,10 +84,15 @@ separate from per-segment pipeline logs and can be copied as one unit.
     ├── long_video.mp4        # assembled film; timestamp anchor
     ├── memory.json           # snapshot, refreshed after the run
     └── visual/
-        ├── characters/<asset_id>/states/<state>/*.png
-        ├── props/<asset_id>/states/<state>/*.png
-        └── locations/<asset_id>/states/<state>/*.png
+        ├── characters/<asset_id>/states/<state>/views/<spatial_angle>/*.png
+        ├── props/<asset_id>/states/<state>/views/<spatial_angle>/*.png
+        └── locations/<asset_id>/states/<state>/views/<spatial_angle>/*.png
 ```
+
+Each state keeps its existing flattened `appearances` and `images` fields and
+additively exposes `views.{front|side|back|top|unknown}` with per-view
+appearances and image paths. This preserves compatibility with
+`memstrata-memory-1.0` readers while making the bank's spatial strata visible.
 
 See [`README.zh.md`](README.zh.md) for the full `memory.json` schema, the write-side quality-gate plan, and the VLM call budget (Chinese).
 

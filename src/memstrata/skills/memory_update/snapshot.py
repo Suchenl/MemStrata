@@ -2,9 +2,9 @@
 
 Writes ``<out_dir>/memory.json`` — a clean, deterministic view of the stratified
 ``AssetBank`` that mirrors the benchmark gt entity schema (``entities`` keyed by id,
-each with ``states`` / appearance text and an ``initial_state``) and ADDS the two
-things a live memory bank has that the gt does not: on-disk visual evidence paths and
-per-state appearance timestamps.
+each with ``states`` / appearance text and an ``initial_state``) and ADDS the
+things a live memory bank has that the gt does not: on-disk visual evidence paths,
+per-state appearance timestamps, and additive per-state spatial-view strata.
 
 Design constraints (deliberately dependency-light so it runs anywhere the bank does):
 only the standard library — ``json`` / ``os`` / ``re`` / ``shutil`` / ``pathlib`` /
@@ -81,6 +81,12 @@ def _state_key(rep: Any) -> str:
     return rep.state_angle.value
 
 
+def _view_key(rep: Any) -> str:
+    """Stable spatial-view label, including ``unknown`` for unclassified evidence."""
+    value = getattr(rep, "spatial_angle", "unknown")
+    return str(getattr(value, "value", value) or "unknown")
+
+
 def _rep_description(rep: Any) -> str:
     annotations = getattr(rep, "annotations", {}) or {}
     for key in ("description", "observation_description"):
@@ -120,9 +126,9 @@ def export_memory_snapshot(
         precedence over per-rep annotations.
     copy_images:
         When True, copy each representation's image into a deterministic
-        ``visual/<kind_plural>/<asset_id>/states/<state>/<rep_id><ext>`` layout and
-        record the POSIX path relative to ``out_dir``. Missing source files are
-        skipped (their image is omitted; export continues).
+        ``visual/<kind_plural>/<asset_id>/states/<state>/views/<spatial_angle>/``
+        layout and record the POSIX path relative to ``out_dir``. Missing source
+        files are skipped (their image is omitted; export continues).
     video_path, video_duration_sec:
         The sibling grown film (``<out_dir>/long_video.mp4``) that each new segment
         is appended to. When given, recorded under the top-level ``video`` header as
@@ -168,18 +174,26 @@ def export_memory_snapshot(
                     "appearances": [],
                     "images": [],
                     "source_frames": [],
+                    "views": {},
                     "secs": [],
                     "segments": [],
                 }
                 insertion_order.append(key)
             record = states[key]
+            view_key = _view_key(rep)
+            view = record["views"].setdefault(
+                view_key,
+                {"appearances": [], "images": [], "source_frames": []},
+            )
 
             if not record["description"]:
                 desc = _rep_description(rep)
                 if desc:
                     record["description"] = desc
 
-            record["appearances"].append({"sec": sec, "segment": segment})
+            appearance = {"sec": sec, "segment": segment}
+            record["appearances"].append(appearance)
+            view["appearances"].append(appearance)
             if sec is not None:
                 record["secs"].append(sec)
             record["segments"].append(segment)
@@ -188,13 +202,23 @@ def export_memory_snapshot(
                 source = str(getattr(rep, "object_uri", "") or "")
                 if source and os.path.isfile(source):
                     ext = Path(source).suffix
-                    rel_dir = Path("visual") / kind_plural / asset_slug / "states" / _slug(key)
+                    rel_dir = (
+                        Path("visual")
+                        / kind_plural
+                        / asset_slug
+                        / "states"
+                        / _slug(key)
+                        / "views"
+                        / _slug(view_key)
+                    )
                     target_dir = out_path / rel_dir
                     target_dir.mkdir(parents=True, exist_ok=True)
                     filename = f"{_slug(rep.representation_id)}{ext}"
                     target = target_dir / filename
                     shutil.copyfile(source, target)
-                    record["images"].append((rel_dir / filename).as_posix())
+                    image_path = (rel_dir / filename).as_posix()
+                    record["images"].append(image_path)
+                    view["images"].append(image_path)
 
                     # Design C: keep the FULL source frame beside the crop so the bank
                     # supports crop↔frame provenance self-audit and frame-level retrieval.
@@ -205,7 +229,9 @@ def export_memory_snapshot(
                         frame_dir.mkdir(parents=True, exist_ok=True)
                         frame_name = f"{_slug(rep.representation_id)}__frame{frame_ext}"
                         shutil.copyfile(frame_src, frame_dir / frame_name)
-                        record["source_frames"].append((rel_dir / "frames" / frame_name).as_posix())
+                        frame_path = (rel_dir / "frames" / frame_name).as_posix()
+                        record["source_frames"].append(frame_path)
+                        view["source_frames"].append(frame_path)
 
         # Finalize per-state fields and ordering.
         def _state_first_seen(rec: dict[str, Any]) -> float | None:
@@ -234,11 +260,29 @@ def export_memory_snapshot(
                 rec["appearances"],
                 key=lambda a: (a["sec"] if a["sec"] is not None else math.inf, a["segment"]),
             )
+            view_objects: dict[str, Any] = {}
+            for view_key in sorted(rec["views"]):
+                view = rec["views"][view_key]
+                view_object = {
+                    "spatial_angle": view_key,
+                    "appearances": sorted(
+                        view["appearances"],
+                        key=lambda a: (
+                            a["sec"] if a["sec"] is not None else math.inf,
+                            a["segment"],
+                        ),
+                    ),
+                    "images": sorted(view["images"]),
+                }
+                if view["source_frames"]:
+                    view_object["source_frames"] = sorted(view["source_frames"])
+                view_objects[view_key] = view_object
             state_objects[key] = {
                 "description": rec["description"],
                 "first_seen_sec": first_seen,
                 "appearances": appearances,
                 "images": sorted(rec["images"]),
+                "views": view_objects,
             }
             if rec["source_frames"]:
                 state_objects[key]["source_frames"] = sorted(rec["source_frames"])

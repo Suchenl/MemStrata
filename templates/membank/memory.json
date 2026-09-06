@@ -34,8 +34,26 @@
             }
           ],
           "images": [
-            "visual/characters/char_elias/states/default/char_elias@s000.png"
-          ]
+            "visual/characters/char_elias/states/default/views/front/char_elias@s000.png"
+          ],
+          "views": {
+            "front": {
+              "spatial_angle": "front",
+              "appearances": [
+                {
+                  "sec": 12.0,
+                  "segment": 0
+                },
+                {
+                  "sec": 48.5,
+                  "segment": 3
+                }
+              ],
+              "images": [
+                "visual/characters/char_elias/states/default/views/front/char_elias@s000.png"
+              ]
+            }
+          }
         },
         "soaked": {
           "description": "drenched by the storm, hair matted, coat dripping wet",
@@ -47,8 +65,22 @@
             }
           ],
           "images": [
-            "visual/characters/char_elias/states/soaked/char_elias@s012.png"
-          ]
+            "visual/characters/char_elias/states/soaked/views/side/char_elias@s012.png"
+          ],
+          "views": {
+            "side": {
+              "spatial_angle": "side",
+              "appearances": [
+                {
+                  "sec": 300.0,
+                  "segment": 12
+                }
+              ],
+              "images": [
+                "visual/characters/char_elias/states/soaked/views/side/char_elias@s012.png"
+              ]
+            }
+          }
         }
       }
     },
@@ -71,8 +103,22 @@
             }
           ],
           "images": [
-            "visual/props/prop_brass_lantern/states/default/prop_brass_lantern@s001.png"
-          ]
+            "visual/props/prop_brass_lantern/states/default/views/front/prop_brass_lantern@s001.png"
+          ],
+          "views": {
+            "front": {
+              "spatial_angle": "front",
+              "appearances": [
+                {
+                  "sec": 30.0,
+                  "segment": 1
+                }
+              ],
+              "images": [
+                "visual/props/prop_brass_lantern/states/default/views/front/prop_brass_lantern@s001.png"
+              ]
+            }
+          }
         }
       }
     },
@@ -97,8 +143,22 @@
             }
           ],
           "images": [
-            "visual/locations/loc_lamp_room/states/night/loc_lamp_room@s000.png"
-          ]
+            "visual/locations/loc_lamp_room/states/night/views/unknown/loc_lamp_room@s000.png"
+          ],
+          "views": {
+            "unknown": {
+              "spatial_angle": "unknown",
+              "appearances": [
+                {
+                  "sec": 0.0,
+                  "segment": 0
+                }
+              ],
+              "images": [
+                "visual/locations/loc_lamp_room/states/night/views/unknown/loc_lamp_room@s000.png"
+              ]
+            }
+          }
         }
       }
     }

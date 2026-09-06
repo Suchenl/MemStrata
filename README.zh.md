@@ -136,9 +136,9 @@ gold 的 `entities` 同源）、同根目录的 `visual/` 分层图库，以及�
     ├── long_video.mp4                 # 成片；所有时间戳以此为准
     ├── memory.json                    # 运行后刷新的记忆快照
     └── visual/
-        ├── characters/<asset_id>/states/<state>/*.png
-        ├── props/<asset_id>/states/<state>/*.png
-        └── locations/<asset_id>/states/<state>/*.png
+        ├── characters/<asset_id>/states/<state>/views/<spatial_angle>/*.png
+        ├── props/<asset_id>/states/<state>/views/<spatial_angle>/*.png
+        └── locations/<asset_id>/states/<state>/views/<spatial_angle>/*.png
 ```
 
 `memory.json` schema（`memstrata-memory-1.0`）：
@@ -158,8 +158,15 @@ gold 的 `entities` 同源）、同根目录的 `visual/` 分层图库，以及�
         "default": {
           "description": "中年硬朗…",
           "first_seen_sec": 12.0,
-          "appearances": [{"sec": 12.0, "chunk": 0}, {"sec": 88.5, "chunk": 5}],
-          "images": ["visual/characters/character_elias/states/default/c00000_front.png"]
+          "appearances": [{"sec": 12.0, "segment": 0}, {"sec": 88.5, "segment": 5}],
+          "images": ["visual/characters/character_elias/states/default/views/front/c00000_front.png"],
+          "views": {
+            "front": {
+              "spatial_angle": "front",
+              "appearances": [{"sec": 12.0, "segment": 0}],
+              "images": ["visual/characters/character_elias/states/default/views/front/c00000_front.png"]
+            }
+          }
         },
         "changed": { "description": "拄杖迟暮…", "first_seen_sec": 640.0, "appearances": [...], "images": [...] }
       }
@@ -170,8 +177,9 @@ gold 的 `entities` 同源）、同根目录的 `visual/` 分层图库，以及�
 
 要点：
 - **`membank/long_video.mp4`**：每生成一段就拼到尾部；`memory.json` 里所有 `sec`/`first_seen_sec` 都以**这条成片的时间轴**为准，`video.duration_sec` 记录当前总时长。
-- **实体 → 状态 → 视觉记忆**三级；每个状态各自挂**相对路径**图片（同根 `visual/…/states/<state>/`）。
-- **时间记忆**：实体级 `first_seen_sec` + 每个状态的 `first_seen_sec` 与 `appearances[{sec, chunk}]`（初次 + 每次出现），**尽量精细到秒**（秒不可得时退化记 chunk）。
+- **实体 → 状态 → 视角 → 视觉记忆**四级；图片按 `visual/…/states/<state>/views/<spatial_angle>/` 明确分层。状态级 `images`/`appearances` 继续提供跨视角扁平汇总，旧读取方无需修改。
+- **时间记忆**：实体级 `first_seen_sec` + 每个状态及视角的 `appearances[{sec, segment}]`（初次 + 每次出现），**尽量精细到秒**（秒不可得时退化记 segment）。
+- `views` 是 `memstrata-memory-1.0` 的增量字段，因此无需升级 schema；每个视角记录 `spatial_angle`、独立的 `appearances`/`images`，以及可选的 `source_frames`。
 - 状态键来自 `state_angle`（default/changed/damaged）或意图指定的具名新状态；描述取该状态的观测/意图描述。
 - 由 `memory_update` 的 exporter 在每次 chunk 落库后原子写出（write-temp→rename），是"动态更新的 json"。
 
@@ -252,7 +260,7 @@ gold 的 `entities` 同源）、同根目录的 `visual/` 分层图库，以及�
    （保留 `AssetCurator = MemoryUpdater` 与 `memory_curation` shim 兼容旧 import）；`steps/curate.py` 转发不变；
    更新 `registry.toml`/README/纲领措辞（Stratified Update = 记忆更新）。
 2. **记忆快照 exporter**：在 `memory_update` 下新增 `snapshot.py`，产出上文 `memstrata-memory-1.0` 的
-   `memory.json` + 同根 `visual/<kind>s/<id>/states/<state>/*.png` + 每状态 `first_seen_sec`/`appearances`；每 chunk 原子写出。
+   `memory.json` + 同根 `visual/<kind>s/<id>/states/<state>/views/<spatial_angle>/*.png` + 每状态/视角的 `appearances`；每 chunk 原子写出。
 3. **确定性门控补强**：`lib/crop_quality.py` 加过曝门；`crop_qa.audit_crop` 接入；GDINO 兜底护栏。
 4. **一次批量 crop 调用**：新增批量结构化 MLLM 角色/客户端，一次返回
    {state, view, shot, lighting, occlusion, identity_visible, description, matches_target(desc)}；

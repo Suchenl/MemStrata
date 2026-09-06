@@ -11,6 +11,7 @@ from memstrata.bank.schema import (
     AssetRepresentation,
     AssetType,
     LifecycleStatus,
+    SpatialAngle,
     StateAngle,
 )
 
@@ -21,11 +22,12 @@ def _write_dummy_image(path: Path) -> None:
 
 
 def _build_bank(src_dir: Path):
-    """One CHARACTER asset (2 reps / 2 states) + one LOCATION asset (1 rep)."""
+    """One CHARACTER asset (3 reps / 2 states) + one LOCATION asset (1 rep)."""
     char_default = src_dir / "eli_default.png"
+    char_default_side = src_dir / "eli_default_side.png"
     char_changed = src_dir / "eli_changed.png"
     loc_img = src_dir / "lighthouse.png"
-    for img in (char_default, char_changed, loc_img):
+    for img in (char_default, char_default_side, char_changed, loc_img):
         _write_dummy_image(img)
 
     char = Asset(
@@ -40,14 +42,24 @@ def _build_bank(src_dir: Path):
                 asset_id="character_eli",
                 object_uri=str(char_default),
                 origin_segment_id=0,
+                spatial_angle=SpatialAngle.FRONT,
                 state_angle=StateAngle.DEFAULT,
                 annotations={"observation_description": "middle-aged, dark coat"},
+            ),
+            AssetRepresentation(
+                representation_id="character_eli@s001",
+                asset_id="character_eli",
+                object_uri=str(char_default_side),
+                origin_segment_id=1,
+                spatial_angle=SpatialAngle.SIDE,
+                state_angle=StateAngle.DEFAULT,
             ),
             AssetRepresentation(
                 representation_id="character_eli@s005",
                 asset_id="character_eli",
                 object_uri=str(char_changed),
                 origin_segment_id=5,
+                spatial_angle=SpatialAngle.FRONT,
                 state_angle=StateAngle.CHANGED,
                 annotations={"observation_description": "aged, white hair"},
             ),
@@ -84,6 +96,7 @@ def test_export_memory_snapshot_roundtrip():
 
         rep_seconds = {
             "character_eli@s000": 12.0,
+            "character_eli@s001": 20.0,
             "character_eli@s005": 88.5,
             "location_lighthouse@s000": 12.0,
         }
@@ -126,10 +139,18 @@ def test_export_memory_snapshot_roundtrip():
         # Appearances secs match and are sorted by (sec, segment).
         default_apps = char["states"]["default"]["appearances"]
         changed_apps = char["states"]["changed"]["appearances"]
-        assert [a["sec"] for a in default_apps] == [12.0]
+        assert [a["sec"] for a in default_apps] == [12.0, 20.0]
         assert [a["sec"] for a in changed_apps] == [88.5]
         assert default_apps[0]["segment"] == 0
         assert changed_apps[0]["segment"] == 5
+
+        # Additive view metadata preserves spatial-angle strata within each state.
+        default_views = char["states"]["default"]["views"]
+        assert set(default_views) == {"front", "side"}
+        assert default_views["front"]["spatial_angle"] == "front"
+        assert default_views["front"]["appearances"] == [{"sec": 12.0, "segment": 0}]
+        assert default_views["side"]["appearances"] == [{"sec": 20.0, "segment": 1}]
+        assert set(char["states"]["changed"]["views"]) == {"front"}
 
         # Location entity present with a single default state.
         loc = entities["location_lighthouse"]
@@ -137,15 +158,17 @@ def test_export_memory_snapshot_roundtrip():
         assert loc["name"] == "The Lighthouse"
         assert loc["description"] == "A white granite tower on a black cape."
         assert set(loc["states"]) == {"default"}
+        assert set(loc["states"]["default"]["views"]) == {"unknown"}
 
         # Images: relative POSIX paths that exist under the visual tree; copies non-empty.
         char_images = char["states"]["default"]["images"] + char["states"]["changed"]["images"]
         loc_images = loc["states"]["default"]["images"]
-        assert len(char_images) == 2
+        assert len(char_images) == 3
         assert len(loc_images) == 1
 
         for rel in char_images:
             assert rel.startswith("visual/characters/")
+            assert "/views/" in rel
             assert "/" in rel and "\\" not in rel  # POSIX relative
             abs_path = out_dir / rel
             assert abs_path.exists()
@@ -153,6 +176,7 @@ def test_export_memory_snapshot_roundtrip():
 
         for rel in loc_images:
             assert rel.startswith("visual/locations/")
+            assert "/views/unknown/" in rel
             abs_path = out_dir / rel
             assert abs_path.exists()
             assert abs_path.stat().st_size > 0

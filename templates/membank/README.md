@@ -15,7 +15,9 @@ membank/
         └── <asset_id>/
             └── states/
                 └── <state>/
-                    └── <representation_id><ext>
+                    └── views/
+                        └── <spatial_angle>/    # front/side/back/top/unknown
+                            └── <representation_id><ext>
 ```
 
 ## The one rule: the bank is append-only. Nothing is deleted.
@@ -27,10 +29,11 @@ records and flipping status flags**, never by erasing data on disk.
   **appended**; it is never truncated or deleted. Every `sec`, `first_seen_sec`,
   and `appearances[].sec` in `memory.json` is a timestamp **on this film's
   timeline**. The `video` header records its relative path and `duration_sec`.
-- **`visual/.../<state>/<rep_id>.png`** — every representation's crop is a real
+- **`visual/.../<state>/views/<spatial_angle>/<rep_id>.png`** — every
+  representation's crop is a real
   file on disk and **stays on disk** for audit / reversal, even after it is
   deprecated. Path layout is deterministic:
-  `visual/<kind_plural>/<asset_id>/states/<state>/<representation_id><ext>`.
+  `visual/<kind_plural>/<asset_id>/states/<state>/views/<spatial_angle>/<representation_id><ext>`.
 - **`memory.json`** — the clean *current view*, rewritten atomically (temp file +
   `os.replace`) after each segment. It is a projection, not the source of truth.
 
@@ -88,4 +91,9 @@ Per state:
 | `description` | free-form condition/appearance note for this state |
 | `first_seen_sec` | earliest appearance second (on the `long_video` timeline) |
 | `appearances` | `[{sec, segment}, ...]` sorted by time, every sighting |
-| `images` | POSIX crop paths under `visual/`, sorted |
+| `images` | backward-compatible flattened POSIX crop paths across all views, sorted |
+| `views` | additive `{spatial_angle: view}` metadata; each view repeats its `spatial_angle` and carries its own `appearances`, `images`, and optional `source_frames` |
+
+The schema remains `memstrata-memory-1.0`: `views` is additive, while existing
+entity/state fields and the flattened state-level `appearances` and `images` remain
+available to older readers.
