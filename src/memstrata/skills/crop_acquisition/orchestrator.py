@@ -485,13 +485,17 @@ def acquire_entity_crop(
             cand["_vec"] = vec
 
     have_embeddings = all("_vec" in c for c in candidates) and len(candidates) > 0
-    if exemplar_vectors and not have_embeddings:
+    is_location = entity_kind == "location"
+    # Locations are semantic scene memories, not compact physical identities. Their
+    # first crop is validated against its target description by the curator's path-C
+    # attribute batch; cross-view query↔reference identity comparison is inapplicable.
+    use_identity_gate = bool(exemplar_vectors) and not is_location
+    if use_identity_gate and not have_embeddings:
         return None
-    use_identity_gate = bool(exemplar_vectors)
 
     # 3) IDENTITY GATE — confirm "this is our entity" (correctness only). If exemplars
     # exist and nothing clears the floor, this segment is a miss; recording a stranger is worse.
-    identity_gate: str = "off"
+    identity_gate = "not_applicable_location" if is_location else "off"
     kept: list[dict[str, Any]] = []
     below: list[dict[str, Any]] = []
     for cand in candidates:
@@ -543,7 +547,11 @@ def acquire_entity_crop(
             continue
 
         verification: dict[str, Any] = {
-            "gate": "off_first_sighting" if not use_identity_gate else "not_required",
+            "gate": (
+                "not_applicable_location"
+                if is_location
+                else ("off_first_sighting" if not use_identity_gate else "not_required")
+            ),
         }
         if verify_against_references:
             try:

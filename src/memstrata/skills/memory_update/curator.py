@@ -614,6 +614,80 @@ class MemoryUpdater:
             return route(path, getattr(kind, "value", kind))[0]
         return self.embedder.embed_image(path)
 
+    def _find_existing_named_asset(
+        self,
+        *,
+        entity_id: str | None,
+        name: str,
+        kind: AssetType,
+    ) -> Asset | None:
+        """Read-only counterpart to :meth:`_resolve_asset`.
+
+        It predicts whether name-anchored resolution will reuse a record without creating
+        one or registering aliases. First-anchor target validation uses this before any
+        bank mutation so a rejected crop cannot leave an empty, poisoned asset behind.
+        """
+        if entity_id:
+            asset = self.bank.get_asset(entity_id)
+            if asset is not None:
+                return asset
+            if name and entity_id == name:
+                existing = self.bank.find_by_name(name, kind=kind)
+                if existing is not None:
+                    return existing
+                return self._fold_qualified_variant(name, kind)
+            return None
+        existing = self.bank.find_by_name(name, kind=kind)
+        if existing is not None:
+            return existing
+        return self._fold_qualified_variant(name, kind)
+
+    def _new_entity_target_description(self, obs: Observation) -> str | None:
+        """Return the visual target only when this observation may open a new record."""
+        target = str(obs.target_description or "").strip()
+        if not target:
+            return None
+        existing = self._find_existing_named_asset(
+            entity_id=obs.entity_id,
+            name=obs.name,
+            kind=obs.kind,
+        )
+        return target if existing is None else None
+
+    @staticmethod
+    def _target_validation_meta(
+        *,
+        angle_meta: dict[str, Any],
+        target_description: str,
+    ) -> dict[str, Any]:
+        crop_attributes = angle_meta.get("crop_attributes")
+        extra = (
+            crop_attributes.get("extra")
+            if isinstance(crop_attributes, dict)
+            else None
+        )
+        verdict = angle_meta.pop(
+            "_target_matches_target",
+            extra.get("matches_target") if isinstance(extra, dict) else None,
+        )
+        if not isinstance(verdict, bool):
+            verdict = None
+        return {
+            "applicable": True,
+            "target_description": target_description,
+            "matches_target": verdict,
+            "decision": (
+                "rejected_explicit_mismatch"
+                if verdict is False
+                else (
+                    "admitted_explicit_match"
+                    if verdict is True
+                    else "preserved_no_verdict"
+                )
+            ),
+            "source": str(angle_meta.get("angle_source", "unknown") or "unknown"),
+        }
+
     def _batch_classify_cache(
         self, observations: list[Observation], segment_id: int
     ) -> dict[str, CropAttributePack]:
@@ -633,19 +707,20 @@ class MemoryUpdater:
         change a result.
         """
         order: list[str] = []
-        by_path: dict[str, tuple[AssetType, str]] = {}
+        by_path: dict[str, tuple[AssetType, str, str | None]] = {}
         conflicts: set[str] = set()
         for obs in observations:
             path = obs.image_path
             if not path:
                 continue
+            target = self._new_entity_target_description(obs)
             needs = (
                 obs.spatial_angle == SpatialAngle.UNKNOWN
                 or obs.state_angle == StateAngle.UNKNOWN
             )
-            if not needs and not self.attributes_when_angles_known:
+            if not needs and not self.attributes_when_angles_known and not target:
                 continue
-            key = (obs.kind, obs.name)
+            key = (obs.kind, obs.name, target)
             if path in by_path:
                 if by_path[path] != key:
                     conflicts.add(path)
@@ -664,7 +739,11 @@ class MemoryUpdater:
             }
             for p in paths
         ]
-        packs = self.crop_attribute_classifier.classify_batch(items)
+        targets = [by_path[p][2] for p in paths]
+        packs = self.crop_attribute_classifier.classify_batch(
+            items,
+            target_descriptions=targets,
+        )
         if len(packs) != len(paths):
             return {}  # unexpected count → fall back to per-crop classify for all
         return dict(zip(paths, packs))
@@ -686,7 +765,8 @@ class MemoryUpdater:
 
         # Cheapest-tool guard: both angles known and no attribute pack requested →
         # do not spend a classifier call (matters when a real VLM is wired in).
-        if not needs and not self.attributes_when_angles_known:
+        cached_target_pack = bool(pack_cache is not None and image_path in pack_cache)
+        if not needs and not self.attributes_when_angles_known and not cached_target_pack:
             meta["angle_source"] = meta.get("angle_source", "explicit") or "explicit"
             return spatial, state, meta
 
@@ -705,6 +785,7 @@ class MemoryUpdater:
                 name=name,
                 segment_id=segment_id,
             )
+        target_verdict = pack.extra.get("matches_target")
         # Angle-only classifier fills gaps when the attribute classifier is null.
         if needs and pack.spatial_angle == SpatialAngle.UNKNOWN and pack.state_angle == StateAngle.UNKNOWN:
             classified = self.angle_classifier.classify(
@@ -732,6 +813,14 @@ class MemoryUpdater:
             meta["angle_source"] = "explicit"
         else:
             meta.update(pack.to_annotations())
+
+        if isinstance(target_verdict, bool):
+            meta["_target_matches_target"] = target_verdict
+            crop_attributes = meta.get("crop_attributes")
+            if isinstance(crop_attributes, dict):
+                extra = crop_attributes.setdefault("extra", {})
+                if isinstance(extra, dict):
+                    extra["matches_target"] = target_verdict
 
         if spatial == SpatialAngle.UNKNOWN:
             spatial = pack.spatial_angle
@@ -1377,6 +1466,8 @@ class MemoryUpdater:
         pack_cache = self._batch_classify_cache(observations, segment_id)
         for obs in observations:
             reconcile_meta: dict[str, Any] = {}
+            matched: Asset | None = None
+            folded_discovered: Asset | None = None
             # χ reconciliation compares the observation's embedding against existing reps, so a
             # discovered observation must be embedded BEFORE reconcile (otherwise visual_sim is
             # unavailable and identity collapses to text-only, never merging two crops of the
@@ -1397,28 +1488,68 @@ class MemoryUpdater:
                 # type-restricted reconciliation (χ) instead of a name lookup.
                 matched, reconcile_meta = self._reconcile_identity(obs)
                 if matched is not None:
+                    will_create_asset = False
+                else:
+                    folded_discovered = (
+                        self._fold_qualified_variant(obs.name, obs.kind)
+                        if obs.name
+                        else None
+                    )
+                    will_create_asset = folded_discovered is None
+            else:
+                existing_named = self._find_existing_named_asset(
+                    entity_id=obs.entity_id,
+                    name=obs.name,
+                    kind=obs.kind,
+                )
+                will_create_asset = existing_named is None
+
+            # Attribute classification precedes record creation so path-C can reject a
+            # mismatched first crop without leaving an empty asset in the bank. It still
+            # consumes the same one batch prepared above; no additional model call is made.
+            spatial, state, angle_meta = self._classify_if_needed(
+                image_path=obs.image_path,
+                kind=obs.kind,
+                name=obs.name,
+                spatial=obs.spatial_angle,
+                state=obs.state_angle,
+                angle_meta=obs.angle_meta,
+                segment_id=segment_id,
+                pack_cache=pack_cache,
+            )
+            target_description = (
+                str(obs.target_description or "").strip()
+                if will_create_asset
+                else ""
+            )
+            if target_description:
+                target_validation = self._target_validation_meta(
+                    angle_meta=angle_meta,
+                    target_description=target_description,
+                )
+                angle_meta["target_validation"] = target_validation
+                # Rejected observations have no representation to carry the decision;
+                # retaining it on the caller-owned observation keeps the veto auditable.
+                obs.angle_meta["target_validation"] = dict(target_validation)
+                if target_validation["matches_target"] is False:
+                    continue
+
+            if obs.source == SOURCE_DISCOVERED and not obs.entity_id:
+                if matched is not None:
                     asset = matched
                     # χ merged this observation into an existing identity under a DIFFERENT
                     # surface name. Record that name as an alias (axiom 3) so the name-anchored
-                    # read path can also retrieve the identity by the incoming name — otherwise
-                    # a cross-segment prompt using the other name silently misses the merged
-                    # asset and the bank looks fragmented on the read side.
-                    #
-                    # Only a *confidently* merged name earns this. A merge that merely cleared
-                    # β_τ costs one rep if it is wrong; an alias is permanent and cross-segment,
-                    # so a wrong one keeps answering every later prompt that uses that word. An
-                    # unguarded writeback made 7 of the 8 aliases in a measured 20-segment run
-                    # wrong: `Lena` (a teenage girl) answered to "old man", `ship's log` to "pen"
-                    # and "food", `salted fish` to "fishing nets". Reuse the already-calibrated
-                    # short-circuit margin rather than adding a second threshold to tune.
+                    # read path can also aggregate it later. Only a confident merge earns this.
                     if (
                         obs.name
                         and obs.name.strip().lower() != asset.name.strip().lower()
                         and self._merge_is_confident(reconcile_meta)
                     ):
                         self.bank.register_alias(asset.asset_id, obs.name)
+                elif folded_discovered is not None:
+                    asset = self._adopt_qualified_variant(folded_discovered, obs.name)
                 else:
-                    asset = self._fold_or_create_discovered(obs)
+                    asset = self._new_discovered_asset(obs)
             else:
                 asset = self._resolve_asset(
                     entity_id=obs.entity_id,
@@ -1440,17 +1571,6 @@ class MemoryUpdater:
                 rep_id = f"{rep_id}_{obs.observation_id}"
             if any(r.representation_id == rep_id for r in asset.representations):
                 continue
-
-            spatial, state, angle_meta = self._classify_if_needed(
-                image_path=obs.image_path,
-                kind=obs.kind,
-                name=obs.name,
-                spatial=obs.spatial_angle,
-                state=obs.state_angle,
-                angle_meta=obs.angle_meta,
-                segment_id=segment_id,
-                pack_cache=pack_cache,
-            )
 
             # Description upgrade: a clearer observation may populate a still-empty stable
             # description even when ``obs.description`` was empty but the attribute

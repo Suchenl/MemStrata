@@ -91,6 +91,10 @@ class Observation:
     angle_meta: dict[str, Any] = field(default_factory=dict)
     # d̂_i — observation-level appearance description (rides the attribute VLM call).
     description: str = ""
+    # Caller/namer-supplied visual target for first-anchor path-C verification. This is
+    # deliberately separate from ``description``, which may be generated from the crop
+    # itself and therefore cannot independently validate that same crop.
+    target_description: str = ""
     # ω_i — requested | discovered. Only discovered observations go through identity
     # reconciliation; requested ones are anchored by their symbolic id.
     source: str = SOURCE_REQUESTED
@@ -375,13 +379,19 @@ class RoleAwareDecomposer:
         )
         angle_meta.update(quality_meta)
         angle_meta.update(acquisition_meta)
-        description = str(angle_meta.get("observation_description", "") or entity.description)
+        target_description = str(entity.description or "").strip()
+        description = str(angle_meta.get("observation_description", "") or target_description)
         if entity.state_modifier:
             # Keep the literal qualifier next to the crop: the enum only says "not default",
             # while the read side matches a shot asking for the young/wounded appearance on text.
             angle_meta["state_modifier"] = entity.state_modifier
             if entity.state_modifier.lower() not in description.lower():
                 description = f"{entity.state_modifier} {description}".strip()
+            if (
+                target_description
+                and entity.state_modifier.lower() not in target_description.lower()
+            ):
+                target_description = f"{entity.state_modifier} {target_description}".strip()
         obs_id = entity.entity_id or f"{entity.kind.value}_{entity.name}_{segment_id}_{index}"
         return Observation(
             observation_id=str(obs_id),
@@ -400,6 +410,7 @@ class RoleAwareDecomposer:
             # A namer supplies its own appearance description; keep it when the angle
             # classifier did not produce one, otherwise the grounding-quality signal is lost.
             description=description,
+            target_description=target_description,
             source=source,
             bbox_norm=bbox,
         )
@@ -519,6 +530,7 @@ class RoleAwareDecomposer:
                     temporal_tag=f"segment_{segment_id}",
                     angle_meta=angle_meta,
                     description=str(angle_meta.get("observation_description", "")),
+                    target_description=str(cand.meta.get("target_description", "") or "").strip(),
                     source=SOURCE_DISCOVERED,
                     bbox_norm=cand.bbox_norm,
                 )
@@ -559,6 +571,7 @@ class RoleAwareDecomposer:
                     state_angle=state_angle,
                     temporal_tag=str(raw.get("temporal_tag", f"segment_{segment_id}")),
                     description=str(raw.get("description", "")),
+                    target_description=str(raw.get("target_description", "")),
                 )
             )
         return out
