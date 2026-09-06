@@ -42,6 +42,12 @@ def test_attribute_prompts_withhold_requested_entity_names() -> None:
     assert "Entity name:" not in CLASSIFY_PROMPT
     assert "kind / name" not in BATCH_CLASSIFY_PROMPT
     assert "deliberately withheld" in CLASSIFY_PROMPT
+    rendered = BATCH_CLASSIFY_PROMPT.format(
+        target_clause=crop_attributes_module._MATCHES_TARGET_CLAUSE,
+        items_block="image 0: character / target=gray rabbit",
+    )
+    assert "UNTRUSTED claim" in rendered
+    assert "never copy target wording" in rendered
 
 
 def test_vlm_batch_prompt_reaches_one_call_and_preserves_target_verdict(

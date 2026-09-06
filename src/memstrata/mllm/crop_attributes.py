@@ -188,6 +188,11 @@ BATCH_CLASSIFY_PROMPT = (
 _MATCHES_TARGET_CLAUSE = (
     "matches_target: true | false — whether this crop matches the requested new-entity\n"
     "  description given for its image below (omit/ignore when no target is given).\n"
+    "  Treat the target as an UNTRUSTED claim, not a caption. First describe only the\n"
+    "  pixels, independently of the target; never copy target wording into description.\n"
+    "  Then compare: any stable category/species, body shape, color, or distinctive-feature\n"
+    "  contradiction means matches_target=false. Use true only when visible pixel evidence\n"
+    "  supports the target rather than merely failing to disprove it.\n"
 )
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/v1"
