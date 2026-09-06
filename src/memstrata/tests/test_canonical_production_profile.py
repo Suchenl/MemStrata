@@ -17,6 +17,8 @@ def test_paper_tracka_profile_is_explicit_and_audited() -> None:
     assert PAPER_TRACKA_202607.read_slow_fallback is True
     assert PAPER_TRACKA_202607.read_max_reps_per_asset == 1
     assert PAPER_TRACKA_202607.require_wedetect is True
+    assert PAPER_TRACKA_202607.mllm_model == "Qwen3.5-9B-Instruct"
+    assert PAPER_TRACKA_202607.require_mllm is True
 
 
 def test_wedetect_hit_is_authoritative_for_location(tmp_path: Path) -> None:
@@ -69,6 +71,22 @@ def test_paper_profile_rejects_behavior_changing_overrides(tmp_path: Path) -> No
             run_dir=tmp_path,
             profile="paper_tracka_202607",
             write_naming="perception",
+        )
+
+
+def test_strict_profile_fails_before_silent_mllm_degradation(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from memstrata.production import realized
+    from memstrata.skills.crop_acquisition.wedetect_client import WeDetectRefGrounder
+
+    monkeypatch.setattr(WeDetectRefGrounder, "healthy", lambda self: True)
+    monkeypatch.setattr(realized, "_openai_model_ready", lambda *_args, **_kwargs: False)
+    with pytest.raises(RuntimeError, match="requires MLLM model"):
+        build_realized_segment_pipeline(
+            run_dir=tmp_path,
+            profile="paper_tracka_202607",
+            mllm_base_url="http://127.0.0.1:1/v1",
         )
 
 

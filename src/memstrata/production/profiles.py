@@ -14,6 +14,9 @@ class ProductionProfile:
     read_max_reps_per_asset: int
     wedetect_url: str
     require_wedetect: bool
+    mllm_base_url: str
+    mllm_model: str
+    require_mllm: bool
 
 
 PRODUCTION_DEFAULT = ProductionProfile(
@@ -24,6 +27,9 @@ PRODUCTION_DEFAULT = ProductionProfile(
     read_max_reps_per_asset=1,
     wedetect_url="http://127.0.0.1:8710",
     require_wedetect=False,
+    mllm_base_url="http://127.0.0.1:8000/v1",
+    mllm_model="Qwen3.5-9B-Instruct",
+    require_mllm=False,
 )
 
 PAPER_TRACKA_202607 = ProductionProfile(
@@ -34,6 +40,9 @@ PAPER_TRACKA_202607 = ProductionProfile(
     read_max_reps_per_asset=1,
     wedetect_url="http://127.0.0.1:8710",
     require_wedetect=True,
+    mllm_base_url="http://127.0.0.1:8000/v1",
+    mllm_model="Qwen3.5-9B-Instruct",
+    require_mllm=True,
 )
 
 _PROFILES = {

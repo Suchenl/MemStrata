@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import os
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +15,20 @@ from memstrata.mllm.crop_attributes import build_crop_attribute_classifier
 from memstrata.pipeline import MemStrata, build_curator, build_decomposer
 from memstrata.production.profiles import ProductionProfile, resolve_production_profile
 from memstrata.skills.memory_update import MemoryPolicy
+
+
+def _openai_model_ready(base_url: str, model: str, *, timeout: float = 5.0) -> bool:
+    try:
+        with urllib.request.urlopen(
+            f"{base_url.rstrip('/')}/models", timeout=timeout
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return False
+    return any(
+        isinstance(item, dict) and item.get("id") == model
+        for item in payload.get("data", [])
+    )
 
 
 def build_realized_segment_pipeline(
@@ -35,6 +51,9 @@ def build_realized_segment_pipeline(
     max_reps_per_asset: int | None = None,
     wedetect_url: str | None = None,
     require_wedetect: bool | None = None,
+    mllm_base_url: str | None = None,
+    mllm_model: str | None = None,
+    require_mllm: bool | None = None,
     resume: bool = False,
     seed_screenplay: dict[str, Any] | None = None,
 ) -> MemStrata:
@@ -59,6 +78,8 @@ def build_realized_segment_pipeline(
                 selected.read_max_reps_per_asset,
             ),
             "require_wedetect": (require_wedetect, selected.require_wedetect),
+            "mllm_model": (mllm_model, selected.mllm_model),
+            "require_mllm": (require_mllm, selected.require_mllm),
         }
         invalid = [
             f"{name}={actual!r}"
@@ -85,6 +106,7 @@ def build_realized_segment_pipeline(
     strict_wedetect = (
         selected.require_wedetect if require_wedetect is None else bool(require_wedetect)
     )
+    strict_mllm = selected.require_mllm if require_mllm is None else bool(require_mllm)
     configured_url = (
         os.environ.get("MEMSTRATA_WEDETECT_URL", selected.wedetect_url)
         if wedetect_url is None
@@ -97,6 +119,23 @@ def build_realized_segment_pipeline(
                 f"profile {selected.name!r} requires a healthy WeDetect-Ref service; "
                 f"checked {configured_url or '<unset>'}"
             )
+    configured_mllm_url = (
+        os.environ.get("MEMSTRATA_CONTEXT_JUDGER_BASE_URL", selected.mllm_base_url)
+        if mllm_base_url is None
+        else str(mllm_base_url)
+    ).strip()
+    configured_mllm_model = (
+        os.environ.get("MEMSTRATA_VLM_MODEL", selected.mllm_model)
+        if mllm_model is None
+        else str(mllm_model)
+    ).strip()
+    if naming == "mllm" and strict_mllm and not _openai_model_ready(
+        configured_mllm_url, configured_mllm_model
+    ):
+        raise RuntimeError(
+            f"profile {selected.name!r} requires MLLM model "
+            f"{configured_mllm_model!r} at {configured_mllm_url}"
+        )
 
     root = Path(run_dir)
     root.mkdir(parents=True, exist_ok=True)
@@ -140,9 +179,18 @@ def build_realized_segment_pipeline(
     )
     entity_namer = None
     if naming == "mllm":
+        from memstrata.mllm.runner import HttpTransport, MllmRoleRunner
         from memstrata.skills.decomposition.vlm_decomposer import VlmEntityDecomposer
 
-        entity_namer = VlmEntityDecomposer()
+        transport = HttpTransport(configured_mllm_url)
+        entity_namer = VlmEntityDecomposer(
+            runner=MllmRoleRunner(
+                text_transport=transport,
+                vision_transport=transport,
+                text_model=configured_mllm_model,
+                vision_model=configured_mllm_model,
+            )
+        )
     discoverer = None
     if policy.discovery and entity_namer is None:
         discoverer = ServerConceptDiscoverer(cropper, work_dir=root / "discoveries")
@@ -169,6 +217,9 @@ def build_realized_segment_pipeline(
             "read_context_rep_budget": read_context_rep_budget,
             "grounding_backend": "wedetect_ref",
             "require_wedetect": strict_wedetect,
+            "mllm_base_url": configured_mllm_url,
+            "mllm_model": configured_mllm_model,
+            "require_mllm": strict_mllm,
         },
         policy=policy,
         bank=bank,
