@@ -249,18 +249,15 @@ class ProposeIdentifyCropper:
         )
         return bool(sampled)
 
-    def _sample_frames(self, segment_video: str, targets: list[tuple[float, Path]]) -> list[Path]:
+    @staticmethod
+    def _save_sampled_frames(
+        frames: Any,
+        targets: list[tuple[float, Path]],
+    ) -> list[Path]:
         try:
-            import imageio.v3 as iio
             from PIL import Image
         except Exception as exc:  # noqa: BLE001
-            logger.warning("ProposeIdentifyCropper: imageio/PIL unavailable (%s)", exc)
-            return []
-        try:
-            with profile_span("frame_extract.crop"):
-                frames = iio.imread(segment_video, index=None)  # (T, H, W, 3)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("ProposeIdentifyCropper: cannot read %s (%s)", segment_video, exc)
+            logger.warning("ProposeIdentifyCropper: PIL unavailable (%s)", exc)
             return []
         if frames is None or len(frames) == 0:
             return []
@@ -274,6 +271,58 @@ class ProposeIdentifyCropper:
             Image.fromarray(frames[idx]).convert("RGB").save(out_path)
             saved.append(out_path)
         return saved
+
+    @staticmethod
+    def _decode_frames(segment_video: str) -> Any | None:
+        try:
+            import imageio.v3 as iio
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ProposeIdentifyCropper: imageio unavailable (%s)", exc)
+            return None
+        try:
+            with profile_span("frame_decode.segment"):
+                return iio.imread(segment_video, index=None)  # (T, H, W, 3)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ProposeIdentifyCropper: cannot read %s (%s)", segment_video, exc)
+            return None
+
+    def _sample_frames(self, segment_video: str, targets: list[tuple[float, Path]]) -> list[Path]:
+        return self._save_sampled_frames(self._decode_frames(segment_video), targets)
+
+    def sample_namer_frames(
+        self,
+        segment_video: str,
+        *,
+        segment_id: int,
+        out_dir: str | Path,
+        count: int,
+        prefix: str,
+    ) -> list[str]:
+        """Decode once and materialize the namer and cropper's exact frame selections."""
+        from memstrata.lib.media import sample_video_frames
+
+        segment_dir = (self.work_dir / f"segment_{segment_id:03d}").resolve()
+        crop_targets = [
+            (pos, segment_dir / f"frame_{self._frame_tag(pos)}.jpg")
+            for pos in self.frame_positions
+        ]
+        missing_crop_targets = [
+            (pos, path)
+            for pos, path in crop_targets
+            if not (path.is_file() and path.stat().st_size > 0)
+        ]
+        frames = self._decode_frames(segment_video)
+        if frames is None or len(frames) == 0:
+            return []
+        if missing_crop_targets:
+            self._save_sampled_frames(frames, missing_crop_targets)
+        return sample_video_frames(
+            segment_video,
+            out_dir,
+            count=count,
+            prefix=prefix,
+            decoded_frames=frames,
+        )
 
     # --- job submission ---------------------------------------------------------------
 

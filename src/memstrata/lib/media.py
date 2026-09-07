@@ -44,6 +44,7 @@ def sample_video_frames(
     *,
     count: int = 3,
     prefix: str = "frame",
+    decoded_frames: Any | None = None,
 ) -> list[str]:
     """Write up to ``count`` evenly spaced frames of ``video`` as PNG; return their paths.
 
@@ -54,13 +55,14 @@ def sample_video_frames(
     if count <= 0:
         return []
     try:
-        import imageio.v3 as iio
         from PIL import Image
-    except Exception:  # noqa: BLE001 - optional at import time, absent in no-GPU smokes
-        return []
-    try:
-        frames = iio.imread(str(video), index=None)  # (T, H, W, 3)
-    except Exception:  # noqa: BLE001 - unreadable/absent video
+        if decoded_frames is None:
+            import imageio.v3 as iio
+
+            frames = iio.imread(str(video), index=None)  # (T, H, W, 3)
+        else:
+            frames = decoded_frames
+    except Exception:  # noqa: BLE001 - optional dependency or unreadable/absent video
         return []
     total = len(frames)
     if total == 0:
