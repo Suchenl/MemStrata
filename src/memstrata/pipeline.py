@@ -22,6 +22,7 @@ from memstrata.mllm.crop_attributes import (
     CropAttributeClassifier,
     build_crop_attribute_classifier,
 )
+from memstrata.lib.observe_profile import capture_profile, profile_span
 from memstrata.skills.memory_update import export_memory_snapshot
 from memstrata.steps.compose import ComposedContext, compose
 from memstrata.steps.curate import MemoryPolicy, MemoryUpdater, stratification_report
@@ -226,6 +227,10 @@ class MemStrata:
         self.run_dir = Path(run_dir) if run_dir else None
         if self.run_dir:
             self.run_dir.mkdir(parents=True, exist_ok=True)
+        self._observe_profile_path = (
+            self.run_dir / "observe_profile.jsonl" if self.run_dir is not None else None
+        )
+        self._last_observed_segment: int | None = None
         # The memory bank is a deliverable, not a debug dump: it goes to its own root
         # (``membank/``) rather than sharing run_dir with the per-segment pipeline records.
         # Falls back to run_dir so existing callers keep their current layout.
@@ -420,6 +425,7 @@ class MemStrata:
         fps: float | None = None,
     ) -> RealizedSegmentResult:
         """Run the production decompose→curate path on an existing video segment."""
+        self._last_observed_segment = int(segment_id)
         if source_start_sec is not None:
             self.segment_start_sec[int(segment_id)] = float(source_start_sec)
         if source_duration_sec is not None:
@@ -427,26 +433,35 @@ class MemStrata:
         if fps is not None:
             self.fps = float(fps)
 
-        realized = observations
-        if realized is None:
-            realized = self.decomposer.decompose(
-                segment_id=segment_id,
-                named_entities=list(named_entities or []),
-                segment_video=segment_video,
-                prompt=prompt,
-            )
-        touched = self.curator.curate_observations(
-            realized,
-            segment_id=segment_id,
-            state_events=state_events,
-            relations=relations,
-        )
-        cohesion_report: list[dict[str, Any]] = []
-        if getattr(self.curator, "selfaudit_each_segment", False):
-            cohesion_report = self.curator.audit_cohesion(isolate=True)
-        if self.persist_path is not None:
-            self.bank.save(self.persist_path)
-        return RealizedSegmentResult(realized, touched, cohesion_report)
+        with capture_profile(
+            "observe_segment",
+            segment_id=int(segment_id),
+            output_path=self._observe_profile_path,
+        ):
+            realized = observations
+            if realized is None:
+                with profile_span("decompose"):
+                    realized = self.decomposer.decompose(
+                        segment_id=segment_id,
+                        named_entities=list(named_entities or []),
+                        segment_video=segment_video,
+                        prompt=prompt,
+                    )
+            with profile_span("curate"):
+                touched = self.curator.curate_observations(
+                    realized,
+                    segment_id=segment_id,
+                    state_events=state_events,
+                    relations=relations,
+                )
+            cohesion_report: list[dict[str, Any]] = []
+            if getattr(self.curator, "selfaudit_each_segment", False):
+                with profile_span("cohesion_audit"):
+                    cohesion_report = self.curator.audit_cohesion(isolate=True)
+            if self.persist_path is not None:
+                with profile_span("bank_save"):
+                    self.bank.save(self.persist_path)
+            return RealizedSegmentResult(realized, touched, cohesion_report)
 
     def stratification(self) -> dict[str, Any]:
         """Current stratification-fill diagnostic for the bank (see the report docstring)."""
@@ -541,15 +556,21 @@ class MemStrata:
         target = self.membank_dir or self.run_dir
         if target is None:
             return None
-        return export_memory_snapshot(
-            self.bank,
-            target,
-            movie_id=self.movie_id,
-            fps=self.fps,
-            rep_seconds=self._rep_seconds_on_film(),
-            video_path=self.long_video_path,
-            video_duration_sec=self.long_video_duration_sec,
-        )
+        with capture_profile(
+            "memory_snapshot",
+            segment_id=self._last_observed_segment,
+            output_path=self._observe_profile_path,
+        ):
+            with profile_span("snapshot"):
+                return export_memory_snapshot(
+                    self.bank,
+                    target,
+                    movie_id=self.movie_id,
+                    fps=self.fps,
+                    rep_seconds=self._rep_seconds_on_film(),
+                    video_path=self.long_video_path,
+                    video_duration_sec=self.long_video_duration_sec,
+                )
 
     def runtime_provenance(self) -> dict[str, Any]:
         """Return the configured profile plus observed acquisition backend counts."""

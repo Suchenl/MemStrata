@@ -35,6 +35,7 @@ from typing import Any, Protocol
 from memstrata.bank import AssetType, SpatialAngle, StateAngle
 from memstrata.encoders import EmbeddingModel, HashEmbedding, RoleRoutedEmbedding, Vector
 from memstrata.lib.crop_qa import audit_crop, reference_quality
+from memstrata.lib.observe_profile import profile_span
 from memstrata.mllm.angle_classifier import AngleClassification, AngleClassifier, NullAngleClassifier
 
 # ω_i — how an observation was acquired (paper Evidence Acquisition).
@@ -251,9 +252,10 @@ class RoleAwareDecomposer:
         self.covered_iou = float(covered_iou)
 
     def _embed(self, image_path: str, kind: AssetType) -> tuple[Vector, str]:
-        if isinstance(self.embedder, RoleRoutedEmbedding):
-            return self.embedder.embed_with_route(image_path, kind.value)
-        return self.embedder.embed_image(image_path), getattr(self.embedder, "name", "general")
+        with profile_span("embedding.write_path"):
+            if isinstance(self.embedder, RoleRoutedEmbedding):
+                return self.embedder.embed_with_route(image_path, kind.value)
+            return self.embedder.embed_image(image_path), getattr(self.embedder, "name", "general")
 
     def _resolve_angles(
         self,
@@ -276,11 +278,12 @@ class RoleAwareDecomposer:
             meta["angle_source"] = "explicit"
             return spatial, state, meta
 
-        classified: AngleClassification = self.angle_classifier.classify(
-            crop,
-            kind=kind.value,
-            name=name,
-        )
+        with profile_span("crop_attribute.single"):
+            classified: AngleClassification = self.angle_classifier.classify(
+                crop,
+                kind=kind.value,
+                name=name,
+            )
         meta.update(classified.to_annotations())
         if spatial == SpatialAngle.UNKNOWN:
             spatial = classified.spatial_angle
@@ -356,7 +359,8 @@ class RoleAwareDecomposer:
         bbox: list[int] | None = None
         acquisition_meta: dict[str, Any] = {}
         if crop is None and segment_video and self.cropper is not None:
-            acquired = self.cropper.crop(segment_video, entity, segment_id=segment_id)
+            with profile_span("crop_acquisition"):
+                acquired = self.cropper.crop(segment_video, entity, segment_id=segment_id)
             crop, bbox, acquisition_meta = _crop_path_bbox_meta(acquired)
         if not crop:
             return None
@@ -364,7 +368,8 @@ class RoleAwareDecomposer:
         # Always measure sharpness/information: the report drives both admission and
         # same-bucket quality replacement, preventing an early blurred crop from remaining
         # the permanent identity anchor.
-        report = audit_crop(crop)
+        with profile_span("crop_quality_audit"):
+            report = audit_crop(crop)
         quality = reference_quality(report)
         if self.crop_quality_gate:
             quality_meta["crop_quality"] = report.to_dict()
@@ -439,11 +444,13 @@ class RoleAwareDecomposer:
         """
         if self.entity_namer is None or not segment_video or not prompt:
             return []
-        frames = self._namer_frames(segment_video, segment_id=segment_id)
+        with profile_span("frame_extract.namer"):
+            frames = self._namer_frames(segment_video, segment_id=segment_id)
         if not frames:
             return []
         try:
-            entities = self.entity_namer.propose(frames=frames, prompt=prompt)
+            with profile_span("entity_namer"):
+                entities = self.entity_namer.propose(frames=frames, prompt=prompt)
         except Exception:  # noqa: BLE001 - naming is best-effort, never fails a segment
             return []
         # The read side already observed its own selections; re-observing them would double-count
@@ -488,9 +495,10 @@ class RoleAwareDecomposer:
         if self.discoverer is None or not segment_video or not self.discovery_kinds:
             return []
         try:
-            candidates = self.discoverer.discover(
-                segment_video, segment_id=segment_id, kinds=self.discovery_kinds
-            )
+            with profile_span("discovery"):
+                candidates = self.discoverer.discover(
+                    segment_video, segment_id=segment_id, kinds=self.discovery_kinds
+                )
         except Exception:  # noqa: BLE001 - discovery is best-effort, never fails a segment
             return []
 

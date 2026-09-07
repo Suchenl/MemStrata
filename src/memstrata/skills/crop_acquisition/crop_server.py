@@ -44,6 +44,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from memstrata.lib.observe_profile import capture_profile, profile_span
+
 
 def _atomic_write_json(path: Path, obj: dict) -> None:
     tmp = path.parent / (path.name + ".tmp")
@@ -192,7 +194,10 @@ def _run_job(models: _Models, request: dict[str, Any]) -> dict[str, Any] | None:
 
     def _embed_paths(paths: list[str]) -> list[list[float]]:
         imgs = [_P(p) for p in paths if p and _P(p).is_file()]
-        return models.embedder.embed_batch(imgs) if imgs else []
+        if not imgs:
+            return []
+        with profile_span("dino_reference_embed"):
+            return models.embedder.embed_batch(imgs)
 
     exemplar_vectors = list(request.get("exemplar_vectors") or [])
     existing_rep_vectors = list(request.get("existing_rep_vectors") or [])
@@ -247,8 +252,17 @@ def serve(args: argparse.Namespace) -> None:
         job_id = str(request.get("job_id") or job_path.stem)
         t0 = time.time()
         try:
-            result = _run_job(models, request)
-            _atomic_write_json(done / f"{job_id}.json", {"job_id": job_id, "status": "ok", "result": result})
+            with capture_profile("crop_server_job", output_path=None) as profile:
+                result = _run_job(models, request)
+            _atomic_write_json(
+                done / f"{job_id}.json",
+                {
+                    "job_id": job_id,
+                    "status": "ok",
+                    "result": result,
+                    "profile": profile.to_dict(),
+                },
+            )
             logging.info("[crop_acq] job %s done in %.2fs (result=%s)",
                          job_id, time.time() - t0, "hit" if result else "none")
         except Exception as exc:  # noqa: BLE001 - propagate failure through result file

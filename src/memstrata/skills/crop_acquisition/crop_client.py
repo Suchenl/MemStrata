@@ -41,6 +41,7 @@ from memstrata.skills.crop_acquisition.orchestrator import (
 )
 from memstrata.skills.crop_acquisition._common import sam3_deps_dir
 from memstrata.skills.crop_acquisition._common import public_models_root as default_public_models_root
+from memstrata.lib.observe_profile import merge_profile, profile_span
 from memstrata.lib.paths import memstrata_root
 from memstrata.skills.crop_acquisition.wedetect_client import RequiredGrounderError
 
@@ -256,7 +257,8 @@ class ProposeIdentifyCropper:
             logger.warning("ProposeIdentifyCropper: imageio/PIL unavailable (%s)", exc)
             return []
         try:
-            frames = iio.imread(segment_video, index=None)  # (T, H, W, 3)
+            with profile_span("frame_extract.crop"):
+                frames = iio.imread(segment_video, index=None)  # (T, H, W, 3)
         except Exception as exc:  # noqa: BLE001
             logger.warning("ProposeIdentifyCropper: cannot read %s (%s)", segment_video, exc)
             return []
@@ -289,6 +291,7 @@ class ProposeIdentifyCropper:
             if result_path.exists():
                 result = json.loads(result_path.read_text())
                 result_path.unlink(missing_ok=True)
+                merge_profile(result.get("profile"), prefix="crop_server.")
                 return result
             time.sleep(0.5)
         raise TimeoutError(f"crop-acquisition job {job_id} timed out after {self.job_timeout}s")
@@ -453,7 +456,8 @@ class ProposeIdentifyCropper:
             **self.extra_acquire_kwargs,
         }
         try:
-            result = self._submit_and_wait(request)
+            with profile_span("crop_server.roundtrip"):
+                result = self._submit_and_wait(request)
         except Exception as exc:  # noqa: BLE001
             if self.require_wedetect:
                 raise RequiredGrounderError(
@@ -513,7 +517,8 @@ class ProposeIdentifyCropper:
     def submit(self, request: dict[str, Any]) -> dict[str, Any]:
         """Submit an arbitrary job to this cropper's server (used by discovery)."""
         self._ensure_server()
-        return self._submit_and_wait(request)
+        with profile_span("crop_server.roundtrip"):
+            return self._submit_and_wait(request)
 
 
 class ServerConceptDiscoverer:

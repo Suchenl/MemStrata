@@ -35,6 +35,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from memstrata.lib.observe_profile import profile_span
 from memstrata.skills.crop_acquisition.crop_io import materialize_crop
 from memstrata.skills.crop_acquisition.crop_qa import audit_crop, bbox_area_fraction
 from memstrata.skills.crop_acquisition.discovery import DISCOVERY_CONCEPTS
@@ -278,7 +279,8 @@ def _propose_candidates(
     fallback_from = "grounder_unavailable" if grounder is None else "empty_query"
     if grounder is not None and query:
         try:
-            hits = grounder.ground(frame_path, query, kind=entity_kind)
+            with profile_span("wedetect"):
+                hits = grounder.ground(frame_path, query, kind=entity_kind)
         except Exception:
             if getattr(grounder, "strict", False):
                 raise
@@ -324,7 +326,8 @@ def _propose_candidates(
     # --- SAM3 concept proposals (masked) ---
     if segmenter is not None:
         concepts = list(_resolve_concepts(entity_kind, concepts))
-        by_concept = segmenter.segment_multi(frame_path, concepts) if concepts else {}
+        with profile_span("sam3"):
+            by_concept = segmenter.segment_multi(frame_path, concepts) if concepts else {}
         for concept, instances in by_concept.items():
             for ordinal, (bbox_px, score, mask) in enumerate(instances):
                 if mask is None:
@@ -366,7 +369,9 @@ def _propose_candidates(
     # --- GroundingDINO phrase proposals (unmasked bbox) ---
     if detector is not None:
         for phrase in _grounding_phrases_for(entity_kind, entity_description):
-            for ordinal, (bbox_norm, score) in enumerate(detector.detect_all(frame_path, phrase)):
+            with profile_span("grounding_dino"):
+                detections = detector.detect_all(frame_path, phrase)
+            for ordinal, (bbox_norm, score) in enumerate(detections):
                 y0, x0, y1, x1 = bbox_norm
                 left = max(0, min(width - 1, round(x0 / 1000 * width)))
                 top = max(0, min(height - 1, round(y0 / 1000 * height)))
@@ -446,21 +451,22 @@ def acquire_entity_crop(
     candidates: list[dict[str, Any]] = []
     for frame_index, candidate_frame in enumerate(resolved_frame_paths):
         frame_scratch = scratch_dir / f"frame_{frame_index:02d}"
-        frame_candidates = _propose_candidates(
-            frame_path=candidate_frame,
-            entity_name=entity_name,
-            entity_kind=entity_kind,
-            entity_description=entity_description,
-            scratch_dir=frame_scratch,
-            segmenter=segmenter,
-            detector=detector,
-            grounder=grounder,
-            max_character_bbox_area=max_character_bbox_area,
-            min_mask_fill=min_mask_fill,
-            min_side_px=min_side_px,
-            iou_threshold=iou_threshold,
-            concepts=concepts,
-        )
+        with profile_span("propose"):
+            frame_candidates = _propose_candidates(
+                frame_path=candidate_frame,
+                entity_name=entity_name,
+                entity_kind=entity_kind,
+                entity_description=entity_description,
+                scratch_dir=frame_scratch,
+                segmenter=segmenter,
+                detector=detector,
+                grounder=grounder,
+                max_character_bbox_area=max_character_bbox_area,
+                min_mask_fill=min_mask_fill,
+                min_side_px=min_side_px,
+                iou_threshold=iou_threshold,
+                concepts=concepts,
+            )
         for cand in frame_candidates:
             cand["frame_path"] = candidate_frame
             cand["frame_index"] = frame_index
@@ -477,7 +483,8 @@ def acquire_entity_crop(
     vecs: list[list[float]] = []
     if embedder is not None:
         try:
-            vecs = embedder.embed_batch([Path(c["crop_path"]) for c in candidates])
+            with profile_span("dino_embed_batch"):
+                vecs = embedder.embed_batch([Path(c["crop_path"]) for c in candidates])
         except Exception:
             vecs = []
     if vecs and len(vecs) == len(candidates):
@@ -542,7 +549,8 @@ def acquire_entity_crop(
         return None
     for cand in ranked:
         crop_path = Path(cand["crop_path"])
-        qa = audit_crop(crop=crop_path, bbox_norm=cand["bbox_norm"], kind=entity_kind)
+        with profile_span("crop_qa"):
+            qa = audit_crop(crop=crop_path, bbox_norm=cand["bbox_norm"], kind=entity_kind)
         if not qa.accepted:
             continue
 

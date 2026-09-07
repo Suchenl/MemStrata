@@ -57,6 +57,7 @@ from memstrata.lib.dedup import (
     similarity_to_set,
     text_similarity,
 )
+from memstrata.lib.observe_profile import profile_span
 from memstrata.mllm.angle_classifier import AngleClassifier, NullAngleClassifier
 from memstrata.mllm.crop_attributes import (
     CropAttributeClassifier,
@@ -747,10 +748,11 @@ class MemoryUpdater:
             for p in paths
         ]
         targets = [by_path[p][2] for p in paths]
-        packs = self.crop_attribute_classifier.classify_batch(
-            items,
-            target_descriptions=targets,
-        )
+        with profile_span("crop_attribute.batch"):
+            packs = self.crop_attribute_classifier.classify_batch(
+                items,
+                target_descriptions=targets,
+            )
         if len(packs) != len(paths):
             return {}  # unexpected count → fall back to per-crop classify for all
         return dict(zip(paths, packs))
@@ -786,12 +788,13 @@ class MemoryUpdater:
             if cached is not None:
                 pack = replace(cached)
         if pack is None:
-            pack = self.crop_attribute_classifier.classify(
-                image_path,
-                kind=kind.value,
-                name=name,
-                segment_id=segment_id,
-            )
+            with profile_span("crop_attribute.fallback_single"):
+                pack = self.crop_attribute_classifier.classify(
+                    image_path,
+                    kind=kind.value,
+                    name=name,
+                    segment_id=segment_id,
+                )
         target_verdict = pack.extra.get("matches_target")
         # Angle-only classifier fills gaps when the attribute classifier is null.
         if needs and pack.spatial_angle == SpatialAngle.UNKNOWN and pack.state_angle == StateAngle.UNKNOWN:

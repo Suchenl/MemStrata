@@ -34,6 +34,7 @@ from __future__ import annotations
 from typing import Any
 
 from memstrata.bank import AssetType, StateAngle
+from memstrata.lib.observe_profile import profile_span
 from memstrata.skills.decomposition.decomposer import NamedEntity
 
 _KIND_BY_STR: dict[str, AssetType] = {
@@ -276,12 +277,13 @@ class VlmEntityDecomposer:
                 f"frames:\n{prompt}"
             )
         try:
-            result = self.runner.run(
-                "entity_decomposer",
-                instruction=instruction,
-                images=frame_list,
-                schema=_SCHEMA,
-            )
+            with profile_span("mllm.entity_decompose"):
+                result = self.runner.run(
+                    "entity_decomposer",
+                    instruction=instruction,
+                    images=frame_list,
+                    schema=_SCHEMA,
+                )
         except Exception:
             return []
 
@@ -389,12 +391,13 @@ class VlmEntityDecomposer:
         )
         instruction = _RECONCILE_INSTRUCTION.format(listing=listing, prompt=prompt)
         try:
-            result = self.runner.run(
-                "entity_decomposer",
-                instruction=instruction,
-                images=frames,
-                schema=_RECONCILE_SCHEMA,
-            )
+            with profile_span("mllm.name_reconcile"):
+                result = self.runner.run(
+                    "entity_decomposer",
+                    instruction=instruction,
+                    images=frames,
+                    schema=_RECONCILE_SCHEMA,
+                )
         except Exception:
             return entities
         rows = result.get("resolved") if isinstance(result, dict) else None
