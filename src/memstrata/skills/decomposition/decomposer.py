@@ -91,9 +91,10 @@ class Observation:
     angle_meta: dict[str, Any] = field(default_factory=dict)
     # d̂_i — observation-level appearance description (rides the attribute VLM call).
     description: str = ""
-    # Caller/namer-supplied visual target for first-anchor path-C verification. This is
-    # deliberately separate from ``description``, which may be generated from the crop
-    # itself and therefore cannot independently validate that same crop.
+    # Caller/namer-supplied visual target for batched semantic validation of first and
+    # established name-anchored observations. This is deliberately separate from
+    # ``description``, which may be generated from the crop itself and therefore cannot
+    # independently validate that same crop.
     target_description: str = ""
     # ω_i — requested | discovered. Only discovered observations go through identity
     # reconciliation; requested ones are anchored by their symbolic id.

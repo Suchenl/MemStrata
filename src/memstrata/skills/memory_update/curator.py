@@ -642,11 +642,18 @@ class MemoryUpdater:
             return existing
         return self._fold_qualified_variant(name, kind)
 
-    def _new_entity_target_description(self, obs: Observation) -> str | None:
-        """Return the visual target only when this observation may open a new record."""
+    def _semantic_target_description(self, obs: Observation) -> str | None:
+        """Return the target for name-anchored writes or possible new discoveries.
+
+        Requested/name-anchored observations are checked on every segment, including
+        established assets. An unanchored discovery is checked only while it may open a
+        new record; established discovered evidence keeps identity reconciliation policy.
+        """
         target = str(obs.target_description or "").strip()
         if not target:
             return None
+        if obs.entity_id or obs.source != SOURCE_DISCOVERED:
+            return target
         existing = self._find_existing_named_asset(
             entity_id=obs.entity_id,
             name=obs.name,
@@ -713,7 +720,7 @@ class MemoryUpdater:
             path = obs.image_path
             if not path:
                 continue
-            target = self._new_entity_target_description(obs)
+            target = self._semantic_target_description(obs)
             needs = (
                 obs.spatial_angle == SpatialAngle.UNKNOWN
                 or obs.state_angle == StateAngle.UNKNOWN
@@ -1504,9 +1511,9 @@ class MemoryUpdater:
                 )
                 will_create_asset = existing_named is None
 
-            # Attribute classification precedes record creation so path-C can reject a
-            # mismatched first crop without leaving an empty asset in the bank. It still
-            # consumes the same one batch prepared above; no additional model call is made.
+            # Attribute classification precedes record creation/update so the semantic
+            # gate can veto a mismatched first or established name-anchored observation
+            # without mutating the bank. It consumes the one batch prepared above.
             spatial, state, angle_meta = self._classify_if_needed(
                 image_path=obs.image_path,
                 kind=obs.kind,
@@ -1517,11 +1524,10 @@ class MemoryUpdater:
                 segment_id=segment_id,
                 pack_cache=pack_cache,
             )
-            target_description = (
-                str(obs.target_description or "").strip()
-                if will_create_asset
-                else ""
-            )
+            name_anchored = bool(obs.entity_id) or obs.source != SOURCE_DISCOVERED
+            target_description = str(obs.target_description or "").strip()
+            if not name_anchored and not will_create_asset:
+                target_description = ""
             if target_description:
                 target_validation = self._target_validation_meta(
                     angle_meta=angle_meta,

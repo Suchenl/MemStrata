@@ -74,11 +74,11 @@ def test_paper_profile_rejects_behavior_changing_overrides(tmp_path: Path) -> No
         )
 
 
-def test_mllm_production_enables_image_only_crop_identity_verification(
+def test_mllm_production_disables_per_crop_identity_judge(
     monkeypatch, tmp_path: Path
 ) -> None:
-    from memstrata.production import realized
     from memstrata.encoders import HashEmbedding
+    from memstrata.production import realized
     from memstrata.skills.crop_acquisition.wedetect_client import WeDetectRefGrounder
 
     monkeypatch.setattr(WeDetectRefGrounder, "healthy", lambda self: True)
@@ -90,8 +90,19 @@ def test_mllm_production_enables_image_only_crop_identity_verification(
     )
 
     cropper = mem.decomposer.cropper
-    assert cropper.identity_verification_required is True
-    assert cropper.server_env["MEMSTRATA_CROP_IDENTITY_MODEL"] == "Qwen3.5-9B-Instruct"
+    assert cropper.identity_verification_required is False
+    assert "MEMSTRATA_CROP_IDENTITY_BASE_URL" not in cropper.server_env
+    assert "MEMSTRATA_CROP_IDENTITY_MODEL" not in cropper.server_env
+    assert mem.production_provenance["crop_identity_verification"] == {
+        "required_for_established_identity": False,
+        "mode": "disabled",
+    }
+    assert mem.production_provenance["crop_semantic_target_validation"] == {
+        "mode": "crop_attribute_batch",
+        "scope": "name_anchored_observations_with_visual_target",
+        "explicit_mismatch": "veto_before_bank_mutation",
+        "missing_verdict": "preserve_deterministic_pipeline",
+    }
 
 
 def test_strict_profile_fails_before_silent_mllm_degradation(

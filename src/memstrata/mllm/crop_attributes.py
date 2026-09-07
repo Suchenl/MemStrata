@@ -115,8 +115,8 @@ def _batch_crop_attribute_schema(*, with_target: bool) -> dict[str, Any]:
     """Array form of ``CROP_ATTRIBUTE_SCHEMA``: one object per crop, in image order.
 
     When ``with_target`` is set, each item additionally reports ``matches_target`` — a
-    boolean saying whether the crop matches its requested new-entity description (the
-    first-sighting / new-entity verification path C).
+    boolean saying whether the crop matches its name-anchored visual target. This same
+    batched semantic gate covers first anchors and established-asset observations.
     """
     item_props = dict(CROP_ATTRIBUTE_SCHEMA["properties"])
     required = list(CROP_ATTRIBUTE_SCHEMA["required"])
@@ -186,7 +186,7 @@ BATCH_CLASSIFY_PROMPT = (
     "Return JSON only."
 )
 _MATCHES_TARGET_CLAUSE = (
-    "matches_target: true | false — whether this crop matches the requested new-entity\n"
+    "matches_target: true | false — whether this crop matches the requested visual target\n"
     "  description given for its image below (omit/ignore when no target is given).\n"
     "  Treat the target as an UNTRUSTED claim, not a caption. First describe only the\n"
     "  pixels, independently of the target; never copy target wording into description.\n"
@@ -363,7 +363,7 @@ class CropAttributeClassifier(Protocol):
         """Attribute several crops in ONE call. ``items`` carry ``image_path`` (+ optional
         ``kind``/``name``/``segment_id``/``frame_index``/``seconds``). When
         ``target_descriptions`` is given (aligned per item), each pack records
-        ``extra["matches_target"]`` for the new-entity verification path C."""
+        ``extra["matches_target"]`` for batched semantic target validation."""
         ...
 
 

@@ -165,17 +165,17 @@ def build_realized_segment_pipeline(
     server_env = {
         "MEMSTRATA_WEDETECT_URL": configured_url,
         "MEMSTRATA_REQUIRE_WEDETECT": "1" if strict_wedetect else "0",
-        "MEMSTRATA_CROP_IDENTITY_BASE_URL": configured_mllm_url,
-        "MEMSTRATA_CROP_IDENTITY_MODEL": configured_mllm_model,
     }
-    verify_crop_identity = naming == "mllm"
     cropper = ProposeIdentifyCropper(
         bank=bank,
         server_dir=root / "crop_acq_server",
         work_dir=root / "observations",
         device=str(crop_acq_device),
         identity_threshold=float(identity_threshold),
-        identity_verification_required=verify_crop_identity,
+        # The canonical production path uses the existing one-per-segment crop-attribute
+        # batch for semantic target validation. Per-crop query↔reference VLM identity
+        # calls are intentionally disabled for both efficiency and cross-view recall.
+        identity_verification_required=False,
         frame_pos=float(frame_pos),
         server_env=server_env,
         grounding_backend="wedetect_ref",
@@ -225,8 +225,14 @@ def build_realized_segment_pipeline(
             "mllm_model": configured_mllm_model,
             "require_mllm": strict_mllm,
             "crop_identity_verification": {
-                "required_for_established_identity": verify_crop_identity,
-                "mode": "image_only_query_to_references",
+                "required_for_established_identity": False,
+                "mode": "disabled",
+            },
+            "crop_semantic_target_validation": {
+                "mode": "crop_attribute_batch",
+                "scope": "name_anchored_observations_with_visual_target",
+                "explicit_mismatch": "veto_before_bank_mutation",
+                "missing_verdict": "preserve_deterministic_pipeline",
             },
         },
         policy=policy,

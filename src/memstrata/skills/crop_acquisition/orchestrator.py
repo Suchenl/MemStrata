@@ -58,9 +58,9 @@ LOCATION_CONCEPTS = DISCOVERY_CONCEPTS["location"]
 # want to record. When nothing clears it, the right outcome is a miss for this segment, not
 # writing an unrelated person into the bank.
 DEFAULT_IDENTITY_THRESHOLD = 0.25
-# Reuse the calibrated production identity-judge confidence floor. This is deliberately
-# separate from the lenient DINOv3 recall floor above: DINO proposes plausible cross-view
-# candidates; an image-only query↔reference judgment decides whether one may be banked.
+# Confidence floor for the explicit opt-in identity verifier. The canonical Track-A
+# production path does not enable this per-crop VLM gate; it validates requested visual
+# targets in the existing segment-level crop-attribute batch instead.
 DEFAULT_IDENTITY_VERIFICATION_THRESHOLD = 0.90
 _MAX_CHARACTER_BBOX_AREA = 1.0     # close-ups are valid; near-full-frame is caught by QA
 _MIN_MASK_FILL = 0.18              # adaptive floor; thin poses/long props get a lower gate
@@ -431,10 +431,10 @@ def acquire_entity_crop(
     """Acquire the most NOVEL identity-correct crop for one named entity.
 
     Returns ``{crop_path, bbox, mask_path, identity_sim, novelty_score, source}`` or
-    ``None`` when no identity-OK, QA-passing candidate exists. For an established identity,
-    ``identity_verification_required`` adds a second, image-only candidate↔reference gate.
-    Any verifier rejection, low-confidence answer, exception, or abstention fails closed.
-    First sightings have no reference identity and therefore skip this gate.
+    ``None`` when no identity-OK, QA-passing candidate exists. The optional
+    ``identity_verification_required`` flag retains a fail-closed image-only
+    candidate↔reference gate for explicit non-production callers. Canonical Track-A
+    production leaves it disabled and uses batched semantic target validation.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
