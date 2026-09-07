@@ -15,11 +15,14 @@ from memstrata.bank import AssetBank, AssetType, SpatialAngle, StateAngle
 from memstrata.encoders import HashEmbedding
 from memstrata.lib.dedup import medoid_cohesion, similarity_to_set
 from memstrata.mllm.crop_attributes import HeuristicCropAttributeClassifier
+from memstrata.skills.memory_update import MemoryPolicy
 from memstrata.steps.curate import AssetCurator, EntityObservation
 from memstrata.steps.decompose import Observation
 
 _CHAR = AssetType.CHARACTER
+_LOCATION = AssetType.LOCATION
 _ANCHOR = "identity_anchor"
+_SCENE_REFERENCE = "scene_reference"
 
 
 def _dark_png(directory: Path, name: str = "dark.png") -> str:
@@ -123,6 +126,61 @@ def test_visible_crop_is_an_anchor() -> None:
         assert rep.annotations["crop_attributes"]["identity_visible"] is True
         assert _ANCHOR in rep.reference_aspects
         assert rep.annotations.get("identity_anchor_eligible", True) is True
+
+
+def test_location_scene_reference_semantics_are_opt_in() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        crop = _bright_png(Path(tmp), "meadow_front_default_notvisible.png")
+
+        legacy_bank = AssetBank()
+        legacy = AssetCurator(
+            legacy_bank,
+            HashEmbedding(),
+            crop_attribute_classifier=HeuristicCropAttributeClassifier(),
+        )
+        legacy.ingest_observation(
+            EntityObservation("legacy", _LOCATION, "Meadow", crop),
+            segment_id=0,
+        )
+
+        enabled_bank = AssetBank()
+        enabled = AssetCurator(
+            enabled_bank,
+            HashEmbedding(),
+            policy=MemoryPolicy(location_semantic_gates=True),
+            crop_attribute_classifier=HeuristicCropAttributeClassifier(),
+        )
+        enabled.ingest_observation(
+            EntityObservation("enabled", _LOCATION, "Meadow", crop),
+            segment_id=0,
+        )
+
+        legacy_rep = legacy_bank.find_by_name("Meadow", kind=_LOCATION).representations[0]
+        enabled_rep = enabled_bank.find_by_name("Meadow", kind=_LOCATION).representations[0]
+        assert _SCENE_REFERENCE not in legacy_rep.reference_aspects
+        assert _SCENE_REFERENCE in legacy_rep.excluded_aspects
+        assert _SCENE_REFERENCE in enabled_rep.reference_aspects
+        assert _SCENE_REFERENCE not in enabled_rep.excluded_aspects
+
+
+def test_location_semantics_do_not_change_character_anchor_gate() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        crop = _bright_png(Path(tmp), "hero_front_default_notvisible.png")
+        bank = AssetBank()
+        curator = AssetCurator(
+            bank,
+            HashEmbedding(),
+            policy=MemoryPolicy(location_semantic_gates=True),
+            crop_attribute_classifier=HeuristicCropAttributeClassifier(),
+        )
+        curator.ingest_observation(
+            EntityObservation("o1", _CHAR, "Hero", crop),
+            segment_id=0,
+        )
+
+        rep = bank.find_by_name("Hero", kind=_CHAR).representations[0]
+        assert _ANCHOR not in rep.reference_aspects
+        assert _ANCHOR in rep.excluded_aspects
 
 
 # --- ② embedding cohesion admission (low mixing) --------------------------------

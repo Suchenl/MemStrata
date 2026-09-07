@@ -228,6 +228,106 @@ def test_required_identity_verification_fails_closed_on_abstention(tmp_path: Pat
     assert result is None
 
 
+def test_whole_frame_location_scene_plate_is_opt_in(tmp_path: Path) -> None:
+    frame = _frame(tmp_path / "meadow.jpg")
+
+    legacy = acquire_entity_crop(
+        frame,
+        entity_name="Meadow",
+        entity_kind="location",
+        exemplar_vectors=[],
+        existing_rep_vectors=[],
+        out_dir=tmp_path / "legacy",
+    )
+    enabled = acquire_entity_crop(
+        frame,
+        entity_name="Meadow",
+        entity_kind="location",
+        exemplar_vectors=[],
+        existing_rep_vectors=[],
+        out_dir=tmp_path / "enabled",
+        location_scene_plate=True,
+    )
+
+    assert legacy is None
+    assert enabled is not None
+    assert enabled["source"] == "whole_frame_location"
+    assert enabled["bbox"] == [0, 0, 1000, 1000]
+    assert enabled["location_scene_plate"] is True
+
+
+def test_location_semantic_gates_skip_compact_identity_checks(tmp_path: Path) -> None:
+    frame = _frame(tmp_path / "meadow_new_view.jpg")
+    reference = _frame(tmp_path / "meadow_old_view.jpg")
+    verifier = _IdentityVerifier(same=False)
+
+    result = acquire_entity_crop(
+        frame,
+        entity_name="Meadow",
+        entity_kind="location",
+        exemplar_vectors=[[1.0, 0.0]],
+        existing_rep_vectors=[[1.0, 0.0]],
+        exemplar_image_paths=[reference],
+        out_dir=tmp_path / "out",
+        embedder=_Embedder([[0.0, 1.0]]),
+        identity_verifier=verifier,
+        identity_verification_required=True,
+        location_scene_plate=True,
+        location_semantic_gates=True,
+    )
+
+    assert result is not None
+    assert verifier.calls == []
+    assert result["identity_gate"] == "not_applicable_location"
+    assert result["identity_verification"]["gate"] == "not_applicable_location"
+
+
+def test_location_scene_plate_uses_frame_medoid(tmp_path: Path) -> None:
+    frames = [_frame(tmp_path / f"frame_{index}.jpg") for index in range(3)]
+    embedder = _Embedder([[1.0, 0.0], [0.0, 1.0], [0.995, 0.1]])
+
+    result = acquire_entity_crop(
+        frames[0],
+        frame_paths=frames,
+        frame_positions=[0.2, 0.5, 0.8],
+        entity_name="Meadow",
+        entity_kind="location",
+        exemplar_vectors=[],
+        existing_rep_vectors=[],
+        out_dir=tmp_path / "out",
+        embedder=embedder,
+        location_scene_plate=True,
+    )
+
+    assert result is not None
+    assert result["frame_path"] == str(frames[2])
+    assert result["source_detail"]["scene_centrality"] is not None
+
+
+def test_location_switches_do_not_relax_character_identity(tmp_path: Path) -> None:
+    frame = _frame(tmp_path / "hero.jpg")
+    reference = _frame(tmp_path / "hero_reference.jpg")
+    verifier = _IdentityVerifier(same=False)
+    result = acquire_entity_crop(
+        frame,
+        entity_name="Hero",
+        entity_kind="character",
+        exemplar_vectors=[[1.0, 0.0]],
+        existing_rep_vectors=[],
+        exemplar_image_paths=[reference],
+        out_dir=tmp_path / "out",
+        segmenter=_Segmenter([_mask(10, 10, 50, 50)]),
+        embedder=_Embedder([[1.0, 0.0]]),
+        identity_verifier=verifier,
+        identity_verification_required=True,
+        location_scene_plate=True,
+        location_semantic_gates=True,
+    )
+
+    assert result is None
+    assert len(verifier.calls) == 1
+
+
 def test_identity_judge_prompt_is_name_free_and_handles_animal_characters() -> None:
     prompt = JUDGE_PROMPT.format(kind="character", n=2)
     assert "entity name" in prompt.lower()
@@ -328,3 +428,34 @@ def test_client_submits_multi_frame_pool_and_writes_summary(tmp_path: Path) -> N
     assert summary["config"]["identity_threshold"] == DEFAULT_IDENTITY_THRESHOLD
     assert summary["config"]["min_side_px"] == 16
     assert summary["entities"]["char_hero"]["miss_rate"] == 0.0
+
+
+def test_client_forwards_location_ablation_switches(tmp_path: Path) -> None:
+    frames = [_frame(tmp_path / "a.jpg"), _frame(tmp_path / "b.jpg")]
+    cropper = _CapturingCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        work_dir=tmp_path / "work",
+        frame_paths=frames,
+        extra_acquire_kwargs={
+            "location_scene_plate": True,
+            "location_semantic_gates": True,
+        },
+    )
+
+    payload = cropper.crop(
+        "segment.mp4",
+        NamedEntity(
+            name="Meadow",
+            kind=AssetType.LOCATION,
+            entity_id="location_meadow",
+        ),
+        segment_id=3,
+    )
+
+    assert payload is not None
+    assert cropper.last_request["location_scene_plate"] is True
+    assert cropper.last_request["location_semantic_gates"] is True
+    summary = json.loads((tmp_path / "work" / "crop_acquisition_summary.json").read_text())
+    assert summary["config"]["location_scene_plate"] is True
+    assert summary["config"]["location_semantic_gates"] is True

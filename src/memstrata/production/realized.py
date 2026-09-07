@@ -41,6 +41,8 @@ def build_realized_segment_pipeline(
     discovery: bool = False,
     crop_acq_device: str = "",
     identity_threshold: float = 0.25,
+    location_scene_plate: bool = False,
+    location_semantic_gates: bool = False,
     frame_pos: float = 0.8,
     namer_frames: int = 3,
     embedder_provider: str | None = None,
@@ -140,7 +142,10 @@ def build_realized_segment_pipeline(
     root = Path(run_dir)
     root.mkdir(parents=True, exist_ok=True)
     persisted = Path(persist_path) if persist_path else root / "bank.json"
-    policy = MemoryPolicy.production(discovery=bool(discovery))
+    policy = MemoryPolicy.production(
+        discovery=bool(discovery),
+        location_semantic_gates=bool(location_semantic_gates),
+    )
     mode = angle_classifier_mode or None
     angle_classifier = build_angle_classifier(mode=mode)
     crop_attribute_classifier = build_crop_attribute_classifier(mode=mode)
@@ -177,6 +182,10 @@ def build_realized_segment_pipeline(
         identity_threshold=float(identity_threshold),
         identity_verification_required=verify_crop_identity,
         frame_pos=float(frame_pos),
+        extra_acquire_kwargs={
+            "location_scene_plate": bool(location_scene_plate),
+            "location_semantic_gates": bool(location_semantic_gates),
+        },
         server_env=server_env,
         grounding_backend="wedetect_ref",
         require_wedetect=strict_wedetect,
@@ -221,6 +230,8 @@ def build_realized_segment_pipeline(
             "read_context_rep_budget": read_context_rep_budget,
             "grounding_backend": "wedetect_ref",
             "require_wedetect": strict_wedetect,
+            "location_scene_plate": bool(location_scene_plate),
+            "location_semantic_gates": bool(location_semantic_gates),
             "mllm_base_url": configured_mllm_url,
             "mllm_model": configured_mllm_model,
             "require_mllm": strict_mllm,

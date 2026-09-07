@@ -257,6 +257,7 @@ def _propose_candidates(
     iou_threshold: float,
     concepts: tuple[str, ...] | None = None,
     grounder: Any | None = None,
+    location_scene_plate: bool = False,
 ) -> list[dict[str, Any]]:
     """Collect candidate crops for ONE entity.
 
@@ -272,6 +273,17 @@ def _propose_candidates(
     pil = Image.open(frame_path).convert("RGB")
     width, height = pil.size
     raw: list[dict[str, Any]] = []
+
+    if entity_kind == "location" and location_scene_plate:
+        return [{
+            "bbox_norm": [0, 0, 1000, 1000],
+            "score": 1.0,
+            "mask": None,
+            "crop_path": Path(frame_path),
+            "source": "whole_frame_location",
+            "quality_profile": "whole_frame_scene_plate",
+            "mask_quality": {"available": False, "reason": "scene_plate"},
+        }]
 
     # --- WeDetect-Ref referring grounding (describe -> bbox, authoritative) ---
     query = _grounding_query(entity_name, entity_description) if grounder is not None else ""
@@ -427,6 +439,8 @@ def acquire_entity_crop(
     min_mask_fill: float = _MIN_MASK_FILL,
     min_side_px: int = _MIN_SIDE_PX,
     iou_threshold: float = _IOU_DEDUP,
+    location_scene_plate: bool = False,
+    location_semantic_gates: bool = False,
 ) -> dict[str, Any] | None:
     """Acquire the most NOVEL identity-correct crop for one named entity.
 
@@ -460,12 +474,18 @@ def acquire_entity_crop(
             min_side_px=min_side_px,
             iou_threshold=iou_threshold,
             concepts=concepts,
+            location_scene_plate=location_scene_plate,
         )
         for cand in frame_candidates:
             cand["frame_path"] = candidate_frame
             cand["frame_index"] = frame_index
             if frame_positions and frame_index < len(frame_positions):
                 cand["frame_position"] = float(frame_positions[frame_index])
+            elif cand.get("source") == "whole_frame_location":
+                cand["frame_position"] = (frame_index + 0.5) / len(resolved_frame_paths)
+            if cand.get("source") == "whole_frame_location":
+                position = float(cand.get("frame_position", 0.5))
+                cand["score"] = 1.0 - abs(position - 0.5)
         candidates.extend(frame_candidates)
     if not candidates:
         return None
@@ -485,13 +505,15 @@ def acquire_entity_crop(
             cand["_vec"] = vec
 
     have_embeddings = all("_vec" in c for c in candidates) and len(candidates) > 0
-    if exemplar_vectors and not have_embeddings:
+    is_location = entity_kind == "location"
+    use_location_semantics = is_location and location_semantic_gates
+    use_identity_gate = bool(exemplar_vectors) and not use_location_semantics
+    if use_identity_gate and not have_embeddings:
         return None
-    use_identity_gate = bool(exemplar_vectors)
 
     # 3) IDENTITY GATE — confirm "this is our entity" (correctness only). If exemplars
     # exist and nothing clears the floor, this segment is a miss; recording a stranger is worse.
-    identity_gate: str = "off"
+    identity_gate = "not_applicable_location" if use_location_semantics else "off"
     kept: list[dict[str, Any]] = []
     below: list[dict[str, Any]] = []
     for cand in candidates:
@@ -523,9 +545,25 @@ def acquire_entity_crop(
     for cand in kept:
         cand["novelty_score"] = _novelty(cand)
 
-    # Sort by identity desc first; visual novelty chooses among identity-compatible
-    # crops, and state novelty is a tie-breaker that prefers an un-banked state.
-    ranked = rank_acquisition_candidates(kept, banked_states=banked_states)
+    if location_scene_plate and have_embeddings and len(kept) > 1:
+        # A transition or foreground-dominated instant is usually the visual outlier
+        # among the sampled frames. Prefer the within-shot medoid without another model.
+        for index, cand in enumerate(kept):
+            others = [other["_vec"] for j, other in enumerate(kept) if j != index]
+            similarities = [max_cosine_to(cand["_vec"], [other]) for other in others]
+            cand["scene_centrality"] = sum(similarities) / len(similarities)
+        ranked = sorted(
+            kept,
+            key=lambda c: (
+                float(c.get("scene_centrality", -1.0)),
+                float(c.get("score") or 0.0),
+            ),
+            reverse=True,
+        )
+    else:
+        # Sort by identity desc first; visual novelty chooses among identity-compatible
+        # crops, and state novelty is a tie-breaker that prefers an un-banked state.
+        ranked = rank_acquisition_candidates(kept, banked_states=banked_states)
 
     # 5) crop QA (dark / low-information) as a final guard; walk best→worst.
     reference_paths = [
@@ -543,7 +581,11 @@ def acquire_entity_crop(
             continue
 
         verification: dict[str, Any] = {
-            "gate": "off_first_sighting" if not use_identity_gate else "not_required",
+            "gate": (
+                "not_applicable_location"
+                if use_location_semantics
+                else ("off_first_sighting" if not use_identity_gate else "not_required")
+            ),
         }
         if verify_against_references:
             try:
@@ -612,6 +654,7 @@ def acquire_entity_crop(
                 "fallback_from": cand.get("fallback_from"),
                 "frame_index": cand.get("frame_index"),
                 "frame_position": cand.get("frame_position"),
+                "scene_centrality": cand.get("scene_centrality"),
             },
             "frame_path": str(cand.get("frame_path") or resolved_frame_paths[0]),
             "frame_position": cand.get("frame_position"),
@@ -622,6 +665,8 @@ def acquire_entity_crop(
             "min_side_px": int(min_side_px),
             "max_character_bbox_area": float(max_character_bbox_area),
             "min_mask_fill": float(min_mask_fill),
+            "location_scene_plate": bool(location_scene_plate),
+            "location_semantic_gates": bool(location_semantic_gates),
             "qa": qa.to_dict(),
         }
 

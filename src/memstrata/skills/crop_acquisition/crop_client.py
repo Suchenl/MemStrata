@@ -388,6 +388,12 @@ class ProposeIdentifyCropper:
                 "min_side_px": int(self.extra_acquire_kwargs.get("min_side_px", _MIN_SIDE_PX)),
                 "max_character_bbox_area": self.extra_acquire_kwargs.get("max_character_bbox_area", 1.0),
                 "min_mask_fill": self.extra_acquire_kwargs.get("min_mask_fill", 0.18),
+                "location_scene_plate": bool(
+                    self.extra_acquire_kwargs.get("location_scene_plate", False)
+                ),
+                "location_semantic_gates": bool(
+                    self.extra_acquire_kwargs.get("location_semantic_gates", False)
+                ),
             },
             "entities": entities,
         }
@@ -506,6 +512,8 @@ class ProposeIdentifyCropper:
                     "min_side_px": payload.get("min_side_px"),
                     "max_character_bbox_area": payload.get("max_character_bbox_area"),
                     "min_mask_fill": payload.get("min_mask_fill"),
+                    "location_scene_plate": payload.get("location_scene_plate", False),
+                    "location_semantic_gates": payload.get("location_semantic_gates", False),
                 }
             },
         }

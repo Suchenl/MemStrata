@@ -172,6 +172,9 @@ class MemoryPolicy:
     crop_quality_gate: bool = False
     relation_hops: int = 0
     discovery: bool = False
+    # A/B switch: treat location evidence as scene references rather than WHO crops.
+    # Disabled by default so existing profiles remain bit-for-bit compatible.
+    location_semantic_gates: bool = False
 
     @classmethod
     def production(cls, **overrides: Any) -> MemoryPolicy:
@@ -555,6 +558,7 @@ class MemoryUpdater:
         self.identity_max_references = max(1, int(pol.identity_max_references))
         self.identity_blur_defer = bool(pol.identity_blur_defer)
         self.identity_blur_min_sharpness = float(pol.identity_blur_min_sharpness)
+        self.location_semantic_gates = bool(pol.location_semantic_gates)
         # The VLM gray-zone path is active only when the policy enables it AND a judge that
         # actually answers is present; a Null (abstaining) judge keeps the deterministic
         # encoder decision bit-for-bit unchanged.
@@ -767,7 +771,9 @@ class MemoryUpdater:
         # Heavy occlusion is downgraded to non-anchor here even when the classifier left
         # identity_visible at its permissive default: you cannot verify WHO through it,
         # but it is NOT hard-rejected (it may still add cross-view diversity).
-        identity_visible = _rep_identity_visible(new_rep) and not _rep_occlusion_heavy(new_rep)
+        identity_visible = (
+            asset.kind == AssetType.LOCATION and self.location_semantic_gates
+        ) or (_rep_identity_visible(new_rep) and not _rep_occlusion_heavy(new_rep))
         aspect = _reference_aspect(asset.kind)
         if not identity_visible:
             new_rep.reference_aspects = [a for a in new_rep.reference_aspects if a != aspect]
