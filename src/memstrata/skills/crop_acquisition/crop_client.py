@@ -214,8 +214,18 @@ class ProposeIdentifyCropper:
                     os.kill(pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+                deadline = time.time() + 5.0
+                while _pid_alive(pid) and time.time() < deadline:
+                    time.sleep(0.1)
+        if owned and pid is not None:
+            ready = self.server_dir / "ready"
+            try:
+                ready_pid = int(ready.read_text().strip())
+            except (OSError, ValueError):
+                ready_pid = None
+            if ready_pid == pid:
+                ready.unlink(missing_ok=True)
         if pid is None or not _pid_alive(pid):
-            (self.server_dir / "ready").unlink(missing_ok=True)
             self._proc = None
 
     def _ensure_server(self) -> None:
