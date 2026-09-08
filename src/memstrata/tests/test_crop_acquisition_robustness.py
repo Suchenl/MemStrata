@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
+import pytest
 
 from memstrata.bank import AssetType
 from memstrata.mllm.identity_judge import IdentityVerdict, JUDGE_PROMPT
@@ -257,6 +259,54 @@ def test_server_env_preserves_public_models_root(monkeypatch, tmp_path: Path) ->
     )
 
     assert cropper._server_env()["PUBLIC_MODELS_ROOT"] == "/tmp/public-models"
+
+
+def test_timed_out_job_is_quarantined_and_server_retired(
+    monkeypatch, tmp_path: Path
+) -> None:
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+        job_timeout=0,
+    )
+    retired: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        cropper,
+        "_retire_server",
+        lambda *, reason, job_id: retired.append((reason, job_id)),
+    )
+
+    with pytest.raises(TimeoutError, match="server was quarantined"):
+        cropper._submit_and_wait({"job_id": "stuck", "entity_name": "Hero"})
+
+    failure = json.loads(
+        (tmp_path / "server" / "failed" / "stuck.json").read_text(encoding="utf-8")
+    )
+    assert failure["status"] == "timed_out"
+    assert failure["request"]["entity_name"] == "Hero"
+    assert not (tmp_path / "server" / "pending" / "stuck.json").exists()
+    assert retired == [("job_timeout", "stuck")]
+
+
+def test_worker_exit_fails_before_full_job_timeout(monkeypatch, tmp_path: Path) -> None:
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+        job_timeout=1800,
+    )
+    monkeypatch.setattr(cropper, "_server_ready", lambda: False)
+    started = time.monotonic()
+
+    with pytest.raises(RuntimeError, match="worker exited during job gone"):
+        cropper._submit_and_wait({"job_id": "gone"})
+
+    assert time.monotonic() - started < 1
+    failure = json.loads(
+        (tmp_path / "server" / "failed" / "gone.json").read_text(encoding="utf-8")
+    )
+    assert failure["status"] == "worker_exited"
 
 
 class _CapturingCropper(ProposeIdentifyCropper):

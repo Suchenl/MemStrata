@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -137,6 +138,8 @@ class ProposeIdentifyCropper:
     # --- server lifecycle -------------------------------------------------------------
 
     def _server_ready(self) -> bool:
+        if (self.server_dir / "unhealthy.json").exists():
+            return False
         ready = self.server_dir / "ready"
         if not ready.exists():
             return False
@@ -146,6 +149,57 @@ class ProposeIdentifyCropper:
             return False
         return _pid_alive(pid)
 
+    def _server_pid(self) -> int | None:
+        if self._proc is not None and self._proc.poll() is None:
+            return int(self._proc.pid)
+        try:
+            return int((self.server_dir / "ready").read_text().strip())
+        except (OSError, ValueError):
+            return None
+
+    def _safe_external_server_pid(self, pid: int) -> bool:
+        """Only signal a resumed server when /proc proves it owns this queue."""
+        try:
+            cmdline = (Path("/proc") / str(pid) / "cmdline").read_bytes().replace(b"\0", b" ")
+        except OSError:
+            return False
+        return (
+            b"memstrata.skills.crop_acquisition.crop_server" in cmdline
+            and str(self.server_dir).encode() in cmdline
+        )
+
+    def _retire_server(self, *, reason: str, job_id: str) -> None:
+        """Quarantine a wedged single-consumer server before a later resume."""
+        _atomic_write_json(
+            self.server_dir / "unhealthy.json",
+            {"reason": reason, "job_id": job_id, "recorded_at": time.time()},
+        )
+        (self.server_dir / "stop").touch()
+        pid = self._server_pid()
+        owned = (
+            pid is not None
+            and (
+                (self._proc is not None and self._proc.pid == pid)
+                or self._safe_external_server_pid(pid)
+            )
+        )
+        if owned and pid is not None and _pid_alive(pid):
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            deadline = time.time() + 5.0
+            while _pid_alive(pid) and time.time() < deadline:
+                time.sleep(0.1)
+            if _pid_alive(pid):
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        if pid is None or not _pid_alive(pid):
+            (self.server_dir / "ready").unlink(missing_ok=True)
+            self._proc = None
+
     def _ensure_server(self) -> None:
         if self._server_ready():
             return
@@ -154,6 +208,15 @@ class ProposeIdentifyCropper:
                 f"crop-acquisition server not ready at {self.server_dir} and auto_start=False"
             )
         self.server_dir.mkdir(parents=True, exist_ok=True)
+        unhealthy = self.server_dir / "unhealthy.json"
+        if unhealthy.exists():
+            self._retire_server(reason="restart_after_unhealthy", job_id="")
+            pid = self._server_pid()
+            if pid is not None and _pid_alive(pid):
+                raise RuntimeError(
+                    f"cannot safely retire unhealthy crop-acquisition server pid={pid}"
+                )
+            unhealthy.unlink(missing_ok=True)
         (self.server_dir / "stop").unlink(missing_ok=True)
         (self.server_dir / "ready").unlink(missing_ok=True)
         log = open(self.server_dir / "server.log", "ab")  # noqa: SIM115 - owned by child
@@ -163,6 +226,7 @@ class ProposeIdentifyCropper:
             env=self._server_env(),
             stdout=log,
             stderr=log,
+            start_new_session=True,
         )
         deadline = time.time() + self.server_ready_timeout
         while time.time() < deadline:
@@ -278,20 +342,54 @@ class ProposeIdentifyCropper:
     def _submit_and_wait(self, request: dict[str, Any]) -> dict[str, Any]:
         pending = self.server_dir / "pending"
         done = self.server_dir / "done"
+        failed = self.server_dir / "failed"
         pending.mkdir(parents=True, exist_ok=True)
         done.mkdir(parents=True, exist_ok=True)
+        failed.mkdir(parents=True, exist_ok=True)
         job_id = str(request.get("job_id") or uuid.uuid4().hex)
         request = {**request, "job_id": job_id}
         result_path = done / f"{job_id}.json"
-        _atomic_write_json(pending / f"{job_id}.json", request)
+        pending_path = pending / f"{job_id}.json"
+        _atomic_write_json(pending_path, request)
         deadline = time.time() + self.job_timeout
         while time.time() < deadline:
             if result_path.exists():
                 result = json.loads(result_path.read_text())
                 result_path.unlink(missing_ok=True)
                 return result
+            if not self._server_ready():
+                _atomic_write_json(
+                    failed / f"{job_id}.json",
+                    {
+                        "job_id": job_id,
+                        "status": "worker_exited",
+                        "request": request,
+                        "recorded_at": time.time(),
+                    },
+                )
+                pending_path.unlink(missing_ok=True)
+                raise RuntimeError(f"crop-acquisition worker exited during job {job_id}")
             time.sleep(0.5)
-        raise TimeoutError(f"crop-acquisition job {job_id} timed out after {self.job_timeout}s")
+        if result_path.exists():
+            result = json.loads(result_path.read_text())
+            result_path.unlink(missing_ok=True)
+            return result
+        _atomic_write_json(
+            failed / f"{job_id}.json",
+            {
+                "job_id": job_id,
+                "status": "timed_out",
+                "timeout_seconds": self.job_timeout,
+                "request": request,
+                "recorded_at": time.time(),
+            },
+        )
+        pending_path.unlink(missing_ok=True)
+        self._retire_server(reason="job_timeout", job_id=job_id)
+        raise TimeoutError(
+            f"crop-acquisition job {job_id} timed out after {self.job_timeout}s; "
+            "the single-consumer server was quarantined"
+        )
 
     # --- Cropper protocol -------------------------------------------------------------
 
