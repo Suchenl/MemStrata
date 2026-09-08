@@ -70,6 +70,15 @@ def _pid_alive(pid: int) -> bool:
         os.kill(pid, 0)
     except OSError:
         return False
+    # kill(0) also succeeds for an unreaped child.  An idle crop server used to
+    # become a zombie while its stale ``ready`` file kept the client from
+    # restarting it, leaving jobs unconsumed until the outer 1800s timeout.
+    try:
+        stat_tail = Path(f"/proc/{pid}/stat").read_text().rpartition(") ")[2]
+        if stat_tail[:1] == "Z":
+            return False
+    except OSError:
+        pass  # non-Linux or a process that exited between kill(0) and read_text()
     return True
 
 
@@ -137,6 +146,15 @@ class ProposeIdentifyCropper:
     # --- server lifecycle -------------------------------------------------------------
 
     def _server_ready(self) -> bool:
+        if self._proc is not None:
+            returncode = self._proc.poll()  # also reaps an exited auto-started child
+            if returncode is not None:
+                logger.warning(
+                    "crop-acquisition server pid=%s exited with returncode=%s",
+                    self._proc.pid,
+                    returncode,
+                )
+                self._proc = None
         ready = self.server_dir / "ready"
         if not ready.exists():
             return False
@@ -283,15 +301,28 @@ class ProposeIdentifyCropper:
         job_id = str(request.get("job_id") or uuid.uuid4().hex)
         request = {**request, "job_id": job_id}
         result_path = done / f"{job_id}.json"
-        _atomic_write_json(pending / f"{job_id}.json", request)
+        pending_path = pending / f"{job_id}.json"
+        _atomic_write_json(pending_path, request)
         deadline = time.time() + self.job_timeout
+        next_liveness_check = time.time()
         while time.time() < deadline:
             if result_path.exists():
                 result = json.loads(result_path.read_text())
                 result_path.unlink(missing_ok=True)
                 return result
+            now = time.time()
+            if now >= next_liveness_check:
+                if not self._server_ready():
+                    raise RuntimeError(
+                        f"crop-acquisition server exited while job {job_id} was pending "
+                        f"(request_present={pending_path.exists()})"
+                    )
+                next_liveness_check = now + 2.0
             time.sleep(0.5)
-        raise TimeoutError(f"crop-acquisition job {job_id} timed out after {self.job_timeout}s")
+        raise TimeoutError(
+            f"crop-acquisition job {job_id} timed out after {self.job_timeout}s "
+            f"(request_present={pending_path.exists()}, server_ready={self._server_ready()})"
+        )
 
     # --- Cropper protocol -------------------------------------------------------------
 
