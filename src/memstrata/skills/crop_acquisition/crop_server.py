@@ -224,39 +224,54 @@ def serve(args: argparse.Namespace) -> None:
     pending, done = _server_dirs(server_dir)
 
     models = _Models(device=args.device or None)
-    (server_dir / "ready").write_text(str(os.getpid()))
+    ready = server_dir / "ready"
+    own_pid = str(os.getpid())
+    ready.write_text(own_pid)
     logging.info("[crop_acq] server ready at %s (pid=%s)", server_dir, os.getpid())
 
     idle_timeout = float(args.idle_timeout)
     last_job = time.time()
-    while True:
-        if (server_dir / "stop").exists():
-            logging.info("[crop_acq] stop sentinel found; exiting")
-            break
-        job_path = _next_job(pending)
-        if job_path is None:
-            if idle_timeout > 0 and time.time() - last_job > idle_timeout:
-                logging.info("[crop_acq] idle timeout reached; exiting")
+    try:
+        while True:
+            if (server_dir / "stop").exists():
+                logging.info("[crop_acq] stop sentinel found; exiting")
                 break
-            time.sleep(1.0)
-            continue
+            job_path = _next_job(pending)
+            if job_path is None:
+                if idle_timeout > 0 and time.time() - last_job > idle_timeout:
+                    logging.info("[crop_acq] idle timeout reached; exiting")
+                    break
+                time.sleep(1.0)
+                continue
+            try:
+                request = _read_json(job_path)
+            except Exception:  # noqa: BLE001 - partial/corrupt file; skip
+                time.sleep(0.2)
+                continue
+            job_path.unlink(missing_ok=True)
+            job_id = str(request.get("job_id") or job_path.stem)
+            logging.info(
+                "[crop_acq] job %s accepted (kind=%s entity=%s)",
+                job_id,
+                request.get("job_kind", "acquire"),
+                request.get("entity_name", ""),
+            )
+            t0 = time.time()
+            try:
+                result = _run_job(models, request)
+                _atomic_write_json(done / f"{job_id}.json", {"job_id": job_id, "status": "ok", "result": result})
+                logging.info("[crop_acq] job %s done in %.2fs (result=%s)",
+                             job_id, time.time() - t0, "hit" if result else "none")
+            except Exception as exc:  # noqa: BLE001 - propagate failure through result file
+                logging.exception("[crop_acq] job failed: %s", job_id)
+                _atomic_write_json(done / f"{job_id}.json", {"job_id": job_id, "status": "error", "error": repr(exc)})
+            last_job = time.time()
+    finally:
         try:
-            request = _read_json(job_path)
-        except Exception:  # noqa: BLE001 - partial/corrupt file; skip
-            time.sleep(0.2)
-            continue
-        job_path.unlink(missing_ok=True)
-        job_id = str(request.get("job_id") or job_path.stem)
-        t0 = time.time()
-        try:
-            result = _run_job(models, request)
-            _atomic_write_json(done / f"{job_id}.json", {"job_id": job_id, "status": "ok", "result": result})
-            logging.info("[crop_acq] job %s done in %.2fs (result=%s)",
-                         job_id, time.time() - t0, "hit" if result else "none")
-        except Exception as exc:  # noqa: BLE001 - propagate failure through result file
-            logging.exception("[crop_acq] job failed: %s", job_id)
-            _atomic_write_json(done / f"{job_id}.json", {"job_id": job_id, "status": "error", "error": repr(exc)})
-        last_job = time.time()
+            if ready.read_text().strip() == own_pid:
+                ready.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _parse_args() -> argparse.Namespace:

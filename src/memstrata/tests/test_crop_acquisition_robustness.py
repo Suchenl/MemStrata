@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
+import pytest
 
 from memstrata.bank import AssetType
 from memstrata.mllm.identity_judge import IdentityVerdict, JUDGE_PROMPT
-from memstrata.skills.crop_acquisition.crop_client import ProposeIdentifyCropper
+from memstrata.skills.crop_acquisition.crop_client import ProposeIdentifyCropper, _pid_alive
 from memstrata.skills.crop_acquisition.orchestrator import (
     DEFAULT_IDENTITY_THRESHOLD,
     DEFAULT_IDENTITY_VERIFICATION_THRESHOLD,
@@ -348,6 +351,50 @@ class _Bank:
         return None
 
 
+def test_pid_alive_rejects_zombie(monkeypatch) -> None:
+    monkeypatch.setattr("os.kill", lambda _pid, _signal: None)
+    monkeypatch.setattr(
+        Path,
+        "read_text",
+        lambda self: "123 (python worker) Z 1 2 3"
+        if str(self) == "/proc/123/stat"
+        else "",
+    )
+
+    assert _pid_alive(123) is False
+
+
+def test_submit_fails_fast_when_server_disappears(tmp_path: Path) -> None:
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+        job_timeout=1800,
+    )
+
+    with pytest.raises(RuntimeError, match="exited while job .* was pending"):
+        cropper._submit_and_wait({"entity_name": "mouse"})
+
+
+def test_server_ready_reaps_exited_autostart_child(tmp_path: Path) -> None:
+    class _ExitedProcess:
+        pid = 123
+
+        @staticmethod
+        def poll():
+            return 0
+
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+    )
+    cropper._proc = _ExitedProcess()
+
+    assert cropper._server_ready() is False
+    assert cropper._proc is None
+
+
 def test_server_env_preserves_public_models_root(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("PUBLIC_MODELS_ROOT", "/tmp/public-models")
     cropper = ProposeIdentifyCropper(
@@ -357,6 +404,54 @@ def test_server_env_preserves_public_models_root(monkeypatch, tmp_path: Path) ->
     )
 
     assert cropper._server_env()["PUBLIC_MODELS_ROOT"] == "/tmp/public-models"
+
+
+def test_timed_out_job_is_quarantined_and_server_retired(
+    monkeypatch, tmp_path: Path
+) -> None:
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+        job_timeout=0,
+    )
+    retired: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        cropper,
+        "_retire_server",
+        lambda *, reason, job_id: retired.append((reason, job_id)),
+    )
+
+    with pytest.raises(TimeoutError, match="server was quarantined"):
+        cropper._submit_and_wait({"job_id": "stuck", "entity_name": "Hero"})
+
+    failure = json.loads(
+        (tmp_path / "server" / "failed" / "stuck.json").read_text(encoding="utf-8")
+    )
+    assert failure["status"] == "timed_out"
+    assert failure["request"]["entity_name"] == "Hero"
+    assert not (tmp_path / "server" / "pending" / "stuck.json").exists()
+    assert retired == [("job_timeout", "stuck")]
+
+
+def test_worker_exit_fails_before_full_job_timeout(monkeypatch, tmp_path: Path) -> None:
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+        job_timeout=1800,
+    )
+    monkeypatch.setattr(cropper, "_server_ready", lambda: False)
+    started = time.monotonic()
+
+    with pytest.raises(RuntimeError, match="worker exited during job gone"):
+        cropper._submit_and_wait({"job_id": "gone"})
+
+    assert time.monotonic() - started < 1
+    failure = json.loads(
+        (tmp_path / "server" / "failed" / "gone.json").read_text(encoding="utf-8")
+    )
+    assert failure["status"] == "worker_exited"
 
 
 class _CapturingCropper(ProposeIdentifyCropper):

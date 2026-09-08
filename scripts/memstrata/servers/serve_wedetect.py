@@ -22,6 +22,7 @@ import copy
 import json
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import torch
@@ -200,11 +201,32 @@ class _Handler(BaseHTTPRequestHandler):
         if not image_path or not query:
             self._send(400, {"error": "image_path and query required"})
             return
+        queued_at = time.monotonic()
+        print(
+            f"[serve_wedetect] request queued query={query[:120]!r} image={image_path!r}",
+            flush=True,
+        )
         try:
             with _LOCK:
+                started_at = time.monotonic()
+                print(
+                    f"[serve_wedetect] request started wait_sec={started_at - queued_at:.3f}",
+                    flush=True,
+                )
                 boxes, scores = _ground(image_path, query, float(score_thre), topk)
+            finished_at = time.monotonic()
+            print(
+                f"[serve_wedetect] request done infer_sec={finished_at - started_at:.3f} "
+                f"total_sec={finished_at - queued_at:.3f} boxes={len(boxes)}",
+                flush=True,
+            )
             self._send(200, {"boxes": boxes, "scores": scores})
         except Exception as exc:  # noqa: BLE001
+            print(
+                f"[serve_wedetect] request failed total_sec={time.monotonic() - queued_at:.3f} "
+                f"error={type(exc).__name__}: {exc}",
+                flush=True,
+            )
             self._send(500, {"error": f"{type(exc).__name__}: {exc}"})
 
 
