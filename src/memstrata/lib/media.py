@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 # Masked crops may be stored as RGBA PNG; composite onto white before model feed.
 MODEL_FEED_BACKGROUND: tuple[int, int, int] = (255, 255, 255)
@@ -20,6 +22,19 @@ class MediaInfo:
     fps: float | None
     has_audio: bool
     format_name: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class FrameSample:
+    """One relative-position frame request.
+
+    ``basis="count"`` preserves the namer's historical ``round(N * p)`` rule;
+    ``basis="last"`` preserves the cropper's ``round((N - 1) * p)`` rule.
+    """
+
+    position: float
+    output: Path
+    basis: Literal["count", "last"] = "last"
 
 
 def load_crop_rgb_for_model(
@@ -38,6 +53,159 @@ def load_crop_rgb_for_model(
     return image.convert("RGB")
 
 
+def _video_binary(name: str, env_name: str) -> str | None:
+    configured = os.environ.get(env_name, "").strip()
+    if configured:
+        return configured
+    return shutil.which(name)
+
+
+def _video_shape_and_count(video: Path | str) -> tuple[int, int, int] | None:
+    """Read coded dimensions and container frame count without decoding the stream."""
+    ffprobe = _video_binary("ffprobe", "FFPROBE_BIN")
+    if ffprobe is None:
+        return None
+    try:
+        completed = subprocess.run(
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height,nb_frames",
+                "-of",
+                "json",
+                str(video),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        stream = json.loads(completed.stdout)["streams"][0]
+        width = int(stream["width"])
+        height = int(stream["height"])
+        frame_count = int(stream["nb_frames"])
+        if width > 0 and height > 0 and frame_count > 0:
+            return width, height, frame_count
+    except (KeyError, IndexError, TypeError, ValueError, OSError, subprocess.SubprocessError):
+        pass
+    return None
+
+
+def _sample_index(sample: FrameSample, frame_count: int) -> int:
+    position = min(max(float(sample.position), 0.0), 1.0)
+    scale = frame_count if sample.basis == "count" else frame_count - 1
+    return min(frame_count - 1, max(0, round(scale * position)))
+
+
+def _selective_rgb_frames(
+    video: Path | str,
+    *,
+    width: int,
+    height: int,
+    indices: list[int],
+) -> dict[int, Any] | None:
+    """Decode only requested frame indices, stopping after the last requested frame."""
+    ffmpeg = _video_binary("ffmpeg", "FFMPEG_BIN")
+    if ffmpeg is None or not indices:
+        return None
+    unique = sorted(set(indices))
+    expression = "+".join(f"eq(n\\,{index})" for index in unique)
+    try:
+        completed = subprocess.run(
+            [
+                ffmpeg,
+                "-v",
+                "error",
+                "-i",
+                str(video),
+                "-vf",
+                f"select={expression}",
+                "-vsync",
+                "0",
+                "-frames:v",
+                str(len(unique)),
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "rgb24",
+                "pipe:1",
+            ],
+            check=True,
+            capture_output=True,
+            timeout=120,
+        )
+        frame_bytes = width * height * 3
+        if len(completed.stdout) != frame_bytes * len(unique):
+            return None
+        from PIL import Image
+
+        return {
+            index: Image.frombytes(
+                "RGB",
+                (width, height),
+                completed.stdout[offset * frame_bytes : (offset + 1) * frame_bytes],
+            )
+            for offset, index in enumerate(unique)
+        }
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def materialize_video_frames(
+    video: Path | str,
+    samples: list[FrameSample],
+) -> list[Path]:
+    """Materialize requested frames with one selective decode.
+
+    Falls back to the historical full ``imageio`` decode when stream metadata or ffmpeg
+    selection is unavailable. The fallback remains best-effort for minimal installations.
+    """
+    if not samples:
+        return []
+    metadata = _video_shape_and_count(video)
+    images: dict[int, Any] | None = None
+    indices: list[int] = []
+    if metadata is not None:
+        width, height, frame_count = metadata
+        indices = [_sample_index(sample, frame_count) for sample in samples]
+        images = _selective_rgb_frames(
+            video,
+            width=width,
+            height=height,
+            indices=indices,
+        )
+    if images is None:
+        try:
+            import imageio.v3 as iio
+            from PIL import Image
+
+            frames = iio.imread(str(video), index=None)
+            if frames is None or len(frames) == 0:
+                return []
+            frame_count = len(frames)
+            indices = [_sample_index(sample, frame_count) for sample in samples]
+            images = {
+                index: Image.fromarray(frames[index]).convert("RGB")
+                for index in set(indices)
+            }
+        except Exception:  # noqa: BLE001 - optional dependency or unreadable video
+            return []
+
+    saved: list[Path] = []
+    for sample, index in zip(samples, indices):
+        try:
+            sample.output.parent.mkdir(parents=True, exist_ok=True)
+            images[index].save(sample.output)
+            saved.append(sample.output)
+        except Exception:  # noqa: BLE001 - one failed output must not discard the others
+            continue
+    return saved
+
+
 def sample_video_frames(
     video: Path | str,
     out_dir: Path | str,
@@ -53,35 +221,17 @@ def sample_video_frames(
     """
     if count <= 0:
         return []
-    try:
-        import imageio.v3 as iio
-        from PIL import Image
-    except Exception:  # noqa: BLE001 - optional at import time, absent in no-GPU smokes
-        return []
-    try:
-        frames = iio.imread(str(video), index=None)  # (T, H, W, 3)
-    except Exception:  # noqa: BLE001 - unreadable/absent video
-        return []
-    total = len(frames)
-    if total == 0:
-        return []
     out_root = Path(out_dir)
-    out_root.mkdir(parents=True, exist_ok=True)
     # Interior positions: the very first/last frames of a generated clip are the most likely
     # to be a fade or a duplicated boundary frame.
-    picks = sorted({min(total - 1, max(0, round(total * p))) for p in _frame_positions(count)})
-    paths: list[str] = []
-    for order, index in enumerate(picks):
-        out = out_root / f"{prefix}_{order}.png"
-        try:
-            Image.fromarray(frames[index]).convert("RGB").save(out)
-        except Exception:  # noqa: BLE001
-            continue
-        paths.append(str(out))
-    return paths
+    samples = [
+        FrameSample(position, out_root / f"{prefix}_{order}.png", basis="count")
+        for order, position in enumerate(even_frame_positions(count))
+    ]
+    return [str(path) for path in materialize_video_frames(video, samples)]
 
 
-def _frame_positions(count: int) -> list[float]:
+def even_frame_positions(count: int) -> list[float]:
     if count == 1:
         return [0.5]
     step = 1.0 / (count + 1)

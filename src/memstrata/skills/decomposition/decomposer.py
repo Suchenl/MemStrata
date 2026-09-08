@@ -458,6 +458,15 @@ class RoleAwareDecomposer:
         from memstrata.lib.media import sample_video_frames
 
         out_dir = Path(self.namer_frame_dir or Path(segment_video).parent) / "namer_frames"
+        shared_sampler = getattr(self.cropper, "sample_namer_frames", None)
+        if callable(shared_sampler):
+            return shared_sampler(
+                segment_video,
+                segment_id=segment_id,
+                out_dir=out_dir,
+                count=self.namer_frames,
+                prefix=f"seg{segment_id:05d}",
+            )
         return sample_video_frames(
             segment_video,
             out_dir,

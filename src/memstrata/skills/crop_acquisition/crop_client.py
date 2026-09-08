@@ -41,6 +41,7 @@ from memstrata.skills.crop_acquisition.orchestrator import (
 )
 from memstrata.skills.crop_acquisition._common import sam3_deps_dir
 from memstrata.skills.crop_acquisition._common import public_models_root as default_public_models_root
+from memstrata.lib.media import FrameSample, even_frame_positions, materialize_video_frames
 from memstrata.lib.paths import memstrata_root
 from memstrata.skills.crop_acquisition.wedetect_client import RequiredGrounderError
 
@@ -249,29 +250,49 @@ class ProposeIdentifyCropper:
         return bool(sampled)
 
     def _sample_frames(self, segment_video: str, targets: list[tuple[float, Path]]) -> list[Path]:
-        try:
-            import imageio.v3 as iio
-            from PIL import Image
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("ProposeIdentifyCropper: imageio/PIL unavailable (%s)", exc)
-            return []
-        try:
-            frames = iio.imread(segment_video, index=None)  # (T, H, W, 3)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("ProposeIdentifyCropper: cannot read %s (%s)", segment_video, exc)
-            return []
-        if frames is None or len(frames) == 0:
-            return []
-        saved: list[Path] = []
-        for pos, out_path in targets:
-            idx = min(
-                len(frames) - 1,
-                int(round(min(max(float(pos), 0.0), 1.0) * (len(frames) - 1))),
+        return materialize_video_frames(
+            segment_video,
+            [FrameSample(pos, out_path, basis="last") for pos, out_path in targets],
+        )
+
+    def sample_namer_frames(
+        self,
+        segment_video: str,
+        *,
+        segment_id: int,
+        out_dir: str | Path,
+        count: int,
+        prefix: str,
+    ) -> list[str]:
+        """Materialize namer and cropper frames in one selective decode."""
+        segment_dir = (self.work_dir / f"segment_{segment_id:03d}").resolve()
+        crop_samples = [
+            FrameSample(
+                pos,
+                segment_dir / f"frame_{self._frame_tag(pos)}.jpg",
+                basis="last",
             )
-            out_path.parent.mkdir(parents=True, exist_ok=True)
-            Image.fromarray(frames[idx]).convert("RGB").save(out_path)
-            saved.append(out_path)
-        return saved
+            for pos in self.frame_positions
+        ]
+        crop_samples = [
+            sample
+            for sample in crop_samples
+            if not (sample.output.is_file() and sample.output.stat().st_size > 0)
+        ]
+        namer_samples = [
+            FrameSample(
+                pos,
+                Path(out_dir) / f"{prefix}_{order}.png",
+                basis="count",
+            )
+            for order, pos in enumerate(even_frame_positions(count))
+        ]
+        materialize_video_frames(segment_video, [*crop_samples, *namer_samples])
+        return [
+            str(sample.output)
+            for sample in namer_samples
+            if sample.output.is_file() and sample.output.stat().st_size > 0
+        ]
 
     # --- job submission ---------------------------------------------------------------
 
