@@ -71,6 +71,15 @@ def _pid_alive(pid: int) -> bool:
         os.kill(pid, 0)
     except OSError:
         return False
+    # kill(0) also succeeds for an unreaped child.  An idle crop server used to
+    # become a zombie while its stale ``ready`` file kept the client from
+    # restarting it, leaving jobs unconsumed until the outer 1800s timeout.
+    try:
+        stat_tail = Path(f"/proc/{pid}/stat").read_text().rpartition(") ")[2]
+        if stat_tail[:1] == "Z":
+            return False
+    except OSError:
+        pass  # non-Linux or a process that exited between kill(0) and read_text()
     return True
 
 
@@ -138,6 +147,15 @@ class ProposeIdentifyCropper:
     # --- server lifecycle -------------------------------------------------------------
 
     def _server_ready(self) -> bool:
+        if self._proc is not None:
+            returncode = self._proc.poll()  # also reaps an exited auto-started child
+            if returncode is not None:
+                logger.warning(
+                    "crop-acquisition server pid=%s exited with returncode=%s",
+                    self._proc.pid,
+                    returncode,
+                )
+                self._proc = None
         if (self.server_dir / "unhealthy.json").exists():
             return False
         ready = self.server_dir / "ready"
@@ -352,34 +370,48 @@ class ProposeIdentifyCropper:
         pending_path = pending / f"{job_id}.json"
         _atomic_write_json(pending_path, request)
         deadline = time.time() + self.job_timeout
+        next_liveness_check = time.time()
         while time.time() < deadline:
             if result_path.exists():
                 result = json.loads(result_path.read_text())
                 result_path.unlink(missing_ok=True)
                 return result
-            if not self._server_ready():
-                _atomic_write_json(
-                    failed / f"{job_id}.json",
-                    {
-                        "job_id": job_id,
-                        "status": "worker_exited",
-                        "request": request,
-                        "recorded_at": time.time(),
-                    },
-                )
-                pending_path.unlink(missing_ok=True)
-                raise RuntimeError(f"crop-acquisition worker exited during job {job_id}")
+            now = time.time()
+            if now >= next_liveness_check:
+                if not self._server_ready():
+                    request_present = pending_path.exists()
+                    _atomic_write_json(
+                        failed / f"{job_id}.json",
+                        {
+                            "job_id": job_id,
+                            "status": "worker_exited",
+                            "request_present": request_present,
+                            "request": request,
+                            "recorded_at": now,
+                        },
+                    )
+                    pending_path.unlink(missing_ok=True)
+                    raise RuntimeError(
+                        f"crop-acquisition worker exited during job {job_id}; "
+                        f"server exited while job {job_id} was pending "
+                        f"(request_present={request_present})"
+                    )
+                next_liveness_check = now + 2.0
             time.sleep(0.5)
         if result_path.exists():
             result = json.loads(result_path.read_text())
             result_path.unlink(missing_ok=True)
             return result
+        request_present = pending_path.exists()
+        server_ready = self._server_ready()
         _atomic_write_json(
             failed / f"{job_id}.json",
             {
                 "job_id": job_id,
                 "status": "timed_out",
                 "timeout_seconds": self.job_timeout,
+                "request_present": request_present,
+                "server_ready": server_ready,
                 "request": request,
                 "recorded_at": time.time(),
             },
@@ -388,7 +420,8 @@ class ProposeIdentifyCropper:
         self._retire_server(reason="job_timeout", job_id=job_id)
         raise TimeoutError(
             f"crop-acquisition job {job_id} timed out after {self.job_timeout}s; "
-            "the single-consumer server was quarantined"
+            "the single-consumer server was quarantined "
+            f"(request_present={request_present}, server_ready={server_ready})"
         )
 
     # --- Cropper protocol -------------------------------------------------------------

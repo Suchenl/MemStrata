@@ -6,12 +6,13 @@ import time
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
 import pytest
 
 from memstrata.bank import AssetType
 from memstrata.mllm.identity_judge import IdentityVerdict, JUDGE_PROMPT
-from memstrata.skills.crop_acquisition.crop_client import ProposeIdentifyCropper
+from memstrata.skills.crop_acquisition.crop_client import ProposeIdentifyCropper, _pid_alive
 from memstrata.skills.crop_acquisition.orchestrator import (
     DEFAULT_IDENTITY_THRESHOLD,
     DEFAULT_IDENTITY_VERIFICATION_THRESHOLD,
@@ -248,6 +249,50 @@ class _Bank:
     def get_asset(self, entity_id: str):
         del entity_id
         return None
+
+
+def test_pid_alive_rejects_zombie(monkeypatch) -> None:
+    monkeypatch.setattr("os.kill", lambda _pid, _signal: None)
+    monkeypatch.setattr(
+        Path,
+        "read_text",
+        lambda self: "123 (python worker) Z 1 2 3"
+        if str(self) == "/proc/123/stat"
+        else "",
+    )
+
+    assert _pid_alive(123) is False
+
+
+def test_submit_fails_fast_when_server_disappears(tmp_path: Path) -> None:
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+        job_timeout=1800,
+    )
+
+    with pytest.raises(RuntimeError, match="exited while job .* was pending"):
+        cropper._submit_and_wait({"entity_name": "mouse"})
+
+
+def test_server_ready_reaps_exited_autostart_child(tmp_path: Path) -> None:
+    class _ExitedProcess:
+        pid = 123
+
+        @staticmethod
+        def poll():
+            return 0
+
+    cropper = ProposeIdentifyCropper(
+        _Bank(),
+        server_dir=tmp_path / "server",
+        auto_start=False,
+    )
+    cropper._proc = _ExitedProcess()
+
+    assert cropper._server_ready() is False
+    assert cropper._proc is None
 
 
 def test_server_env_preserves_public_models_root(monkeypatch, tmp_path: Path) -> None:
