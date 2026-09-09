@@ -162,6 +162,8 @@ def build_realized_segment_pipeline(
             else location_read_max_refs
         ),
     )
+    resolver_enabled = adaptive_location
+    resolver_shadow = bool(location_resolver_shadow_enabled or adaptive_location)
     strict_wedetect = (
         selected.require_wedetect if require_wedetect is None else bool(require_wedetect)
     )
@@ -202,7 +204,8 @@ def build_realized_segment_pipeline(
     policy = MemoryPolicy.production(
         discovery=bool(discovery),
         location_scene_validity_enabled=scene_validity,
-        location_resolver_shadow_enabled=bool(location_resolver_shadow_enabled),
+        location_resolver_enabled=resolver_enabled,
+        location_resolver_shadow_enabled=resolver_shadow,
         location_adaptive_storage_enabled=adaptive_location,
         location_storage_cap=storage_cap,
     )
@@ -312,8 +315,9 @@ def build_realized_segment_pipeline(
                             scene_validity
                         ),
                         "resolver_shadow_enabled": bool(
-                            location_resolver_shadow_enabled
+                            resolver_shadow
                         ),
+                        "resolver_enabled": bool(resolver_enabled),
                         "scene_plate_candidates": bool(
                             scene_plate_candidates
                         ),
@@ -328,7 +332,7 @@ def build_realized_segment_pipeline(
                 }
                 if (
                     scene_validity
-                    or location_resolver_shadow_enabled
+                    or resolver_shadow
                     or scene_plate_candidates
                     or scene_evidence
                     or adaptive_location

@@ -15,11 +15,13 @@ from memstrata.skills.memory_update.curator import (
     stratification_report,
 )
 from memstrata.skills.memory_update.location_resolver import (
+    LocationRelationProposal,
     LocationResolutionAction,
     LocationResolutionEvidence,
     LocationResolutionProposal,
     LocationResolverPolicy,
     LocationSemanticRelation,
+    propose_lexical_location_relation,
     propose_location_resolution,
 )
 from memstrata.skills.memory_update.snapshot import export_memory_snapshot
@@ -35,7 +37,9 @@ __all__ = [
     "LocationResolutionAction",
     "LocationResolutionEvidence",
     "LocationResolutionProposal",
+    "LocationRelationProposal",
     "LocationResolverPolicy",
     "LocationSemanticRelation",
+    "propose_lexical_location_relation",
     "propose_location_resolution",
 ]

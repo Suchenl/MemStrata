@@ -174,6 +174,101 @@ def _expand_relations(
     return expanded
 
 
+def _location_read_neighbor_expansions(
+    bank: AssetBank,
+    root_asset_id: str,
+    *,
+    max_hops: int,
+    as_of_segment_id: int | None,
+) -> dict[str, dict[str, Any]]:
+    """Traverse explicit location relations in both directions for read pooling."""
+
+    root = bank.get_asset(root_asset_id)
+    if root is None or root.kind is not AssetType.LOCATION or max_hops <= 0:
+        return {}
+    allowed = {
+        RelationType.PART_OF,
+        RelationType.ADJACENT_TO,
+        RelationType.INTERIOR_OF,
+        RelationType.LOCATED_IN,
+    }
+
+    def causal(attributes: dict[str, Any]) -> bool:
+        origin = attributes.get("origin_segment_id")
+        if as_of_segment_id is None or origin is None:
+            return True
+        try:
+            return int(origin) < as_of_segment_id
+        except (TypeError, ValueError):
+            return True
+
+    seen = {root_asset_id}
+    frontier = [root_asset_id]
+    found: dict[str, dict[str, Any]] = {}
+    for hop in range(1, max_hops + 1):
+        next_frontier: list[str] = []
+        for current_id in frontier:
+            current = bank.get_asset(current_id)
+            if current is None:
+                continue
+            edges: list[tuple[str, RelationType, str, dict[str, Any]]] = []
+            for relation in current.relations:
+                if relation.relation_type in allowed and causal(relation.attributes):
+                    edges.append(
+                        (
+                            relation.target_asset_id,
+                            relation.relation_type,
+                            "outgoing",
+                            relation.attributes,
+                        )
+                    )
+            for source in bank.assets.values():
+                if source.kind is not AssetType.LOCATION:
+                    continue
+                for relation in source.relations:
+                    if (
+                        relation.target_asset_id == current_id
+                        and relation.relation_type in allowed
+                        and causal(relation.attributes)
+                    ):
+                        edges.append(
+                            (
+                                source.asset_id,
+                                relation.relation_type,
+                                "incoming",
+                                relation.attributes,
+                            )
+                        )
+            for neighbor_id, relation_type, direction, attributes in sorted(
+                edges,
+                key=lambda row: (row[0], row[1].value, row[2]),
+            ):
+                if neighbor_id in seen:
+                    continue
+                neighbor = bank.get_asset(neighbor_id)
+                if (
+                    neighbor is None
+                    or neighbor.kind is not AssetType.LOCATION
+                    or not is_usable(neighbor)
+                ):
+                    continue
+                seen.add(neighbor_id)
+                next_frontier.append(neighbor_id)
+                found[neighbor_id] = {
+                    "root_asset_id": root_asset_id,
+                    "via_asset_id": current_id,
+                    "relation_type": relation_type.value,
+                    "direction": direction,
+                    "hop": hop,
+                    "relation_schema": str(attributes.get("schema") or ""),
+                    "read_neighbor": bool(attributes.get("read_neighbor", False)),
+                }
+        frontier = next_frontier
+        if not frontier:
+            break
+    return found
+
+
 def _apply_context_budget(
     representation_ids: dict[str, list[str]],
     *,
@@ -305,6 +400,8 @@ class _AssetCandidateBundle:
     order: int
     candidates: list[AssetRepresentation]
     location_ranking: LocationRanking | None = None
+    location_pool_id: str = ""
+    relation_provenance: dict[str, Any] | None = None
     chosen: list[AssetRepresentation] = field(default_factory=list)
     stop_reason: str = ""
 
@@ -334,6 +431,8 @@ def _adaptive_candidate_bundle(
     as_of_segment_id: int | None,
     request: CompositionRequest,
     policy: CompositionPolicy,
+    location_pool_id: str = "",
+    relation_provenance: dict[str, Any] | None = None,
 ) -> _AssetCandidateBundle:
     if asset.kind is AssetType.LOCATION:
         ranking = rank_location_candidates(
@@ -365,6 +464,8 @@ def _adaptive_candidate_bundle(
             order=order,
             candidates=candidates,
             location_ranking=ranking,
+            location_pool_id=location_pool_id or asset.asset_id,
+            relation_provenance=relation_provenance,
         )
 
     rep_map = _active_rep_map(asset)
@@ -404,10 +505,43 @@ def _location_candidate(
     )
 
 
+def _selected_location_pool(
+    bundles: list[_AssetCandidateBundle],
+    pool_id: str,
+) -> list[LocationCandidate]:
+    selected: list[LocationCandidate] = []
+    if not pool_id:
+        return selected
+    for bundle in bundles:
+        if bundle.location_pool_id != pool_id:
+            continue
+        for rep in bundle.chosen:
+            candidate = _location_candidate(bundle, rep)
+            if candidate is not None:
+                selected.append(candidate)
+    return selected
+
+
+def _allocation_provenance(
+    bundle: _AssetCandidateBundle,
+    rep: AssetRepresentation,
+) -> dict[str, Any]:
+    candidate = _location_candidate(bundle, rep)
+    return {
+        "source_asset_id": bundle.asset.asset_id,
+        "source_cluster_id": (
+            candidate.cluster_id if candidate is not None else None
+        ),
+        "location_pool_id": bundle.location_pool_id or None,
+        "relation_provenance": bundle.relation_provenance,
+    }
+
+
 def _next_gain(
     bundle: _AssetCandidateBundle,
     *,
     policy: CompositionPolicy,
+    related_selected: list[LocationCandidate] | None = None,
 ) -> tuple[float, AssetRepresentation] | None:
     remaining = [rep for rep in bundle.candidates if rep not in bundle.chosen]
     if not remaining:
@@ -419,15 +553,19 @@ def _next_gain(
 
     ranking = bundle.location_ranking
     assert ranking is not None
-    selected = [
+    local_selected = [
         candidate
         for rep in bundle.chosen
         if (candidate := _location_candidate(bundle, rep)) is not None
     ]
+    selected = related_selected if related_selected is not None else local_selected
     if len(selected) >= policy.location_read_max_refs:
         bundle.stop_reason = "location_read_cap"
         return None
-    if selected and location_coverage(selected) >= policy.location_coverage_stop:
+    if (
+        local_selected
+        and location_coverage(local_selected) >= policy.location_coverage_stop
+    ):
         bundle.stop_reason = "coverage_stop"
         return None
     scored = [
@@ -472,6 +610,7 @@ def _compose_adaptive(
     requirements: dict[str, str] = {}
     excluded: list[str] = []
     primary_ids: list[str] = []
+    primary_location_ids: list[str] = []
 
     for ref in request.references:
         asset = bank.get_asset(ref.asset_id)
@@ -479,6 +618,8 @@ def _compose_adaptive(
             continue
         function = ref.function or FUNCTION_BY_TYPE.get(asset.kind, "identity_anchor")
         primary_ids.append(asset.asset_id)
+        if asset.kind is AssetType.LOCATION:
+            primary_location_ids.append(asset.asset_id)
         functions[asset.asset_id] = function
         requirements[asset.asset_id] = ref.requirement
         bundles.append(
@@ -498,6 +639,11 @@ def _compose_adaptive(
                 as_of_segment_id=as_of_segment_id,
                 request=request,
                 policy=policy,
+                location_pool_id=(
+                    asset.asset_id
+                    if asset.kind is AssetType.LOCATION
+                    else ""
+                ),
             )
         )
         excluded.extend(
@@ -511,6 +657,18 @@ def _compose_adaptive(
         allowed_types=tuple(request.relation_types),
         as_of_segment_id=as_of_segment_id,
     )
+    location_neighbor_provenance: dict[str, dict[str, Any]] = {}
+    for root_asset_id in primary_location_ids:
+        neighbors = _location_read_neighbor_expansions(
+            bank,
+            root_asset_id,
+            max_hops=max(0, int(request.relation_hops)),
+            as_of_segment_id=as_of_segment_id,
+        )
+        for asset_id, provenance in neighbors.items():
+            location_neighbor_provenance.setdefault(asset_id, provenance)
+            if asset_id not in expanded and asset_id not in primary_ids:
+                expanded.append(asset_id)
     for asset_id in expanded:
         asset = bank.get_asset(asset_id)
         if asset is None:
@@ -535,6 +693,13 @@ def _compose_adaptive(
                 as_of_segment_id=as_of_segment_id,
                 request=request,
                 policy=policy,
+                location_pool_id=str(
+                    location_neighbor_provenance.get(asset_id, {}).get(
+                        "root_asset_id",
+                        asset_id if asset.kind is AssetType.LOCATION else "",
+                    )
+                ),
+                relation_provenance=location_neighbor_provenance.get(asset_id),
             )
         )
         excluded.extend(
@@ -582,6 +747,7 @@ def _compose_adaptive(
                 "representation_id": rep.representation_id,
                 "phase": "primary_reservation",
                 "marginal_gain": round(gain, 6),
+                **_allocation_provenance(bundle, rep),
             }
         )
 
@@ -599,12 +765,22 @@ def _compose_adaptive(
                 # This primary was dropped by an infeasible reservation; extras cannot
                 # silently reinsert it ahead of the recorded deterministic decision.
                 continue
-            candidate = _next_gain(bundle, policy=policy)
+            related_selected = (
+                _selected_location_pool(bundles, bundle.location_pool_id)
+                if bundle.asset.kind is AssetType.LOCATION
+                else None
+            )
+            candidate = _next_gain(
+                bundle,
+                policy=policy,
+                related_selected=related_selected,
+            )
             if candidate is None:
                 continue
             gain, rep = candidate
             is_location_extra = (
-                bundle.asset.kind is AssetType.LOCATION and bool(bundle.chosen)
+                bundle.asset.kind is AssetType.LOCATION
+                and (bool(bundle.chosen) or not bundle.primary)
             )
             if is_location_extra and location_extras >= location_extra_limit:
                 bundle.stop_reason = "location_extra_share_guard"
@@ -638,6 +814,7 @@ def _compose_adaptive(
                 "representation_id": rep.representation_id,
                 "phase": "global_marginal",
                 "marginal_gain": round(gain, 6),
+                **_allocation_provenance(bundle, rep),
             }
         )
 
@@ -650,6 +827,7 @@ def _compose_adaptive(
         location_candidates = (
             [
                 {
+                    "asset_id": candidate.asset_id,
                     "representation_id": candidate.rep.representation_id,
                     "cluster_id": candidate.cluster_id,
                     "score": round(candidate.score, 6),
@@ -669,6 +847,12 @@ def _compose_adaptive(
             "candidate_rep_ids": [rep.representation_id for rep in bundle.candidates],
             "candidates": location_candidates,
             "chosen_rep_ids": representation_ids[bundle.asset.asset_id],
+            "chosen_provenance": [
+                _allocation_provenance(bundle, rep)
+                for rep in bundle.chosen
+            ],
+            "location_pool_id": bundle.location_pool_id or None,
+            "relation_provenance": bundle.relation_provenance,
             "margin": round(ranking.margin, 6) if ranking is not None else None,
             "hint_source": ranking.hint_source if ranking is not None else "legacy",
             "hints": ranking.hints if ranking is not None else {},

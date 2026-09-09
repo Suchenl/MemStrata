@@ -6,7 +6,13 @@ from pathlib import Path
 
 from PIL import Image
 
-from memstrata.bank import AssetBank, AssetType, SpatialAngle, StateAngle
+from memstrata.bank import (
+    AssetBank,
+    AssetType,
+    RelationType,
+    SpatialAngle,
+    StateAngle,
+)
 from memstrata.encoders import HashEmbedding
 from memstrata.production.realized import build_realized_segment_pipeline
 from memstrata.skills.crop_acquisition.orchestrator import acquire_entity_crop
@@ -14,6 +20,7 @@ from memstrata.skills.memory_update.location_resolver import (
     LocationResolutionAction,
     LocationResolutionEvidence,
     LocationSemanticRelation,
+    propose_lexical_location_relation,
     propose_location_resolution,
 )
 from memstrata.steps.curate import AssetCurator, EntityObservation, MemoryPolicy
@@ -43,15 +50,22 @@ def _crop(tmp_path: Path, name: str) -> str:
     return str(path)
 
 
-def _curator(*, scene_enabled: bool = True, resolver_shadow: bool = False) -> AssetCurator:
+def _curator(
+    *,
+    scene_enabled: bool = True,
+    resolver_shadow: bool = False,
+    resolver_enabled: bool = False,
+    embed_on_ingest: bool = False,
+) -> AssetCurator:
     return AssetCurator(
         AssetBank(),
         HashEmbedding(),
         policy=MemoryPolicy(
             location_scene_validity_enabled=scene_enabled,
+            location_resolver_enabled=resolver_enabled,
             location_resolver_shadow_enabled=resolver_shadow,
         ),
-        embed_on_ingest=False,
+        embed_on_ingest=embed_on_ingest,
         dark_gate=False,
         attributes_when_angles_known=False,
     )
@@ -66,13 +80,15 @@ def _ingest(
     segment_id: int,
     meta: dict,
     spatial_angle: SpatialAngle = SpatialAngle.FRONT,
-) -> None:
-    curator.ingest_observation(
+    entity_id: str | None = None,
+) -> str:
+    return curator.ingest_observation(
         EntityObservation(
             f"{name}-{segment_id}",
             kind,
             name,
             crop,
+            entity_id=entity_id,
             spatial_angle=spatial_angle,
             state_angle=StateAngle.DEFAULT,
             angle_meta=meta,
@@ -300,6 +316,26 @@ def test_structural_location_relations_never_propose_identity_merge() -> None:
         assert proposal.observed_alias is None
 
 
+def test_unrelated_location_surfaces_do_not_infer_structural_edges() -> None:
+    evidence = LocationResolutionEvidence(
+        candidate_asset_id="candidate",
+        temporally_continuous=True,
+        independent_support=2,
+    )
+    for incoming, candidate in (
+        ("Room", "Building"),
+        ("Store", "Street"),
+    ):
+        assert (
+            propose_lexical_location_relation(
+                incoming_name=incoming,
+                candidate_name=candidate,
+                evidence=evidence,
+            )
+            is None
+        )
+
+
 def test_strict_synonym_requires_visual_and_causal_support() -> None:
     unsupported = propose_location_resolution(
         incoming_name="Riverside",
@@ -355,3 +391,121 @@ def test_same_location_name_without_evidence_is_shadow_deferred(
     assert proposal["action"] == "defer"
     assert proposal["reasons"] == ["same_name_not_identity_evidence"]
     assert proposal["shadow_only"] is True
+
+
+def test_exact_location_duplicate_reuses_canonical_with_visual_continuity(
+    tmp_path: Path,
+) -> None:
+    curator = _curator(
+        scene_enabled=False,
+        resolver_enabled=True,
+        embed_on_ingest=True,
+    )
+    crop = _crop(tmp_path, "same_prison.png")
+    first_id = _ingest(
+        curator,
+        crop=crop,
+        kind=_LOCATION,
+        name="Prison",
+        segment_id=1,
+        meta={},
+        entity_id="generated-location-1",
+    )
+    second_id = _ingest(
+        curator,
+        crop=crop,
+        kind=_LOCATION,
+        name="prison",
+        segment_id=2,
+        meta={},
+        entity_id="generated-location-2",
+    )
+
+    assert first_id == second_id == "generated-location-1"
+    assert len(curator.bank.list_assets(kind=_LOCATION)) == 1
+    proposal = curator.bank.get_asset(first_id).metadata[
+        "location_resolution_proposals_v2"
+    ][-1]
+    assert proposal["action"] == "reuse"
+    assert proposal["applied"] is True
+    assert proposal["temporal_gap"] == 1
+
+
+def test_same_location_name_stays_separate_when_temporally_distant(
+    tmp_path: Path,
+) -> None:
+    curator = _curator(
+        scene_enabled=False,
+        resolver_enabled=True,
+        embed_on_ingest=True,
+    )
+    crop = _crop(tmp_path, "same_forest.png")
+    first_id = _ingest(
+        curator,
+        crop=crop,
+        kind=_LOCATION,
+        name="Forest",
+        segment_id=1,
+        meta={},
+        entity_id="forest-a",
+    )
+    second_id = _ingest(
+        curator,
+        crop=crop,
+        kind=_LOCATION,
+        name="Forest",
+        segment_id=20,
+        meta={},
+        entity_id="forest-b",
+    )
+
+    assert first_id != second_id
+    assert len(curator.bank.list_assets(kind=_LOCATION)) == 2
+    proposal = curator.bank.get_asset(second_id).representations[-1].annotations[
+        "location_resolution_proposal"
+    ]
+    assert proposal["action"] == "defer"
+    assert proposal["applied"] is False
+
+
+def test_qualified_location_creates_part_of_neighbor_without_alias_merge(
+    tmp_path: Path,
+) -> None:
+    curator = _curator(
+        scene_enabled=False,
+        resolver_enabled=True,
+        embed_on_ingest=True,
+    )
+    forest_id = _ingest(
+        curator,
+        crop=_crop(tmp_path, "forest.png"),
+        kind=_LOCATION,
+        name="Forest",
+        segment_id=1,
+        meta={},
+        entity_id="forest",
+    )
+    trail_id = _ingest(
+        curator,
+        crop=_crop(tmp_path, "forest_trail.png"),
+        kind=_LOCATION,
+        name="Forest Trail",
+        segment_id=2,
+        meta={},
+        entity_id="forest-trail",
+    )
+
+    assert forest_id != trail_id
+    forest = curator.bank.get_asset(forest_id)
+    trail = curator.bank.get_asset(trail_id)
+    assert forest.metadata.get("aliases") is None
+    assert trail.metadata.get("aliases") is None
+    assert [
+        (relation.relation_type, relation.target_asset_id)
+        for relation in trail.relations
+    ] == [(RelationType.PART_OF, forest_id)]
+    record = trail.representations[-1].annotations[
+        "location_relation_proposals"
+    ][0]
+    assert record["applied"] is True
+    assert record["read_neighbor"] is True

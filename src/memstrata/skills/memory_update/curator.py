@@ -43,6 +43,7 @@ from memstrata.bank import (
     SpatialAngle,
     StateAngle,
 )
+from memstrata.bank.schema import surface_key
 from memstrata.encoders import EmbeddingModel, HashEmbedding, Vector
 from memstrata.lib.crop_quality import (
     is_dark_low_information,
@@ -67,11 +68,14 @@ from memstrata.skills.location_scene_validity import (
 from memstrata.skills.memory_update.location_coreset import (
     CORESET_KEY,
     LocationCoresetPolicy,
+    scene_reference_eligible,
     update_location_coreset,
 )
 from memstrata.skills.memory_update.location_resolver import (
+    LocationResolutionAction,
     LocationResolutionEvidence,
     LocationResolverPolicy,
+    propose_lexical_location_relation,
     propose_location_resolution,
 )
 from memstrata.mllm.angle_classifier import AngleClassifier, NullAngleClassifier
@@ -231,12 +235,15 @@ class MemoryPolicy:
     location_scene_candidate_local_require_quality: bool = True
 
     # --- conservative location identity seam ------------------------------------
-    # First stage is shadow-only: produce an auditable proposal without changing
-    # final asset identity or registering aliases.
+    # Disabled by default.  The adaptive profile enables exact-name canonical reuse
+    # and auditable structural read-neighbor relations; shadow proposals remain
+    # independently available to legacy/custom profiles.
+    location_resolver_enabled: bool = False
     location_resolver_shadow_enabled: bool = False
     location_resolver_min_visual_similarity: float = 0.80
     location_resolver_min_independent_support: int = 2
     location_resolver_allow_continuity_support: bool = True
+    location_resolver_max_temporal_gap: int = 8
 
     # --- adaptive location coreset -----------------------------------------------
     # The cap is a guardrail against noisy strata/embeddings, not a target K.  The live
@@ -740,6 +747,7 @@ class MemoryUpdater:
                 pol.location_scene_candidate_local_require_quality
             ),
         )
+        self.location_resolver_enabled = bool(pol.location_resolver_enabled)
         self.location_resolver_shadow_enabled = bool(
             pol.location_resolver_shadow_enabled
         )
@@ -752,6 +760,9 @@ class MemoryUpdater:
             ),
             allow_continuity_support=bool(
                 pol.location_resolver_allow_continuity_support
+            ),
+            max_temporal_gap=max(
+                0, int(pol.location_resolver_max_temporal_gap)
             ),
         )
         self.location_coreset_policy = LocationCoresetPolicy(
@@ -829,6 +840,258 @@ class MemoryUpdater:
             policy=self.location_resolver_policy,
         )
         return proposal.to_dict()
+
+    def _location_visual_similarity(
+        self,
+        obs: Observation,
+        asset: Asset,
+        *,
+        segment_id: int,
+    ) -> float | None:
+        if not obs.embedding:
+            return None
+        scores: list[float] = []
+        for rep in asset.representations:
+            if (
+                rep.deprecated
+                or rep.origin_segment_id >= segment_id
+                or not scene_reference_eligible(rep)
+            ):
+                continue
+            route = str(rep.annotations.get("encoder_route") or "")
+            if obs.encoder_route and route and obs.encoder_route != route:
+                continue
+            score = cosine_or_none(obs.embedding, rep.annotations.get("embedding"))
+            if score is not None:
+                scores.append(float(score))
+        return max(scores) if scores else None
+
+    def _latest_scene_segment(self, asset: Asset, *, before: int) -> int | None:
+        segments = [
+            int(rep.origin_segment_id)
+            for rep in asset.representations
+            if (
+                not rep.deprecated
+                and rep.origin_segment_id < before
+                and scene_reference_eligible(rep)
+            )
+        ]
+        return max(segments) if segments else None
+
+    def _new_location_asset(self, obs: Observation) -> Asset:
+        stem = surface_key(obs.name).replace(" ", "_") or "unnamed"
+        base_id = str(obs.entity_id or f"location_{stem}")
+        new_id = base_id
+        suffix = 2
+        while self.bank.get_asset(new_id) is not None:
+            new_id = f"{base_id}__{suffix}"
+            suffix += 1
+        asset = Asset(
+            asset_id=new_id,
+            kind=AssetType.LOCATION,
+            name=obs.name,
+            status=LifecycleStatus.REUSABLE,
+        )
+        self.bank.add_asset(asset)
+        return asset
+
+    def _resolve_location_asset(
+        self,
+        obs: Observation,
+        *,
+        segment_id: int,
+    ) -> tuple[Asset, dict[str, Any] | None]:
+        """Resolve exact location duplicates only with visual and causal support."""
+
+        if obs.entity_id:
+            authoritative = self.bank.get_asset(obs.entity_id)
+            if authoritative is not None:
+                self._warn_identity_conflict(
+                    authoritative,
+                    name=obs.name,
+                    kind=obs.kind,
+                    via="entity_id",
+                )
+                if authoritative.kind is AssetType.LOCATION:
+                    return authoritative, None
+
+        key = surface_key(obs.name)
+        candidates = [
+            asset
+            for asset in self.bank.assets.values()
+            if (
+                asset.kind is AssetType.LOCATION
+                and asset.status not in NON_USABLE
+                and surface_key(asset.name) == key
+            )
+        ]
+        evaluated: list[tuple[Asset, dict[str, Any], bool]] = []
+        for candidate in candidates:
+            latest = self._latest_scene_segment(candidate, before=segment_id)
+            gap = None if latest is None else segment_id - latest
+            evidence = LocationResolutionEvidence(
+                candidate_asset_id=candidate.asset_id,
+                visual_similarity=self._location_visual_similarity(
+                    obs,
+                    candidate,
+                    segment_id=segment_id,
+                ),
+                temporally_continuous=(
+                    gap is not None
+                    and gap <= self.location_resolver_policy.max_temporal_gap
+                ),
+                independent_support=1,
+                encoder_route=obs.encoder_route,
+            )
+            proposal = propose_location_resolution(
+                incoming_name=obs.name,
+                candidate_name=candidate.name,
+                evidence=evidence,
+                policy=self.location_resolver_policy,
+            )
+            record = proposal.to_dict()
+            record.update(
+                {
+                    "schema": "memstrata.location-resolution.v2",
+                    "shadow_only": False,
+                    "observation_segment_id": segment_id,
+                    "candidate_latest_scene_segment_id": latest,
+                    "temporal_gap": gap,
+                }
+            )
+            evaluated.append(
+                (
+                    candidate,
+                    record,
+                    proposal.action is LocationResolutionAction.REUSE,
+                )
+            )
+
+        confirmed = [row for row in evaluated if row[2]]
+        if len(confirmed) == 1:
+            candidate, record, _ = confirmed[0]
+            record["applied"] = True
+            return candidate, record
+
+        asset = self._new_location_asset(obs)
+        if evaluated:
+            best = max(
+                evaluated,
+                key=lambda row: (
+                    float(
+                        row[1]["evidence"].get("visual_similarity")
+                        if row[1]["evidence"].get("visual_similarity") is not None
+                        else -1.0
+                    ),
+                    -int(row[1].get("temporal_gap") or 10**9),
+                    row[0].asset_id,
+                ),
+            )[1]
+            best["applied"] = False
+            if len(confirmed) > 1:
+                best["reasons"] = ["ambiguous_exact_location_candidates"]
+            return asset, best
+        return asset, None
+
+    def _update_location_relation_proposals(
+        self,
+        asset: Asset,
+        new_rep: AssetRepresentation,
+        *,
+        segment_id: int,
+    ) -> None:
+        """Persist safe lexical relations or deferred proposals after scene admission."""
+
+        candidates = [
+            other
+            for other in self.bank.assets.values()
+            if (
+                other is not asset
+                and other.kind is AssetType.LOCATION
+                and other.status not in NON_USABLE
+            )
+        ]
+        rows: list[tuple[Asset, Any, dict[str, Any]]] = []
+        incoming_scene = scene_reference_eligible(new_rep)
+        for candidate in candidates:
+            latest = self._latest_scene_segment(candidate, before=segment_id + 1)
+            gap = None if latest is None else abs(segment_id - latest)
+            evidence = LocationResolutionEvidence(
+                candidate_asset_id=candidate.asset_id,
+                visual_similarity=self._location_visual_similarity(
+                    Observation(
+                        observation_id=new_rep.representation_id,
+                        kind=AssetType.LOCATION,
+                        name=asset.name,
+                        image_path=new_rep.object_uri,
+                        embedding=new_rep.annotations.get("embedding"),
+                        encoder_route=str(
+                            new_rep.annotations.get("encoder_route") or ""
+                        ),
+                    ),
+                    candidate,
+                    segment_id=segment_id + 1,
+                ),
+                temporally_continuous=(
+                    gap is not None
+                    and gap <= self.location_resolver_policy.max_temporal_gap
+                ),
+                independent_support=int(incoming_scene) + int(latest is not None),
+                encoder_route=str(new_rep.annotations.get("encoder_route") or ""),
+            )
+            proposal = propose_lexical_location_relation(
+                incoming_name=asset.name,
+                candidate_name=candidate.name,
+                evidence=evidence,
+                policy=self.location_resolver_policy,
+            )
+            if proposal is not None:
+                rows.append((candidate, proposal, proposal.to_dict()))
+        if not rows:
+            return
+
+        confirmed = [
+            row
+            for row in rows
+            if row[1].action is LocationResolutionAction.RELATE
+        ]
+        if len(confirmed) == 1:
+            candidate, proposal, record = confirmed[0]
+            source = asset if proposal.source_role == "incoming" else candidate
+            target = candidate if proposal.target_role == "candidate" else asset
+            attributes = {
+                "schema": "memstrata.location-read-neighbor.v1",
+                "origin_segment_id": segment_id,
+                "source": "qualified_surface_continuity",
+                "read_neighbor": True,
+            }
+            self._add_relation(
+                source,
+                RelationType.PART_OF,
+                target.asset_id,
+                attributes,
+            )
+            record["applied"] = True
+            record["source_asset_id"] = source.asset_id
+            record["target_asset_id"] = target.asset_id
+        elif len(confirmed) > 1:
+            for _, _, record in rows:
+                record["action"] = LocationResolutionAction.DEFER.value
+                record["read_neighbor"] = False
+                record["reasons"] = ["ambiguous_qualified_location_candidates"]
+
+        records = [record for _, _, record in rows]
+        new_rep.annotations["location_relation_proposals"] = records
+        audit = asset.metadata.setdefault("location_relation_proposals_v1", [])
+        audit.extend(
+            {
+                **record,
+                "incoming_asset_id": asset.asset_id,
+                "observation_segment_id": segment_id,
+            }
+            for record in records
+        )
+        self.bank.touch()
 
     def _embed(self, path: str, kind: AssetType | str | None = None) -> Vector:
         """Encode a crop through the SAME route the decomposer would use.
@@ -1665,7 +1928,11 @@ class MemoryUpdater:
         pack_cache = self._batch_classify_cache(observations, segment_id)
         for obs in observations:
             reconcile_meta: dict[str, Any] = {}
-            location_resolution_proposal = self._location_resolution_proposal(obs)
+            location_resolution_proposal = (
+                None
+                if self.location_resolver_enabled
+                else self._location_resolution_proposal(obs)
+            )
             # χ reconciliation compares the observation's embedding against existing reps, so a
             # discovered observation must be embedded BEFORE reconcile (otherwise visual_sim is
             # unavailable and identity collapses to text-only, never merging two crops of the
@@ -1681,7 +1948,15 @@ class MemoryUpdater:
                     obs.embedding = self._embed(obs.image_path, obs.kind)
                 except Exception:  # noqa: BLE001 - embedding is best-effort, never fail a segment
                     obs.embedding = None
-            if obs.source == SOURCE_DISCOVERED and not obs.entity_id:
+            if (
+                self.location_resolver_enabled
+                and obs.kind is AssetType.LOCATION
+            ):
+                asset, location_resolution_proposal = self._resolve_location_asset(
+                    obs,
+                    segment_id=segment_id,
+                )
+            elif obs.source == SOURCE_DISCOVERED and not obs.entity_id:
                 # Discovered evidence has no symbolic anchor, so identity is decided by
                 # type-restricted reconciliation (χ) instead of a name lookup.
                 matched, reconcile_meta = self._reconcile_identity(obs)
@@ -1716,6 +1991,15 @@ class MemoryUpdater:
                 )
             if asset.asset_id not in touched:
                 touched.append(asset.asset_id)
+            if (
+                self.location_resolver_enabled
+                and location_resolution_proposal is not None
+            ):
+                asset.metadata.setdefault(
+                    "location_resolution_proposals_v2",
+                    [],
+                ).append(dict(location_resolution_proposal))
+                self.bank.touch()
 
             # d_j: adopt the observation description when the record has none yet, so the
             # bank carries appearance text that text-keyed retrieval can match against.
@@ -1806,6 +2090,15 @@ class MemoryUpdater:
             mutated = self._apply_rep_selection(
                 asset, new_rep, name_authoritative=name_authoritative
             )
+            if (
+                self.location_resolver_enabled
+                and obs.kind is AssetType.LOCATION
+            ):
+                self._update_location_relation_proposals(
+                    asset,
+                    new_rep,
+                    segment_id=segment_id,
+                )
             if asset.status == LifecycleStatus.CANDIDATE:
                 asset.status = LifecycleStatus.REUSABLE
                 mutated = True

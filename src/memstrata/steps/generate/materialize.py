@@ -48,12 +48,35 @@ def composed_reference_images(
             role = composed.functions.get(asset_id) or (
                 rep.reference_aspects[0] if rep.reference_aspects else "reference"
             )
+            asset_trace = composed.selection_trace.get("assets", {}).get(asset_id, {})
+            chosen_provenance = asset_trace.get("chosen_provenance", [])
+            chosen_rep_ids = asset_trace.get("chosen_rep_ids", [])
+            try:
+                trace_index = chosen_rep_ids.index(rep.representation_id)
+            except (AttributeError, ValueError):
+                trace_index = -1
+            trace_provenance = (
+                chosen_provenance[trace_index]
+                if 0 <= trace_index < len(chosen_provenance)
+                else {}
+            )
+            cluster_id = (
+                rep.annotations.get("location_cluster_id")
+                or trace_provenance.get("source_cluster_id")
+            )
             refs.append({
                 "asset_id": asset_id,
+                "representation_id": rep.representation_id,
+                "location_cluster_id": cluster_id,
                 "kind": str(asset.kind.value if hasattr(asset.kind, "value") else asset.kind),
                 "name": asset.name,
                 "role": role,
                 "image": image,
+                "selection_provenance": {
+                    "asset_id": asset_id,
+                    "representation_id": rep.representation_id,
+                    "cluster_id": cluster_id,
+                },
             })
             # Legacy callers that did not provide explicit representation ids retain
             # the historical one-image fallback. Explicit adaptive selections materialize

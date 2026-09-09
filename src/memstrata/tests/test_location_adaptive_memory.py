@@ -355,6 +355,114 @@ def test_adaptive_relation_expansion_filters_future_metadata() -> None:
     assert context.expanded == []
 
 
+def test_part_of_location_neighbor_uses_cross_asset_marginal_gain() -> None:
+    prison = _build_clustered_location(
+        [("prison-wide", [1.0, 0.0], "indoor", "day")]
+    )
+    prison.asset_id = "prison"
+    prison.name = "Prison"
+    for rep in prison.representations:
+        rep.asset_id = prison.asset_id
+    cell = _build_clustered_location(
+        [("cell-interior", [0.0, 1.0], "indoor", "artificial")]
+    )
+    cell.asset_id = "cell"
+    cell.name = "Prison Cell"
+    for rep in cell.representations:
+        rep.asset_id = cell.asset_id
+    cell.relations.append(
+        AssetRelation(
+            relation_type=RelationType.PART_OF,
+            target_asset_id="prison",
+            attributes={
+                "schema": "memstrata.location-read-neighbor.v1",
+                "origin_segment_id": 2,
+                "read_neighbor": True,
+            },
+        )
+    )
+
+    context = compose(
+        AssetBank({"prison": prison, "cell": cell}),
+        CompositionRequest(
+            references=[AssetReference(asset_id="prison")],
+            context_rep_budget=16,
+            relation_hops=1,
+        ),
+        as_of_segment_id=10,
+        raw_prompt="Return to the prison.",
+        policy=CompositionPolicy(adaptive_location_enabled=True),
+    )
+
+    assert context.expanded == ["cell"]
+    assert context.representation_ids == {
+        "prison": ["prison-wide"],
+        "cell": ["cell-interior"],
+    }
+    allocation = context.selection_trace["allocation"]
+    assert [row["source_cluster_id"] for row in allocation] == [
+        "location-cluster-0000",
+        "location-cluster-0000",
+    ]
+    assert allocation[1]["phase"] == "global_marginal"
+    assert allocation[1]["location_pool_id"] == "prison"
+    assert allocation[1]["relation_provenance"]["direction"] == "incoming"
+
+
+def test_related_location_extra_cannot_displace_explicit_character_or_prop() -> None:
+    char = _generic_asset("char", AssetType.CHARACTER)
+    prop = _generic_asset("prop", AssetType.PROP)
+    location = _build_clustered_location(
+        [("location-wide", [1.0, 0.0], "outdoor", "day")]
+    )
+    location.asset_id = "location"
+    for rep in location.representations:
+        rep.asset_id = location.asset_id
+    neighbor = _build_clustered_location(
+        [("location-detail", [0.0, 1.0], "outdoor", "night")]
+    )
+    neighbor.asset_id = "neighbor"
+    for rep in neighbor.representations:
+        rep.asset_id = neighbor.asset_id
+    neighbor.relations.append(
+        AssetRelation(
+            RelationType.PART_OF,
+            "location",
+            {"origin_segment_id": 1, "read_neighbor": True},
+        )
+    )
+    bank = AssetBank(
+        {
+            "char": char,
+            "prop": prop,
+            "location": location,
+            "neighbor": neighbor,
+        }
+    )
+    refs = [
+        AssetReference(asset_id="char"),
+        AssetReference(asset_id="prop"),
+        AssetReference(asset_id="location"),
+    ]
+
+    context = compose(
+        bank,
+        CompositionRequest(
+            references=refs,
+            context_rep_budget=3,
+            relation_hops=1,
+        ),
+        as_of_segment_id=10,
+        policy=CompositionPolicy(adaptive_location_enabled=True),
+    )
+
+    assert context.representation_ids["char"]
+    assert context.representation_ids["prop"]
+    assert context.representation_ids["location"]
+    assert context.representation_ids["neighbor"] == []
+    assert sum(map(len, context.representation_ids.values())) == 3
+
+
 def test_named_assets_reserved_and_budget_is_strict() -> None:
     char = _generic_asset("char", AssetType.CHARACTER)
     prop = _generic_asset("prop", AssetType.PROP)
@@ -448,6 +556,13 @@ def test_materializer_emits_all_explicit_location_reps(tmp_path: Path) -> None:
     assert [Path(ref["image"]).name for ref in refs] == [
         Path(rep_id).name + ".png" for rep_id in context.representation_ids["loc"]
     ]
+    assert [
+        (ref["asset_id"], ref["representation_id"], ref["location_cluster_id"])
+        for ref in refs
+    ] == [
+        ("loc", rep_id, f"legacy-{index:04d}")
+        for index, rep_id in enumerate(context.representation_ids["loc"])
+    ]
 
 
 def test_materializer_respects_explicit_empty_selection(tmp_path: Path) -> None:
@@ -499,3 +614,9 @@ def test_realized_builder_wires_explicit_adaptive_profile(tmp_path: Path) -> Non
     assert mem.composition_policy.location_read_max_refs == 4
     assert mem.curator.location_coreset_policy.enabled is True
     assert mem.curator.location_coreset_policy.storage_cap == 12
+    assert mem.curator.location_resolver_enabled is True
+    assert mem.curator.location_resolver_shadow_enabled is True
+    assert (
+        mem.production_provenance["location_memory_v2"]["resolver_enabled"]
+        is True
+    )

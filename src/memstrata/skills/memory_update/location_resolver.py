@@ -83,6 +83,7 @@ class LocationResolverPolicy:
     min_visual_similarity: float = 0.80
     min_independent_support: int = 2
     allow_continuity_support: bool = True
+    max_temporal_gap: int = 8
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +110,36 @@ class LocationResolutionProposal:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class LocationRelationProposal:
+    """Auditable structural relation inferred without changing either identity."""
+
+    action: LocationResolutionAction
+    candidate_asset_id: str
+    relation_type: str | None
+    source_role: str | None
+    target_role: str | None
+    read_neighbor: bool
+    reasons: tuple[str, ...]
+    evidence: LocationResolutionEvidence
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "memstrata.location-relation-proposal.v1",
+            "action": self.action.value,
+            "candidate_asset_id": self.candidate_asset_id,
+            "relation_type": self.relation_type,
+            "source_role": self.source_role,
+            "target_role": self.target_role,
+            "read_neighbor": self.read_neighbor,
+            "reasons": list(self.reasons),
+            "evidence": {
+                **asdict(self.evidence),
+                "semantic_relation": self.evidence.semantic_relation.value,
+            },
+        }
+
+
 _STRUCTURAL_RELATIONS = frozenset(
     {
         LocationSemanticRelation.PART_OF,
@@ -116,6 +147,73 @@ _STRUCTURAL_RELATIONS = frozenset(
         LocationSemanticRelation.INTERIOR_OF,
     }
 )
+
+
+def _lexically_contains_place(parent_name: str, child_name: str) -> bool:
+    """Return whether ``child`` is a qualified surface containing ``parent``.
+
+    This is deliberately syntax-only.  It can propose ``part_of`` but is never
+    identity evidence.  Token containment handles spaced languages; conservative
+    prefix/suffix containment handles punctuation-free CJK names.
+    """
+
+    parent = surface_key(parent_name)
+    child = surface_key(child_name)
+    if not parent or parent == child or len(parent) >= len(child):
+        return False
+    parent_tokens = parent.split()
+    child_tokens = child.split()
+    if len(child_tokens) > 1 and len(parent_tokens) <= len(child_tokens):
+        width = len(parent_tokens)
+        return any(
+            child_tokens[index : index + width] == parent_tokens
+            for index in range(len(child_tokens) - width + 1)
+        )
+    # A one-character CJK overlap is too weak to establish even a read neighbor.
+    return len(parent) >= 2 and (child.startswith(parent) or child.endswith(parent))
+
+
+def propose_lexical_location_relation(
+    *,
+    incoming_name: str,
+    candidate_name: str,
+    evidence: LocationResolutionEvidence,
+    policy: LocationResolverPolicy | None = None,
+) -> LocationRelationProposal | None:
+    """Propose a causal ``part_of`` edge for qualified location surfaces.
+
+    The edge is safe for candidate expansion only when both endpoints have
+    independent scene evidence and occur in one configured temporal neighborhood.
+    Otherwise the same lexical observation is retained as a deferred audit record.
+    """
+
+    pol = policy or LocationResolverPolicy()
+    incoming_is_child = _lexically_contains_place(candidate_name, incoming_name)
+    candidate_is_child = _lexically_contains_place(incoming_name, candidate_name)
+    if not incoming_is_child and not candidate_is_child:
+        return None
+    confirmed = (
+        evidence.temporally_continuous
+        and evidence.independent_support >= pol.min_independent_support
+    )
+    return LocationRelationProposal(
+        action=(
+            LocationResolutionAction.RELATE
+            if confirmed
+            else LocationResolutionAction.DEFER
+        ),
+        candidate_asset_id=evidence.candidate_asset_id,
+        relation_type=LocationSemanticRelation.PART_OF.value,
+        source_role="incoming" if incoming_is_child else "candidate",
+        target_role="candidate" if incoming_is_child else "incoming",
+        read_neighbor=confirmed,
+        reasons=(
+            ("qualified_surface", "short_range_continuity", "scene_evidence")
+            if confirmed
+            else ("qualified_surface_unconfirmed",)
+        ),
+        evidence=evidence,
+    )
 
 
 def propose_location_resolution(
@@ -220,7 +318,9 @@ __all__ = [
     "LocationResolutionAction",
     "LocationResolutionEvidence",
     "LocationResolutionProposal",
+    "LocationRelationProposal",
     "LocationResolverPolicy",
     "LocationSemanticRelation",
+    "propose_lexical_location_relation",
     "propose_location_resolution",
 ]

@@ -52,6 +52,7 @@ class LocationReadQuery:
 
 @dataclass(slots=True)
 class LocationCandidate:
+    asset_id: str
     rep: AssetRepresentation
     cluster_id: str
     strata: LocationStrata
@@ -244,6 +245,7 @@ def rank_location_candidates(
         rep, cluster_id, strata, score, parts = row
         candidates.append(
             LocationCandidate(
+                asset_id=asset.asset_id,
                 rep=rep,
                 cluster_id=cluster_id,
                 strata=strata,
