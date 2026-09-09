@@ -56,6 +56,9 @@ def build_realized_segment_pipeline(
     require_mllm: bool | None = None,
     resume: bool = False,
     seed_screenplay: dict[str, Any] | None = None,
+    location_scene_validity_enabled: bool = False,
+    location_resolver_shadow_enabled: bool = False,
+    location_scene_plate_candidates: bool = False,
 ) -> MemStrata:
     """Build the production read/write implementation shared by formal Track A runs."""
     from memstrata.skills.crop_acquisition.crop_client import (
@@ -140,7 +143,11 @@ def build_realized_segment_pipeline(
     root = Path(run_dir)
     root.mkdir(parents=True, exist_ok=True)
     persisted = Path(persist_path) if persist_path else root / "bank.json"
-    policy = MemoryPolicy.production(discovery=bool(discovery))
+    policy = MemoryPolicy.production(
+        discovery=bool(discovery),
+        location_scene_validity_enabled=bool(location_scene_validity_enabled),
+        location_resolver_shadow_enabled=bool(location_resolver_shadow_enabled),
+    )
     mode = angle_classifier_mode or None
     angle_classifier = build_angle_classifier(mode=mode)
     crop_attribute_classifier = build_crop_attribute_classifier(mode=mode)
@@ -169,6 +176,11 @@ def build_realized_segment_pipeline(
         "MEMSTRATA_CROP_IDENTITY_MODEL": configured_mllm_model,
     }
     verify_crop_identity = naming == "mllm"
+    extra_acquire_kwargs = (
+        {"location_scene_plate_candidates": True}
+        if location_scene_plate_candidates
+        else None
+    )
     cropper = ProposeIdentifyCropper(
         bank=bank,
         server_dir=root / "crop_acq_server",
@@ -177,6 +189,7 @@ def build_realized_segment_pipeline(
         identity_threshold=float(identity_threshold),
         identity_verification_required=verify_crop_identity,
         frame_pos=float(frame_pos),
+        extra_acquire_kwargs=extra_acquire_kwargs,
         server_env=server_env,
         grounding_backend="wedetect_ref",
         require_wedetect=strict_wedetect,
@@ -228,6 +241,27 @@ def build_realized_segment_pipeline(
                 "required_for_established_identity": verify_crop_identity,
                 "mode": "image_only_query_to_references",
             },
+            **(
+                {
+                    "location_memory_v2": {
+                        "scene_validity_enabled": bool(
+                            location_scene_validity_enabled
+                        ),
+                        "resolver_shadow_enabled": bool(
+                            location_resolver_shadow_enabled
+                        ),
+                        "scene_plate_candidates": bool(
+                            location_scene_plate_candidates
+                        ),
+                    }
+                }
+                if (
+                    location_scene_validity_enabled
+                    or location_resolver_shadow_enabled
+                    or location_scene_plate_candidates
+                )
+                else {}
+            ),
         },
         policy=policy,
         bank=bank,

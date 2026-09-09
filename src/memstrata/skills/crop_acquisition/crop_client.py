@@ -508,26 +508,34 @@ class ProposeIdentifyCropper:
             self._record_attempt(str(entity_id), hit=False, payload=payload)
             return None
         self._record_attempt(str(entity_id), hit=True, payload=payload)
+        acquisition_meta = {
+            "identity_threshold": payload.get("identity_threshold", self.identity_threshold),
+            "identity_sim": payload.get("identity_sim"),
+            "identity_gate": payload.get("identity_gate"),
+            "identity_verification": payload.get("identity_verification"),
+            "novelty_score": payload.get("novelty_score"),
+            "source": payload.get("source"),
+            "source_detail": payload.get("source_detail"),
+            "frame_position": payload.get("frame_position"),
+            "candidate_count": payload.get("candidate_count"),
+            "min_side_px": payload.get("min_side_px"),
+            "max_character_bbox_area": payload.get("max_character_bbox_area"),
+            "min_mask_fill": payload.get("min_mask_fill"),
+        }
+        scene_evidence = payload.get("scene_validity_evidence")
+        if isinstance(scene_evidence, dict):
+            # Optional seam for an existing detector/place-encoder adapter. No
+            # evidence is synthesized from a location mask or identity score.
+            acquisition_meta["scene_validity_evidence"] = dict(scene_evidence)
+        if payload.get("scene_candidate_only") is True:
+            acquisition_meta["scene_candidate_only"] = True
         # Report the bbox too: discovery needs it to tell "region already acquired for a
         # named entity" from "genuinely new region".
         return {
             "crop_path": str(crop_path),
             "bbox": payload.get("bbox"),
             "meta": {
-                "crop_acquisition": {
-                    "identity_threshold": payload.get("identity_threshold", self.identity_threshold),
-                    "identity_sim": payload.get("identity_sim"),
-                    "identity_gate": payload.get("identity_gate"),
-                    "identity_verification": payload.get("identity_verification"),
-                    "novelty_score": payload.get("novelty_score"),
-                    "source": payload.get("source"),
-                    "source_detail": payload.get("source_detail"),
-                    "frame_position": payload.get("frame_position"),
-                    "candidate_count": payload.get("candidate_count"),
-                    "min_side_px": payload.get("min_side_px"),
-                    "max_character_bbox_area": payload.get("max_character_bbox_area"),
-                    "min_mask_fill": payload.get("min_mask_fill"),
-                }
+                "crop_acquisition": acquisition_meta,
             },
         }
 

@@ -257,6 +257,7 @@ def _propose_candidates(
     iou_threshold: float,
     concepts: tuple[str, ...] | None = None,
     grounder: Any | None = None,
+    location_scene_plate_candidates: bool = False,
 ) -> list[dict[str, Any]]:
     """Collect candidate crops for ONE entity.
 
@@ -272,6 +273,21 @@ def _propose_candidates(
     pil = Image.open(frame_path).convert("RGB")
     width, height = pil.size
     raw: list[dict[str, Any]] = []
+    if entity_kind == "location" and location_scene_plate_candidates:
+        # A whole frame is only another candidate. It carries no scene-admission
+        # authority; the curator's independent location scene predicate must still
+        # accept detector/place evidence before it becomes a scene reference.
+        raw.append(
+            {
+                "bbox_norm": [0, 0, 1000, 1000],
+                "score": 0.0,
+                "mask": None,
+                "crop_path": Path(frame_path),
+                "source": "whole_frame_location_candidate",
+                "quality_profile": "whole_frame_scene_plate_candidate",
+                "mask_quality": {"available": False, "reason": "scene_plate_candidate"},
+            }
+        )
 
     # --- WeDetect-Ref referring grounding (describe -> bbox, authoritative) ---
     query = _grounding_query(entity_name, entity_description) if grounder is not None else ""
@@ -318,7 +334,7 @@ def _propose_candidates(
         if g_raw:
             # Description-grounded boxes win: do NOT also run the salience-ranked SAM3 path,
             # whose most-salient proposal would re-introduce the wrong-entity crop.
-            return dedup_by_iou(g_raw, iou_threshold=iou_threshold)
+            return dedup_by_iou([*g_raw, *raw], iou_threshold=iou_threshold)
         fallback_from = "no_hit"
 
     # --- SAM3 concept proposals (masked) ---
@@ -427,6 +443,7 @@ def acquire_entity_crop(
     min_mask_fill: float = _MIN_MASK_FILL,
     min_side_px: int = _MIN_SIDE_PX,
     iou_threshold: float = _IOU_DEDUP,
+    location_scene_plate_candidates: bool = False,
 ) -> dict[str, Any] | None:
     """Acquire the most NOVEL identity-correct crop for one named entity.
 
@@ -460,6 +477,7 @@ def acquire_entity_crop(
             min_side_px=min_side_px,
             iou_threshold=iou_threshold,
             concepts=concepts,
+            location_scene_plate_candidates=location_scene_plate_candidates,
         )
         for cand in frame_candidates:
             cand["frame_path"] = candidate_frame
@@ -623,6 +641,11 @@ def acquire_entity_crop(
             "max_character_bbox_area": float(max_character_bbox_area),
             "min_mask_fill": float(min_mask_fill),
             "qa": qa.to_dict(),
+            **(
+                {"scene_candidate_only": True}
+                if cand["source"] == "whole_frame_location_candidate"
+                else {}
+            ),
         }
 
     return None

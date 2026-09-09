@@ -179,6 +179,7 @@ def _run_job(models: _Models, request: dict[str, Any]) -> dict[str, Any] | None:
         "entity_description",
         "identity_verification_required",
         "identity_verification_threshold",
+        "location_scene_plate_candidates",
     ):
         if key in request:
             extra[key] = request[key]

@@ -57,6 +57,17 @@ from memstrata.lib.dedup import (
     similarity_to_set,
     text_similarity,
 )
+from memstrata.skills.location_scene_validity import (
+    LocationSceneEvidence,
+    LocationSceneValidityPolicy,
+    SceneValidityStatus,
+    evaluate_location_scene,
+)
+from memstrata.skills.memory_update.location_resolver import (
+    LocationResolutionEvidence,
+    LocationResolverPolicy,
+    propose_location_resolution,
+)
 from memstrata.mllm.angle_classifier import AngleClassifier, NullAngleClassifier
 from memstrata.mllm.crop_attributes import (
     CropAttributeClassifier,
@@ -172,6 +183,27 @@ class MemoryPolicy:
     crop_quality_gate: bool = False
     relation_hops: int = 0
     discovery: bool = False
+
+    # --- location-specific scene admission --------------------------------------
+    # Disabled by default for behavior compatibility. When enabled, location
+    # ``scene_reference`` eligibility comes only from detector/place evidence and
+    # never from the character/prop ``identity_visible`` field.
+    location_scene_validity_enabled: bool = False
+    location_scene_min_crop_area_fraction: float = 0.50
+    location_scene_max_foreground_accept: float = 0.40
+    location_scene_max_foreground_union_accept: float = 0.55
+    location_scene_foreground_hard_reject: float = 0.60
+    location_scene_foreground_union_hard_reject: float = 0.70
+    location_scene_min_place_support_count: int = 2
+    location_scene_min_place_support_ratio: float = 0.60
+
+    # --- conservative location identity seam ------------------------------------
+    # First stage is shadow-only: produce an auditable proposal without changing
+    # final asset identity or registering aliases.
+    location_resolver_shadow_enabled: bool = False
+    location_resolver_min_visual_similarity: float = 0.80
+    location_resolver_min_independent_support: int = 2
+    location_resolver_allow_continuity_support: bool = True
 
     @classmethod
     def production(cls, **overrides: Any) -> MemoryPolicy:
@@ -561,6 +593,46 @@ class MemoryUpdater:
         self._identity_judge_active = self.identity_vlm_enabled and not isinstance(
             self.identity_judge, NullIdentityJudge
         )
+        self.location_scene_validity_enabled = bool(
+            pol.location_scene_validity_enabled
+        )
+        self.location_scene_validity_policy = LocationSceneValidityPolicy(
+            min_crop_area_fraction=float(
+                pol.location_scene_min_crop_area_fraction
+            ),
+            max_foreground_accept=float(
+                pol.location_scene_max_foreground_accept
+            ),
+            max_foreground_union_accept=float(
+                pol.location_scene_max_foreground_union_accept
+            ),
+            foreground_hard_reject=float(
+                pol.location_scene_foreground_hard_reject
+            ),
+            foreground_union_hard_reject=float(
+                pol.location_scene_foreground_union_hard_reject
+            ),
+            min_place_support_count=max(
+                1, int(pol.location_scene_min_place_support_count)
+            ),
+            min_place_support_ratio=min(
+                1.0, max(0.0, float(pol.location_scene_min_place_support_ratio))
+            ),
+        )
+        self.location_resolver_shadow_enabled = bool(
+            pol.location_resolver_shadow_enabled
+        )
+        self.location_resolver_policy = LocationResolverPolicy(
+            min_visual_similarity=float(
+                pol.location_resolver_min_visual_similarity
+            ),
+            min_independent_support=max(
+                1, int(pol.location_resolver_min_independent_support)
+            ),
+            allow_continuity_support=bool(
+                pol.location_resolver_allow_continuity_support
+            ),
+        )
 
     # --- public aliases matching older InverseIngester API ---
     @property
@@ -599,6 +671,30 @@ class MemoryUpdater:
             )
         )
         return min(1.0, max(0.0, weight))
+
+    def _location_resolution_proposal(self, obs: Observation) -> dict[str, Any] | None:
+        """Build a shadow-only location identity proposal from causal evidence."""
+        if (
+            not self.location_resolver_shadow_enabled
+            or obs.kind is not AssetType.LOCATION
+        ):
+            return None
+        raw = obs.angle_meta.get("location_resolution_evidence")
+        evidence = LocationResolutionEvidence.from_mapping(raw)
+        candidate = (
+            self.bank.get_asset(evidence.candidate_asset_id)
+            if evidence.candidate_asset_id
+            else self.bank.find_by_name(obs.name, kind=AssetType.LOCATION)
+        )
+        if candidate is not None and not evidence.candidate_asset_id:
+            evidence = replace(evidence, candidate_asset_id=candidate.asset_id)
+        proposal = propose_location_resolution(
+            incoming_name=obs.name,
+            candidate_name=candidate.name if candidate is not None else "",
+            evidence=evidence,
+            policy=self.location_resolver_policy,
+        )
+        return proposal.to_dict()
 
     def _embed(self, path: str, kind: AssetType | str | None = None) -> Vector:
         """Encode a crop through the SAME route the decomposer would use.
@@ -761,33 +857,62 @@ class MemoryUpdater:
         deprecated_reps = [rep for rep in asset.representations if rep.deprecated]
         active = [rep for rep in asset.representations if not rep.deprecated]
 
-        # ③ identity visibility → anchor eligibility. A crop that cannot verify WHO
-        # (back-of-head / heavy occlusion / unresolvable blur) stays as a cross-view
-        # diversity rep but must NOT seed the identity anchor (axiom 5 preserved).
-        # Heavy occlusion is downgraded to non-anchor here even when the classifier left
-        # identity_visible at its permissive default: you cannot verify WHO through it,
-        # but it is NOT hard-rejected (it may still add cross-view diversity).
-        identity_visible = _rep_identity_visible(new_rep) and not _rep_occlusion_heavy(new_rep)
         aspect = _reference_aspect(asset.kind)
-        if not identity_visible:
+        if (
+            asset.kind is AssetType.LOCATION
+            and self.location_scene_validity_enabled
+        ):
+            # WHERE admission is deliberately independent from WHO/WHAT visibility.
+            # A whole-frame/referring candidate has no authority by itself: absent
+            # detector/place evidence is quarantined rather than guessed valid.
+            scene_evidence = LocationSceneEvidence.from_annotations(new_rep.annotations)
+            scene_decision = evaluate_location_scene(
+                scene_evidence,
+                policy=self.location_scene_validity_policy,
+            )
+            new_rep.annotations["scene_validity"] = scene_decision.to_annotations()
+            new_rep.annotations["scene_reference_eligible"] = (
+                scene_decision.scene_reference_eligible
+            )
+            if scene_decision.status is SceneValidityStatus.REJECT:
+                new_rep.annotations["admission"] = "rejected_location_scene_invalid"
+                return False
+            reference_eligible = scene_decision.scene_reference_eligible
+        else:
+            # WHO/WHAT identity visibility → anchor eligibility. A crop that cannot
+            # verify the entity stays as a diversity rep but cannot seed its reference.
+            reference_eligible = (
+                _rep_identity_visible(new_rep)
+                and not _rep_occlusion_heavy(new_rep)
+            )
+            if reference_eligible:
+                new_rep.annotations.setdefault("identity_anchor_eligible", True)
+            else:
+                new_rep.annotations["identity_anchor_eligible"] = False
+
+        if not reference_eligible:
             new_rep.reference_aspects = [a for a in new_rep.reference_aspects if a != aspect]
             if aspect not in new_rep.excluded_aspects:
                 new_rep.excluded_aspects.append(aspect)
-            new_rep.annotations["identity_anchor_eligible"] = False
-        else:
-            new_rep.annotations.setdefault("identity_anchor_eligible", True)
 
-        # ② embedding cohesion admission: compare only among identity-visible evidence
+        # ② embedding cohesion admission: compare only among reference-eligible evidence
         # and only once a stable visible cluster exists. Off by default (floor=0), as
         # the offline fallback embedder is non-semantic; production sets a calibrated
         # per-type floor with a real encoder.
         cohesion_floor = self.cohesion_for(asset.kind)
-        if cohesion_floor > 0.0 and identity_visible:
+        if cohesion_floor > 0.0 and reference_eligible:
             new_emb = new_rep.annotations.get("embedding")
             ref_embs = [
                 rep.annotations.get("embedding")
                 for rep in active
-                if rep.annotations.get("identity_anchor_eligible", True)
+                if (
+                    rep.annotations.get("scene_reference_eligible") is True
+                    if (
+                        asset.kind is AssetType.LOCATION
+                        and self.location_scene_validity_enabled
+                    )
+                    else rep.annotations.get("identity_anchor_eligible", True)
+                )
             ]
             ref_embs = [emb for emb in ref_embs if emb]
             if new_emb is not None and len(ref_embs) >= self.cohesion_min_refs:
@@ -955,7 +1080,14 @@ class MemoryUpdater:
                 rep
                 for rep in asset.representations
                 if not rep.deprecated
-                and _rep_identity_visible(rep)
+                and (
+                    rep.annotations.get("scene_reference_eligible") is True
+                    if (
+                        asset.kind is AssetType.LOCATION
+                        and self.location_scene_validity_enabled
+                    )
+                    else _rep_identity_visible(rep)
+                )
                 and rep.annotations.get("embedding")
             ]
             # Only compare embeddings that live in the same space. A single rep encoded
@@ -1377,6 +1509,7 @@ class MemoryUpdater:
         pack_cache = self._batch_classify_cache(observations, segment_id)
         for obs in observations:
             reconcile_meta: dict[str, Any] = {}
+            location_resolution_proposal = self._location_resolution_proposal(obs)
             # χ reconciliation compares the observation's embedding against existing reps, so a
             # discovered observation must be embedded BEFORE reconcile (otherwise visual_sim is
             # unavailable and identity collapses to text-only, never merging two crops of the
@@ -1482,6 +1615,10 @@ class MemoryUpdater:
                 annotations["source_frame"] = obs.source_frame_path
             if reconcile_meta:
                 annotations["identity_reconciliation"] = reconcile_meta
+            if location_resolution_proposal is not None:
+                annotations["location_resolution_proposal"] = (
+                    location_resolution_proposal
+                )
             if obs.embedding is not None:
                 annotations["embedding"] = obs.embedding
             elif self.embed_on_ingest:

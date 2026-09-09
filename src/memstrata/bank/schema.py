@@ -122,6 +122,8 @@ class StateAngle(str, Enum):
 
 class RelationType(str, Enum):
     PART_OF = "part_of"
+    ADJACENT_TO = "adjacent_to"
+    INTERIOR_OF = "interior_of"
     LOCATED_IN = "located_in"
     REPLACES = "replaces"
     DEPRECATED_BY = "deprecated_by"
