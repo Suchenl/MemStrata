@@ -19,6 +19,12 @@ stratified `AssetBank`, building a reusable per-entity visual library:
 | self-audit | per-asset cohesion sweep (medoid / subcluster) retroactively isolates mixed-identity intruders |
 | budget | `max_total_representations` evicts weakest live reps, each asset keeps ≥1 |
 
+When `location_adaptive_storage_enabled` is explicit, scene-valid location
+representations use `location_coreset.py`: compatible environment/view/light evidence
+updates a streaming cluster representative, while genuinely different strata create a
+new cluster. `location_storage_cap` (default 12 in the adaptive profile) is only an
+overflow guardrail, not a fixed target K. Character and prop storage remain unchanged.
+
 ## Entry points
 
 - `MemoryUpdater` — the curator class (back-compat aliases: `AssetCurator`, `InverseIngester`).

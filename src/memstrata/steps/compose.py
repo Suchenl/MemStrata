@@ -18,9 +18,10 @@ from memstrata.skills.composition.compose import (
     select_representations_for_function,
     usable_representation_ids,
 )
+from memstrata.skills.composition.policy import CompositionPolicy
 
 __all__ = [
     "ActiveComposer", "ComposedContext", "compose", "is_usable", "select_reps",
     "select_reps_for_function", "select_representations", "select_representations_for_function",
-    "usable_representation_ids",
+    "usable_representation_ids", "CompositionPolicy",
 ]

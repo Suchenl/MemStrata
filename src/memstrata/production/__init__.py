@@ -9,6 +9,7 @@ logic lives in ``scripts/`` — those are thin bash launchers only.
 from __future__ import annotations
 
 __all__ = [
+    "LOCATION_ADAPTIVE_V1",
     "PAPER_TRACKA_202607",
     "build_pipeline",
     "build_realized_segment_pipeline",
@@ -24,6 +25,10 @@ def __getattr__(name: str):
         from memstrata.production.profiles import PAPER_TRACKA_202607
 
         return PAPER_TRACKA_202607
+    if name == "LOCATION_ADAPTIVE_V1":
+        from memstrata.production.profiles import LOCATION_ADAPTIVE_V1
+
+        return LOCATION_ADAPTIVE_V1
     if name == "build_realized_segment_pipeline":
         from memstrata.production.realized import build_realized_segment_pipeline
 

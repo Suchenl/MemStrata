@@ -16,3 +16,7 @@ recency_cap = "K assets kept when falling back to recency / description match (d
 max_reps_per_asset = "reps a named asset may contribute to C_n (default 1)"
 context_rep_budget = "hard cap on total reps in C_n (None = uncapped)"
 relation_hops = "bounded structural expansion (PART_OF / LOCATED_IN), default 0"
+adaptive_location_enabled = "explicit opt-in: globally allocate causal scene-valid location representatives"
+location_read_max_refs = "per-location safety ceiling for adaptive 1-N reads (adaptive profile default 4)"
+location_extra_budget_share = "maximum share of the global budget consumed by location extras"
+location_min_marginal_gain = "stop adding location views when conditional coverage gain falls below this value"

@@ -446,6 +446,8 @@ def _run_loop(
             "prompt": shot.prompt, "route_mode": decision.mode.value, "used_mode": used,
             "route_source": decision.source, "transition": shot.transition,
             "selected_assets": segment.context.asset_ids, "composed_refs": composed_refs,
+            "selection_trace": segment.context.selection_trace,
+            "representation_scores": segment.context.representation_scores,
             # Which read path answered this segment. "name_recovered" means the primary path
             # returned nothing for a name the bank still holds and the deterministic rematch
             # had to save it — a defect signal worth grepping for after a run, not a normal hit.

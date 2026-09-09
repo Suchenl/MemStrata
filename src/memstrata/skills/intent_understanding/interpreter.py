@@ -84,9 +84,13 @@ class AssetReference:
     representation_id: str | None = None
     function: str = "identity_anchor"
     requirement: str = "continuity"  # introduce | continuity
+    must_include: bool = True
     preferred_spatial: SpatialAngle | None = None
     preferred_state: StateAngle | None = None
     preferred_count: int | None = None
+    # Optional, causal generation intent. Producers may only derive this from the
+    # current raw prompt and prior planner state, never target media.
+    location_hints: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -316,6 +320,7 @@ class IntentInterpreter:
         intent_resolution_source = "recency"
         state_by_id: dict[str, StateAngle] = {}
         count_by_id: dict[str, int] = {}
+        must_include_by_id: dict[str, bool] = {}
         forbidden_ids: tuple[str, ...] = ()
         retired_ids: tuple[str, ...] = ()
         route = ""
@@ -361,6 +366,7 @@ class IntentInterpreter:
                         selected_ids = resolved.selected_ids
                         state_by_id = resolved.state_by_id
                         count_by_id = resolved.count_by_id
+                        must_include_by_id = resolved.must_include_by_id
                         intent_resolution_source = "plan"
                         plan_committed = True
                     else:
@@ -459,6 +465,7 @@ class IntentInterpreter:
                     asset_id=asset_id,
                     function=FUNCTION_BY_TYPE.get(asset.kind, "identity_anchor"),
                     requirement=_requirement(asset, segment_id),
+                    must_include=must_include_by_id.get(asset_id, True),
                     preferred_spatial=preferred_spatial,
                     preferred_state=preferred_state,
                     preferred_count=count_by_id.get(asset_id),

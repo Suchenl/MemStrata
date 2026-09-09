@@ -23,6 +23,7 @@ from memstrata.mllm.crop_attributes import (
     build_crop_attribute_classifier,
 )
 from memstrata.skills.memory_update import export_memory_snapshot
+from memstrata.skills.composition.policy import CompositionPolicy
 from memstrata.steps.compose import ComposedContext, compose
 from memstrata.steps.curate import MemoryPolicy, MemoryUpdater, stratification_report
 from memstrata.steps.decompose import (
@@ -138,6 +139,7 @@ class MemStrata:
         relation_hops: int | None = None,
         read_max_reps_per_asset: int | None = None,
         read_context_rep_budget: int | None = None,
+        composition_policy: CompositionPolicy | None = None,
         max_total_representations: int | None = None,
         attributes_when_angles_known: bool | None = None,
         run_dir: str | Path | None = None,
@@ -200,6 +202,7 @@ class MemStrata:
             # costs one extra call on the rare segment that would otherwise compose nothing.
             slow_on_miss=slow_on_miss,
         )
+        self.composition_policy = composition_policy or CompositionPolicy()
         self.generator = generator or NullGenerator()
         self.relation_hops = max(0, int(self.policy.relation_hops))
         # Production closed loop: classify crop → [image + angle] before curate.
@@ -298,12 +301,32 @@ class MemStrata:
     def step1_compose(self, prompt: str, *, segment_id: int) -> tuple[CompositionRequest, ComposedContext, int]:
         request, model_calls = self.interpreter.interpret(prompt, segment_id=segment_id)
         request.relation_hops = self.relation_hops
-        context = compose(self.bank, request, as_of_segment_id=segment_id)
+        context = compose(
+            self.bank,
+            request,
+            as_of_segment_id=segment_id,
+            raw_prompt=prompt,
+            policy=self.composition_policy,
+        )
         # After composing, never before: the beat that destroys a prop is usually the beat that
         # shows it being destroyed, so retiring it first would strip the reference from the one
         # shot that needs it most. Retirement is a statement about every LATER beat.
         self._retire(request.retired_asset_ids, segment_id=segment_id)
         return request, context, model_calls
+
+    def set_read_context_budget(self, budget: int) -> None:
+        """Set the method-internal hard budget before an external B-sweep.
+
+        Benchmark adapters may call this thin method from their ``set_budget`` hook;
+        all allocation logic remains inside MemStrata.
+        """
+
+        bounded = max(1, int(budget))
+        self.interpreter.context_rep_budget = bounded
+        self.composition_policy = replace(
+            self.composition_policy,
+            global_rep_budget=bounded,
+        )
 
     def _retire(self, asset_ids: tuple[str, ...], *, segment_id: int) -> None:
         """Apply the plan's permanent removals to the bank's lifecycle.

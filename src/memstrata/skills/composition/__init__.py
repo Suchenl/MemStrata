@@ -35,6 +35,7 @@ from memstrata.skills.composition.compose import (
     select_representations_for_function,
     usable_representation_ids,
 )
+from memstrata.skills.composition.policy import CompositionPolicy
 
 __all__ = [
     "FUNCTION_BY_TYPE", "INTENT_MODE_FAST", "INTENT_MODE_PLAN", "INTENT_MODE_SLOW",
@@ -42,5 +43,5 @@ __all__ = [
     "AssetReference", "CompositionRequest", "IntentInterpreter", "IntentResolver",
     "MllmIntentResolver", "ActiveComposer", "ComposedContext", "compose", "select_reps",
     "select_reps_for_function", "select_representations", "select_representations_for_function",
-    "usable_representation_ids",
+    "usable_representation_ids", "CompositionPolicy",
 ]

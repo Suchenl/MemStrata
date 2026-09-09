@@ -14,6 +14,7 @@ from memstrata.mllm.angle_classifier import build_angle_classifier
 from memstrata.mllm.crop_attributes import build_crop_attribute_classifier
 from memstrata.pipeline import MemStrata, build_curator, build_decomposer
 from memstrata.production.profiles import ProductionProfile, resolve_production_profile
+from memstrata.skills.composition.policy import CompositionPolicy
 from memstrata.skills.memory_update import MemoryPolicy
 
 
@@ -56,9 +57,13 @@ def build_realized_segment_pipeline(
     require_mllm: bool | None = None,
     resume: bool = False,
     seed_screenplay: dict[str, Any] | None = None,
-    location_scene_validity_enabled: bool = False,
+    location_scene_validity_enabled: bool | None = None,
     location_resolver_shadow_enabled: bool = False,
     location_scene_plate_candidates: bool = False,
+    location_adaptive_enabled: bool | None = None,
+    location_storage_cap: int | None = None,
+    location_read_max_refs: int | None = None,
+    location_extra_budget_share: float = 0.50,
 ) -> MemStrata:
     """Build the production read/write implementation shared by formal Track A runs."""
     from memstrata.skills.crop_acquisition.crop_client import (
@@ -83,6 +88,7 @@ def build_realized_segment_pipeline(
             "require_wedetect": (require_wedetect, selected.require_wedetect),
             "mllm_model": (mllm_model, selected.mllm_model),
             "require_mllm": (require_mllm, selected.require_mllm),
+            "location_adaptive_enabled": (location_adaptive_enabled, False),
         }
         invalid = [
             f"{name}={actual!r}"
@@ -105,6 +111,37 @@ def build_realized_segment_pipeline(
         selected.read_max_reps_per_asset
         if read_max_reps_per_asset is None
         else max(1, int(read_max_reps_per_asset))
+    )
+    adaptive_location = (
+        selected.adaptive_location_memory
+        if location_adaptive_enabled is None
+        else bool(location_adaptive_enabled)
+    )
+    scene_validity = (
+        adaptive_location
+        if location_scene_validity_enabled is None
+        else bool(location_scene_validity_enabled)
+    )
+    read_budget = (
+        selected.read_context_rep_budget
+        if read_context_rep_budget is None
+        else max(1, int(read_context_rep_budget))
+    )
+    storage_cap = max(
+        1,
+        int(
+            selected.location_storage_cap
+            if location_storage_cap is None
+            else location_storage_cap
+        ),
+    )
+    read_location_max = max(
+        1,
+        int(
+            selected.location_read_max_refs
+            if location_read_max_refs is None
+            else location_read_max_refs
+        ),
     )
     strict_wedetect = (
         selected.require_wedetect if require_wedetect is None else bool(require_wedetect)
@@ -145,8 +182,16 @@ def build_realized_segment_pipeline(
     persisted = Path(persist_path) if persist_path else root / "bank.json"
     policy = MemoryPolicy.production(
         discovery=bool(discovery),
-        location_scene_validity_enabled=bool(location_scene_validity_enabled),
+        location_scene_validity_enabled=scene_validity,
         location_resolver_shadow_enabled=bool(location_resolver_shadow_enabled),
+        location_adaptive_storage_enabled=adaptive_location,
+        location_storage_cap=storage_cap,
+    )
+    composition_policy = CompositionPolicy(
+        adaptive_location_enabled=adaptive_location,
+        global_rep_budget=read_budget,
+        location_read_max_refs=read_location_max,
+        location_extra_budget_share=location_extra_budget_share,
     )
     mode = angle_classifier_mode or None
     angle_classifier = build_angle_classifier(mode=mode)
@@ -231,7 +276,7 @@ def build_realized_segment_pipeline(
             "embedder_provider": embedding,
             "read_slow_fallback": slow_fallback,
             "read_max_reps_per_asset": read_reps,
-            "read_context_rep_budget": read_context_rep_budget,
+            "read_context_rep_budget": read_budget,
             "grounding_backend": "wedetect_ref",
             "require_wedetect": strict_wedetect,
             "mllm_base_url": configured_mllm_url,
@@ -245,7 +290,7 @@ def build_realized_segment_pipeline(
                 {
                     "location_memory_v2": {
                         "scene_validity_enabled": bool(
-                            location_scene_validity_enabled
+                            scene_validity
                         ),
                         "resolver_shadow_enabled": bool(
                             location_resolver_shadow_enabled
@@ -253,12 +298,19 @@ def build_realized_segment_pipeline(
                         "scene_plate_candidates": bool(
                             location_scene_plate_candidates
                         ),
+                        "adaptive_storage_read": adaptive_location,
+                        "storage_cap_guardrail": storage_cap,
+                        "read_max_refs": read_location_max,
+                        "location_extra_budget_share": float(
+                            location_extra_budget_share
+                        ),
                     }
                 }
                 if (
-                    location_scene_validity_enabled
+                    scene_validity
                     or location_resolver_shadow_enabled
                     or location_scene_plate_candidates
+                    or adaptive_location
                 )
                 else {}
             ),
@@ -275,7 +327,8 @@ def build_realized_segment_pipeline(
         movie_id=movie_id,
         slow_on_miss=slow_fallback,
         read_max_reps_per_asset=read_reps,
-        read_context_rep_budget=read_context_rep_budget,
+        read_context_rep_budget=read_budget,
+        composition_policy=composition_policy,
     )
 
 

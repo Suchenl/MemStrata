@@ -70,6 +70,7 @@ class ResolvedPlan:
     selected_ids: list[str] = field(default_factory=list)
     state_by_id: dict[str, StateAngle] = field(default_factory=dict)
     count_by_id: dict[str, int] = field(default_factory=dict)
+    must_include_by_id: dict[str, bool] = field(default_factory=dict)
     forbidden_ids: list[str] = field(default_factory=list)
     retired_ids: list[str] = field(default_factory=list)
     # Ids the plan both asked for and ruled out; resolved in favour of the reference and reported
@@ -243,9 +244,11 @@ def resolve_plan(plan: IntentPlanV1, bank: AssetBank, name_to_ids) -> ResolvedPl
     future rather than this shot; see the comment on that branch.
     """
     referenced_ids: dict[str, int | None] = {}
+    must_include_by_id: dict[str, bool] = {}
     for ref in plan.references:
         for aid in name_to_ids(ref.name):
             referenced_ids.setdefault(aid, ref.count_required)
+            must_include_by_id[aid] = must_include_by_id.get(aid, False) or ref.must_include
 
     retiring_ids: dict[str, None] = {}  # ordered set: retirement order must be reproducible
     for name in plan.retired:
@@ -306,6 +309,7 @@ def resolve_plan(plan: IntentPlanV1, bank: AssetBank, name_to_ids) -> ResolvedPl
         selected_ids=selected,
         state_by_id=state_by_id,
         count_by_id=count_by_id,
+        must_include_by_id=must_include_by_id,
         forbidden_ids=forbidden,
         retired_ids=retired_ids,
         self_conflicts=self_conflicts,

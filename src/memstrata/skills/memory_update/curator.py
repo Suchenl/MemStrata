@@ -63,6 +63,11 @@ from memstrata.skills.location_scene_validity import (
     SceneValidityStatus,
     evaluate_location_scene,
 )
+from memstrata.skills.memory_update.location_coreset import (
+    CORESET_KEY,
+    LocationCoresetPolicy,
+    update_location_coreset,
+)
 from memstrata.skills.memory_update.location_resolver import (
     LocationResolutionEvidence,
     LocationResolverPolicy,
@@ -204,6 +209,15 @@ class MemoryPolicy:
     location_resolver_min_visual_similarity: float = 0.80
     location_resolver_min_independent_support: int = 2
     location_resolver_allow_continuity_support: bool = True
+
+    # --- adaptive location coreset -----------------------------------------------
+    # The cap is a guardrail against noisy strata/embeddings, not a target K.  The live
+    # count follows the number of distinct scene-valid clusters observed for each place.
+    location_adaptive_storage_enabled: bool = False
+    location_storage_cap: int = 12
+    location_cluster_join_distance: float = 0.22
+    location_cluster_merge_distance: float = 0.10
+    location_representative_replace_margin: float = 0.02
 
     @classmethod
     def production(cls, **overrides: Any) -> MemoryPolicy:
@@ -633,6 +647,19 @@ class MemoryUpdater:
                 pol.location_resolver_allow_continuity_support
             ),
         )
+        self.location_coreset_policy = LocationCoresetPolicy(
+            enabled=bool(pol.location_adaptive_storage_enabled),
+            storage_cap=max(1, int(pol.location_storage_cap)),
+            cluster_join_distance=max(
+                0.0, float(pol.location_cluster_join_distance)
+            ),
+            cluster_merge_distance=max(
+                0.0, float(pol.location_cluster_merge_distance)
+            ),
+            representative_replace_margin=max(
+                0.0, float(pol.location_representative_replace_margin)
+            ),
+        )
 
     # --- public aliases matching older InverseIngester API ---
     @property
@@ -900,7 +927,18 @@ class MemoryUpdater:
         # the offline fallback embedder is non-semantic; production sets a calibrated
         # per-type floor with a real encoder.
         cohesion_floor = self.cohesion_for(asset.kind)
-        if cohesion_floor > 0.0 and reference_eligible:
+        if (
+            cohesion_floor > 0.0
+            and reference_eligible
+            # Adaptive location storage treats a distant, scene-valid observation as
+            # a possible new view/light cluster. Location identity remains the resolver's
+            # responsibility; the object-centric cohesion gate must not erase cross-view
+            # evidence before the coreset sees it.
+            and not (
+                asset.kind is AssetType.LOCATION
+                and self.location_coreset_policy.enabled
+            )
+        ):
             new_emb = new_rep.annotations.get("embedding")
             ref_embs = [
                 rep.annotations.get("embedding")
@@ -939,6 +977,17 @@ class MemoryUpdater:
                     else:
                         new_rep.annotations["admission"] = "rejected_low_cohesion"
                         return False
+
+        if (
+            asset.kind is AssetType.LOCATION
+            and self.location_coreset_policy.enabled
+            and not _is_placeholder_rep(new_rep)
+        ):
+            return update_location_coreset(
+                asset,
+                new_rep,
+                policy=self.location_coreset_policy,
+            )
 
         new_bucket = _attr_bucket(new_rep)
         covered = {_attr_bucket(rep) for rep in active}
@@ -1793,6 +1842,25 @@ class MemoryUpdater:
                 break
             if live_per_asset[asset_id] <= 1:
                 continue  # protect each asset's last live representation
+            asset = self.bank.get_asset(asset_id)
+            coreset = asset.metadata.get(CORESET_KEY) if asset is not None else None
+            if (
+                asset is not None
+                and asset.kind is AssetType.LOCATION
+                and isinstance(coreset, dict)
+            ):
+                canonical_cluster = str(coreset.get("canonical_cluster_id") or "")
+                canonical_rep = next(
+                    (
+                        str(cluster.get("representative_rep_id") or "")
+                        for cluster in coreset.get("clusters", [])
+                        if isinstance(cluster, dict)
+                        and str(cluster.get("cluster_id") or "") == canonical_cluster
+                    ),
+                    "",
+                )
+                if rep.representation_id == canonical_rep:
+                    continue
             rep.deprecated = True
             rep.deprecated_by = "global_budget"
             rep.annotations["admission"] = "retired_global_budget"

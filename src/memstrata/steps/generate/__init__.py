@@ -208,6 +208,8 @@ class MediaTaskGenerator:
             "composed_asset_ids": list(context.asset_ids),
             "composed_functions": dict(context.functions),
             "exclusions": list(context.exclusions),
+            "selection_trace": dict(context.selection_trace),
+            "representation_scores": dict(context.representation_scores),
         }
         self.history.append(record)
         if self.log_dir is not None:
@@ -227,6 +229,8 @@ class MediaTaskGenerator:
                     "requirements": context.requirements,
                     "exclusions": context.exclusions,
                     "enhanced_prompt": context.enhanced_prompt,
+                    "selection_trace": context.selection_trace,
+                    "representation_scores": context.representation_scores,
                 }, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )

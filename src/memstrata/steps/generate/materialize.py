@@ -26,10 +26,12 @@ def composed_reference_images(
         asset = bank.get_asset(asset_id)
         if asset is None:
             continue
-        chosen = set(composed.representation_ids.get(asset_id, []))
+        has_explicit_selection = asset_id in composed.representation_ids
+        chosen = list(composed.representation_ids.get(asset_id, []))
         reps = asset.representations
-        if chosen:
-            reps = [r for r in reps if r.representation_id in chosen] or reps
+        if has_explicit_selection:
+            by_id = {rep.representation_id: rep for rep in reps}
+            reps = [by_id[rep_id] for rep_id in chosen if rep_id in by_id]
         for rep in reps:
             if rep.deprecated:
                 continue
@@ -41,7 +43,7 @@ def composed_reference_images(
                 continue
             image = str(path.resolve())
             if image in seen_images:
-                break
+                continue
             seen_images.add(image)
             role = composed.functions.get(asset_id) or (
                 rep.reference_aspects[0] if rep.reference_aspects else "reference"
@@ -53,7 +55,11 @@ def composed_reference_images(
                 "role": role,
                 "image": image,
             })
-            break
+            # Legacy callers that did not provide explicit representation ids retain
+            # the historical one-image fallback. Explicit adaptive selections materialize
+            # every chosen representative in their ranked order.
+            if not has_explicit_selection:
+                break
     return refs
 
 

@@ -23,6 +23,10 @@ C_n (ComposedContext: chosen representation ids per asset, functions, exclusions
 - **`compose.py`** — `compose()`: dereferences `q_n` against the bank with stratified rep selection
   (spatial/state angle → per-purpose quality → recency), bounded relation expansion
   (`PART_OF`/`LOCATED_IN`), minimal-sufficient budget trimming, and deprecated-rep exclusion.
+- **Adaptive location policy (explicit opt-in)** — scans only representatives of already-addressed
+  location assets, ranks them from the raw prompt / causal planner hints, reserves one rep for
+  each feasible named asset, then allocates complementary reps by global marginal gain under
+  `context_rep_budget`. It never receives target media or searches the full bank.
 
 ## Backward compatibility
 
@@ -40,3 +44,8 @@ C_n (ComposedContext: chosen representation ids per asset, functions, exclusions
 | `context_rep_budget` | hard cap on total reps in `C_n` |
 | `relation_hops` | bounded structural expansion depth |
 | `disable_name_anchor` | ablation: name anchoring off → recency proxy |
+
+`CompositionPolicy(adaptive_location_enabled=True)` adds the independently versioned
+location controls: a global budget (16 in `location_adaptive_v1`), at most four location
+representatives per asset, an extra-budget share guard, and marginal-gain/diversity stops.
+The default policy is legacy and produces the historical output.
