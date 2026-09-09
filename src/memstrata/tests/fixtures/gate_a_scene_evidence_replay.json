@@ -251,5 +251,96 @@
       "temporal_visual_support_count": 3,
       "temporal_visual_observation_count": 3
     }
+  ],
+  "attempt03_must_accept": [
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.02215049782277992,
+      "foreground_union_coverage": 0.02215049782277992,
+      "foreground_critical_max_coverage": 0.02215049782277992,
+      "foreground_critical_union_coverage": 0.02215049782277992,
+      "foreground_max_score": 0.4522424340248108,
+      "foreground_detection_schema": "memstrata.foreground_detection.v1",
+      "foreground_detections": [
+        {
+          "bbox": [248.0, 349.0, 376.0, 392.0],
+          "score": 0.4522424340248108,
+          "label": "person",
+          "category": "person",
+          "candidate_coverage": 0.02215049782277992
+        },
+        {
+          "bbox": [248.0, 350.0, 374.0, 391.0],
+          "score": 0.3418186902999878,
+          "label": "human body",
+          "category": "human_body",
+          "candidate_coverage": 0.020790238327122287
+        }
+      ],
+      "crop_area_fraction": 0.248482,
+      "content_area_fraction": 0.2660406852248394,
+      "crop_quality_accepted": true,
+      "shot_size": "medium",
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 1,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.451616
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.140182,
+      "foreground_union_coverage": 0.229966,
+      "foreground_critical_max_coverage": 0.140182,
+      "foreground_critical_union_coverage": 0.229966,
+      "foreground_max_score": 0.5449,
+      "foreground_detection_schema": "memstrata.foreground_detection.v1",
+      "foreground_detections": [
+        {
+          "bbox": [100.0, 200.0, 400.0, 500.0],
+          "score": 0.5449,
+          "label": "bird",
+          "category": "bird",
+          "candidate_coverage": 0.09
+        }
+      ],
+      "crop_area_fraction": 1.0,
+      "content_area_fraction": 1.0,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 2,
+      "temporal_visual_observation_count": 3
+    }
+  ],
+  "attempt03_must_not_accept": [
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.31227305737109656,
+      "foreground_union_coverage": 0.31227305737109656,
+      "foreground_critical_max_coverage": 0.31227305737109656,
+      "foreground_critical_union_coverage": 0.31227305737109656,
+      "foreground_max_score": 0.5449,
+      "foreground_detection_schema": "memstrata.foreground_detection.v1",
+      "foreground_detections": [
+        {
+          "bbox": [100.0, 200.0, 500.0, 800.0],
+          "score": 0.5449,
+          "label": "bird",
+          "category": "bird",
+          "candidate_coverage": 0.31227305737109656
+        }
+      ],
+      "crop_area_fraction": 0.119799,
+      "content_area_fraction": 0.119799,
+      "crop_quality_accepted": true,
+      "shot_size": "close_up",
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 2,
+      "temporal_visual_observation_count": 3
+    }
   ]
 }

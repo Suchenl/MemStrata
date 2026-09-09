@@ -127,9 +127,11 @@ class LocationSceneEvidence:
 
         quality: bool | None = None
         if "crop_quality_accepted" in evidence:
-            quality = bool(evidence.get("crop_quality_accepted"))
+            raw_quality = evidence.get("crop_quality_accepted")
+            quality = raw_quality if isinstance(raw_quality, bool) else None
         elif "accepted" in crop_quality:
-            quality = bool(crop_quality.get("accepted"))
+            raw_quality = crop_quality.get("accepted")
+            quality = raw_quality if isinstance(raw_quality, bool) else None
 
         schema_version = str(evidence.get("schema_version") or "")
         schema_compatible = (
@@ -270,6 +272,14 @@ class LocationSceneValidityPolicy:
         ("human_body", 0.60),
         ("body_part", 0.60),
     )
+    candidate_local_support_rule_version: str = (
+        "memstrata.candidate_local_scene_support.v1"
+    )
+    candidate_local_support_min_crop_area_fraction: float = 0.20
+    candidate_local_support_min_content_area_fraction: float = 0.25
+    candidate_local_support_max_foreground: float = 0.05
+    candidate_local_support_max_foreground_union: float = 0.08
+    candidate_local_support_require_quality: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,14 +288,18 @@ class LocationSceneDecision:
     scene_reference_eligible: bool
     reasons: tuple[str, ...]
     evidence: LocationSceneEvidence
+    rule_version: str = ""
 
     def to_annotations(self) -> dict[str, Any]:
-        return {
+        annotations = {
             "status": self.status.value,
             "scene_reference_eligible": self.scene_reference_eligible,
             "reasons": list(self.reasons),
             "evidence": self.evidence.to_dict(),
         }
+        if self.rule_version:
+            annotations["rule_version"] = self.rule_version
+        return annotations
 
 
 def evaluate_location_scene(
@@ -458,6 +472,10 @@ def evaluate_location_scene(
         and effective_area >= pol.min_crop_area_fraction
     )
     wide_support = evidence.shot_size == "wide"
+    candidate_local_support = _has_candidate_local_scene_support(
+        evidence,
+        pol,
+    )
     temporal_support = False
     if (
         evidence.temporal_visual_status == "available"
@@ -474,7 +492,13 @@ def evaluate_location_scene(
             and temporal_ratio >= pol.min_place_support_ratio
         )
 
-    if not (area_support or wide_support or place_support or temporal_support):
+    if not (
+        area_support
+        or wide_support
+        or candidate_local_support
+        or place_support
+        or temporal_support
+    ):
         return LocationSceneDecision(
             SceneValidityStatus.QUARANTINE,
             False,
@@ -487,6 +511,8 @@ def evaluate_location_scene(
         reasons.append("broad_context")
     if wide_support:
         reasons.append("wide_shot")
+    if candidate_local_support:
+        reasons.append("candidate_local_scene_support")
     if place_support:
         reasons.append("temporal_place_support")
     if temporal_support:
@@ -496,6 +522,11 @@ def evaluate_location_scene(
         True,
         tuple(reasons),
         evidence,
+        (
+            pol.candidate_local_support_rule_version
+            if candidate_local_support
+            else ""
+        ),
     )
 
 
@@ -576,6 +607,36 @@ def _has_high_confidence_subject_alert(
         ):
             return True
     return False
+
+
+def _has_candidate_local_scene_support(
+    evidence: LocationSceneEvidence,
+    policy: LocationSceneValidityPolicy,
+) -> bool:
+    if (
+        evidence.coverage_semantics != COVERAGE_COMPLETE
+        or evidence.coverage_geometry != "bbox"
+        or evidence.crop_area_fraction is None
+        or evidence.content_area_fraction is None
+        or evidence.foreground_max_coverage is None
+        or evidence.foreground_union_coverage is None
+    ):
+        return False
+    if (
+        policy.candidate_local_support_require_quality
+        and evidence.crop_quality_accepted is not True
+    ):
+        return False
+    return (
+        evidence.crop_area_fraction
+        >= policy.candidate_local_support_min_crop_area_fraction
+        and evidence.content_area_fraction
+        >= policy.candidate_local_support_min_content_area_fraction
+        and evidence.foreground_max_coverage
+        <= policy.candidate_local_support_max_foreground
+        and evidence.foreground_union_coverage
+        <= policy.candidate_local_support_max_foreground_union
+    )
 
 
 __all__ = [

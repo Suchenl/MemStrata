@@ -531,6 +531,94 @@ def test_subject_review_categories_and_scores_are_configurable() -> None:
     )
 
 
+def test_low_foreground_substantial_local_scene_can_accept_without_temporal_support() -> None:
+    evidence = LocationSceneEvidence.from_annotations(
+        {
+            "scene_validity_evidence": {
+                "schema_version": SCENE_EVIDENCE_SCHEMA_VERSION,
+                "coverage_semantics": COVERAGE_COMPLETE,
+                "coverage_geometry": "bbox",
+                "foreground_max_coverage": 0.03,
+                "foreground_union_coverage": 0.06,
+                "crop_area_fraction": 0.22,
+                "content_area_fraction": 0.26,
+                "crop_quality_accepted": True,
+                "temporal_visual_status": "available",
+                "temporal_visual_support_count": 1,
+                "temporal_visual_observation_count": 3,
+            }
+        }
+    )
+    decision = evaluate_location_scene(evidence)
+
+    assert decision.status is SceneValidityStatus.ACCEPT
+    assert "candidate_local_scene_support" in decision.reasons
+    assert (
+        decision.rule_version
+        == "memstrata.candidate_local_scene_support.v1"
+    )
+
+
+@pytest.mark.parametrize(
+    ("missing_field", "value"),
+    [
+        ("crop_quality_accepted", None),
+        ("content_area_fraction", None),
+        ("foreground_union_coverage", None),
+    ],
+)
+def test_candidate_local_scene_support_fails_closed_on_incomplete_evidence(
+    missing_field: str,
+    value: object,
+) -> None:
+    raw = {
+        "schema_version": SCENE_EVIDENCE_SCHEMA_VERSION,
+        "coverage_semantics": COVERAGE_COMPLETE,
+        "coverage_geometry": "bbox",
+        "foreground_max_coverage": 0.03,
+        "foreground_union_coverage": 0.06,
+        "crop_area_fraction": 0.22,
+        "content_area_fraction": 0.26,
+        "crop_quality_accepted": True,
+        "temporal_visual_status": "available",
+        "temporal_visual_support_count": 1,
+        "temporal_visual_observation_count": 3,
+    }
+    raw[missing_field] = value
+    decision = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {"scene_validity_evidence": raw}
+        )
+    )
+
+    assert decision.status is SceneValidityStatus.QUARANTINE
+
+
+def test_candidate_local_scene_support_thresholds_are_configurable() -> None:
+    evidence = LocationSceneEvidence.from_annotations(
+        {
+            "scene_validity_evidence": {
+                "schema_version": SCENE_EVIDENCE_SCHEMA_VERSION,
+                "coverage_semantics": COVERAGE_COMPLETE,
+                "coverage_geometry": "bbox",
+                "foreground_max_coverage": 0.03,
+                "foreground_union_coverage": 0.06,
+                "crop_area_fraction": 0.22,
+                "content_area_fraction": 0.26,
+                "crop_quality_accepted": True,
+            }
+        }
+    )
+    stricter = LocationSceneValidityPolicy(
+        candidate_local_support_min_content_area_fraction=0.30,
+    )
+
+    assert (
+        evaluate_location_scene(evidence, policy=stricter).status
+        is SceneValidityStatus.QUARANTINE
+    )
+
+
 def test_archived_gate_a_schema_replay() -> None:
     replay = json.loads(_GATE_A_REPLAY.read_text())
     negative_decisions = [
@@ -565,6 +653,22 @@ def test_archived_gate_a_schema_replay() -> None:
         )
         for evidence in replay["category_controls_must_accept"]
     ]
+    attempt03_positive_decisions = [
+        evaluate_location_scene(
+            LocationSceneEvidence.from_annotations(
+                {"scene_validity_evidence": evidence}
+            )
+        )
+        for evidence in replay["attempt03_must_accept"]
+    ]
+    attempt03_negative_decisions = [
+        evaluate_location_scene(
+            LocationSceneEvidence.from_annotations(
+                {"scene_validity_evidence": evidence}
+            )
+        )
+        for evidence in replay["attempt03_must_not_accept"]
+    ]
 
     assert all(
         decision.status is not SceneValidityStatus.ACCEPT
@@ -581,6 +685,14 @@ def test_archived_gate_a_schema_replay() -> None:
     assert all(
         decision.status is SceneValidityStatus.ACCEPT
         for decision in category_control_decisions
+    )
+    assert all(
+        decision.status is SceneValidityStatus.ACCEPT
+        for decision in attempt03_positive_decisions
+    )
+    assert all(
+        decision.status is not SceneValidityStatus.ACCEPT
+        for decision in attempt03_negative_decisions
     )
 
 

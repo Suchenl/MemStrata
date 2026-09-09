@@ -221,6 +221,14 @@ class MemoryPolicy:
         ("human_body", 0.60),
         ("body_part", 0.60),
     )
+    location_scene_candidate_local_rule_version: str = (
+        "memstrata.candidate_local_scene_support.v1"
+    )
+    location_scene_candidate_local_min_crop_area: float = 0.20
+    location_scene_candidate_local_min_content_area: float = 0.25
+    location_scene_candidate_local_max_foreground: float = 0.05
+    location_scene_candidate_local_max_foreground_union: float = 0.08
+    location_scene_candidate_local_require_quality: bool = True
 
     # --- conservative location identity seam ------------------------------------
     # First stage is shadow-only: produce an auditable proposal without changing
@@ -688,6 +696,48 @@ class MemoryUpdater:
                 for category, threshold in (
                     pol.location_scene_subject_review_score_thresholds
                 )
+            ),
+            candidate_local_support_rule_version=str(
+                pol.location_scene_candidate_local_rule_version
+            ),
+            candidate_local_support_min_crop_area_fraction=min(
+                1.0,
+                max(
+                    0.0,
+                    float(
+                        pol.location_scene_candidate_local_min_crop_area
+                    ),
+                ),
+            ),
+            candidate_local_support_min_content_area_fraction=min(
+                1.0,
+                max(
+                    0.0,
+                    float(
+                        pol.location_scene_candidate_local_min_content_area
+                    ),
+                ),
+            ),
+            candidate_local_support_max_foreground=min(
+                1.0,
+                max(
+                    0.0,
+                    float(
+                        pol.location_scene_candidate_local_max_foreground
+                    ),
+                ),
+            ),
+            candidate_local_support_max_foreground_union=min(
+                1.0,
+                max(
+                    0.0,
+                    float(
+                        pol.location_scene_candidate_local_max_foreground_union
+                    ),
+                ),
+            ),
+            candidate_local_support_require_quality=bool(
+                pol.location_scene_candidate_local_require_quality
             ),
         )
         self.location_resolver_shadow_enabled = bool(
