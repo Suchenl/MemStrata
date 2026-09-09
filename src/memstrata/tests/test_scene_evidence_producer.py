@@ -21,6 +21,7 @@ from memstrata.skills.crop_acquisition.scene_evidence import (
     CachedSegmentSceneEvidenceProducer,
     SCENE_EVIDENCE_SCHEMA_VERSION,
     bbox_coverage,
+    normalized_bbox_area,
 )
 from memstrata.skills.location_scene_validity import (
     LocationSceneEvidence,
@@ -28,6 +29,12 @@ from memstrata.skills.location_scene_validity import (
     evaluate_location_scene,
 )
 from memstrata.steps.decompose import NamedEntity, RoleAwareDecomposer
+
+_GATE_A_REPLAY = (
+    Path(__file__).parent
+    / "fixtures"
+    / "gate_a_scene_evidence_replay.json"
+)
 
 
 def _frame(path: Path, *, bars: bool = False) -> Path:
@@ -72,6 +79,26 @@ class _BatchEmbedder:
     def embed_batch(self, paths: list[Path]) -> list[list[float]]:
         self.calls.append(list(paths))
         return self.vectors[: len(paths)]
+
+
+class _DetailedDetector:
+    def detect_batch_detailed(self, paths: list[Path], prompt: str):
+        del prompt
+        return [
+            [
+                {
+                    "bbox": [0, 0, 600, 1000],
+                    "score": 0.91,
+                    "label": "person",
+                },
+                {
+                    "bbox": [500, 0, 1000, 500],
+                    "score": 0.72,
+                    "label": "animal",
+                },
+            ]
+            for _ in paths
+        ]
 
 
 def _candidate(
@@ -158,6 +185,29 @@ def test_exact_and_content_corrected_area_are_both_reported(
     assert evidence["content_bbox"][2] < 1000
 
 
+def test_structured_detection_category_score_and_coverage_are_preserved(
+    tmp_path: Path,
+) -> None:
+    frame = _frame(tmp_path / "frame.png")
+    evidence = CachedSegmentSceneEvidenceProducer(
+        detector=_DetailedDetector(),
+        embedder=None,
+    ).collect_candidates(
+        frame_paths=[frame],
+        candidates=[_candidate(frame)],
+    )[0]
+
+    assert evidence["foreground_detection_schema"] == (
+        "memstrata.foreground_detection.v1"
+    )
+    assert evidence["foreground_max_score"] == pytest.approx(0.91)
+    assert evidence["foreground_critical_max_coverage"] == pytest.approx(0.60)
+    assert evidence["foreground_critical_union_coverage"] == pytest.approx(0.80)
+    assert {
+        row["category"] for row in evidence["foreground_detections"]
+    } == {"person", "animal"}
+
+
 def test_lower_bound_can_reject_but_cannot_accept(tmp_path: Path) -> None:
     frame = _frame(tmp_path / "frame.png")
     producer = CachedSegmentSceneEvidenceProducer(detector=None, embedder=None)
@@ -175,6 +225,8 @@ def test_lower_bound_can_reject_but_cannot_accept(tmp_path: Path) -> None:
     )
     low["foreground_max_coverage"] = 0.05
     low["foreground_union_coverage"] = 0.05
+    low["foreground_critical_max_coverage"] = 0.05
+    low["foreground_critical_union_coverage"] = 0.05
     low_decision = evaluate_location_scene(
         LocationSceneEvidence.from_annotations({"scene_validity_evidence": low})
     )
@@ -255,6 +307,96 @@ def test_schema_mismatch_is_quarantined() -> None:
     assert decision.reasons == ("scene_evidence_schema_mismatch",)
 
 
+def test_frame_temporal_support_cannot_rescue_tiny_candidate() -> None:
+    evidence = LocationSceneEvidence.from_annotations(
+        {
+            "scene_validity_evidence": {
+                "schema_version": SCENE_EVIDENCE_SCHEMA_VERSION,
+                "coverage_semantics": COVERAGE_COMPLETE,
+                "foreground_max_coverage": 0.0,
+                "foreground_union_coverage": 0.0,
+                "content_area_fraction": 0.05,
+                "temporal_visual_status": "available",
+                "temporal_visual_support_count": 5,
+                "temporal_visual_observation_count": 5,
+            }
+        }
+    )
+    decision = evaluate_location_scene(evidence)
+    assert decision.status is SceneValidityStatus.QUARANTINE
+    assert decision.reasons == ("insufficient_candidate_scene_context",)
+
+
+def test_existing_structured_wide_attribute_can_resolve_moderate_foreground() -> None:
+    raw = {
+        "schema_version": SCENE_EVIDENCE_SCHEMA_VERSION,
+        "coverage_semantics": COVERAGE_COMPLETE,
+        "foreground_max_coverage": 0.17,
+        "foreground_union_coverage": 0.29,
+        "content_area_fraction": 0.70,
+    }
+    without_attributes = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {"scene_validity_evidence": raw}
+        )
+    )
+    with_free_text_only = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {
+                "scene_validity_evidence": raw,
+                "crop_attributes": {
+                    "description": "a wide outdoor environment",
+                },
+            }
+        )
+    )
+    with_structured_attribute = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {
+                "scene_validity_evidence": raw,
+                "crop_attributes": {"shot_size": "wide"},
+            }
+        )
+    )
+
+    assert without_attributes.status is SceneValidityStatus.QUARANTINE
+    assert with_free_text_only.status is SceneValidityStatus.QUARANTINE
+    assert with_structured_attribute.status is SceneValidityStatus.ACCEPT
+    assert (
+        with_structured_attribute.evidence.candidate_local_scene_support_version
+        == "crop_attributes.shot_size.v1"
+    )
+
+
+def test_archived_gate_a_schema_replay() -> None:
+    replay = json.loads(_GATE_A_REPLAY.read_text())
+    negative_decisions = [
+        evaluate_location_scene(
+            LocationSceneEvidence.from_annotations(
+                {"scene_validity_evidence": evidence}
+            )
+        )
+        for evidence in replay["must_not_accept"]
+    ]
+    positive_decisions = [
+        evaluate_location_scene(
+            LocationSceneEvidence.from_annotations(
+                {"scene_validity_evidence": evidence}
+            )
+        )
+        for evidence in replay["must_accept"]
+    ]
+
+    assert all(
+        decision.status is not SceneValidityStatus.ACCEPT
+        for decision in negative_decisions
+    )
+    assert all(
+        decision.status is SceneValidityStatus.ACCEPT
+        for decision in positive_decisions
+    )
+
+
 class _SourceAwareProvider:
     def collect_candidates(self, *, frame_paths, candidates, lower_bound_bboxes=None):
         del frame_paths, lower_bound_bboxes
@@ -283,6 +425,35 @@ class _Grounder:
         return [([20, 20, 980, 980], 0.99)]
 
 
+class _TinyGrounder:
+    strict = False
+
+    def ground(self, frame_path, query, *, kind=""):
+        del frame_path, query, kind
+        return [([900, 300, 930, 700], 0.99)]
+
+
+class _AreaAwareProvider:
+    def collect_candidates(self, *, frame_paths, candidates, lower_bound_bboxes=None):
+        del frame_paths, lower_bound_bboxes
+        return [
+            {
+                "schema_version": SCENE_EVIDENCE_SCHEMA_VERSION,
+                "coverage_semantics": COVERAGE_COMPLETE,
+                "coverage_geometry": "bbox",
+                "foreground_max_coverage": 0.0,
+                "foreground_union_coverage": 0.0,
+                "crop_area_fraction": normalized_bbox_area(
+                    candidate["bbox_norm"]
+                ),
+                "temporal_visual_status": "available",
+                "temporal_visual_support_count": 3,
+                "temporal_visual_observation_count": 3,
+            }
+            for candidate in candidates
+        ]
+
+
 def test_whole_frame_survives_iou_and_text_score_but_needs_scene_decision(
     tmp_path: Path,
 ) -> None:
@@ -305,6 +476,38 @@ def test_whole_frame_survives_iou_and_text_score_but_needs_scene_decision(
     assert result["identity_gate"] == "off_location_scene"
     assert result["selected_score"] == 0.0
     assert result["scene_validity_evidence"]["coverage_semantics"] == COVERAGE_COMPLETE
+
+
+def test_tiny_temporally_stable_crop_defers_to_whole_frame_context(
+    tmp_path: Path,
+) -> None:
+    frame = _frame(tmp_path / "frame.png")
+    result = acquire_entity_crop(
+        frame,
+        entity_name="Any location",
+        entity_kind="location",
+        exemplar_vectors=[[1.0, 0.0]],
+        existing_rep_vectors=[],
+        out_dir=tmp_path / "out",
+        grounder=_TinyGrounder(),
+        min_side_px=1,
+        location_scene_plate_candidates=True,
+        location_scene_evidence_enabled=True,
+        scene_evidence_provider=_AreaAwareProvider(),
+    )
+
+    assert result is not None
+    assert result["source"] == "whole_frame_location_candidate"
+    decision = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {
+                "scene_validity_evidence": result[
+                    "scene_validity_evidence"
+                ]
+            }
+        )
+    )
+    assert decision.status is SceneValidityStatus.ACCEPT
 
 
 class _Bank:
@@ -433,15 +636,30 @@ def test_evidence_wiring_is_adaptive_or_explicit_only(tmp_path: Path) -> None:
     )
 
     assert "location_scene_evidence_enabled" not in legacy.decomposer.cropper.extra_acquire_kwargs
+    assert "location_scene_plate_candidates" not in (
+        legacy.decomposer.cropper.extra_acquire_kwargs
+    )
     assert adaptive.decomposer.cropper.extra_acquire_kwargs[
         "location_scene_evidence_enabled"
+    ] is True
+    assert adaptive.decomposer.cropper.extra_acquire_kwargs[
+        "location_scene_plate_candidates"
     ] is True
     assert explicit.decomposer.cropper.extra_acquire_kwargs[
         "location_scene_evidence_enabled"
     ] is True
+    assert "location_scene_plate_candidates" not in (
+        explicit.decomposer.cropper.extra_acquire_kwargs
+    )
     with pytest.raises(ValueError, match="immutable"):
         build_realized_segment_pipeline(
             run_dir=tmp_path / "paper",
             profile="paper_tracka_202607",
             location_scene_evidence_enabled=True,
+        )
+    with pytest.raises(ValueError, match="immutable"):
+        build_realized_segment_pipeline(
+            run_dir=tmp_path / "paper-plate",
+            profile="paper_tracka_202607",
+            location_scene_plate_candidates=True,
         )

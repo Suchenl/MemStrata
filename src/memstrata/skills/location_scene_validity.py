@@ -19,6 +19,7 @@ from enum import Enum
 from typing import Any, Protocol
 
 SCENE_EVIDENCE_SCHEMA_VERSION = "memstrata.location_scene_evidence.v1"
+FOREGROUND_DETECTION_SCHEMA = "memstrata.foreground_detection.v1"
 COVERAGE_COMPLETE = "complete_estimate"
 COVERAGE_LOWER_BOUND = "lower_bound"
 COVERAGE_MISSING = "missing"
@@ -72,6 +73,12 @@ class LocationSceneEvidence:
     temporal_visual_consistency: float | None = None
     temporal_visual_status: str = "missing"
     shot_size: str = "unknown"
+    candidate_local_scene_support: str = "unknown"
+    candidate_local_scene_support_version: str = ""
+    foreground_critical_max_coverage: float | None = None
+    foreground_critical_union_coverage: float | None = None
+    foreground_max_score: float | None = None
+    foreground_detection_schema: str = ""
     crop_quality_accepted: bool | None = None
     foreground_source: str = ""
     place_source: str = ""
@@ -137,6 +144,28 @@ class LocationSceneEvidence:
         }:
             coverage_semantics = COVERAGE_MISSING
 
+        attribute_shot_size = str(attrs.get("shot_size") or "unknown")
+        shot_size = str(
+            evidence.get("shot_size") or attribute_shot_size
+        )
+        candidate_local_scene_support = str(
+            evidence.get("candidate_local_scene_support") or "unknown"
+        )
+        candidate_local_scene_support_version = str(
+            evidence.get("candidate_local_scene_support_version") or ""
+        )
+        if (
+            candidate_local_scene_support == "unknown"
+            and attribute_shot_size == "wide"
+        ):
+            # Deterministic adapter over an attribute already produced by the
+            # existing batched crop-attribute call. No free-text parsing and no
+            # second VLM request are introduced.
+            candidate_local_scene_support = "wide_shot"
+            candidate_local_scene_support_version = (
+                "crop_attributes.shot_size.v1"
+            )
+
         return cls(
             foreground_max_coverage=foreground_max,
             foreground_union_coverage=foreground_union,
@@ -163,7 +192,23 @@ class LocationSceneEvidence:
             temporal_visual_status=str(
                 evidence.get("temporal_visual_status") or "missing"
             ),
-            shot_size=str(evidence.get("shot_size") or attrs.get("shot_size") or "unknown"),
+            shot_size=shot_size,
+            candidate_local_scene_support=candidate_local_scene_support,
+            candidate_local_scene_support_version=(
+                candidate_local_scene_support_version
+            ),
+            foreground_critical_max_coverage=_optional_float(
+                evidence.get("foreground_critical_max_coverage")
+            ),
+            foreground_critical_union_coverage=_optional_float(
+                evidence.get("foreground_critical_union_coverage")
+            ),
+            foreground_max_score=_optional_float(
+                evidence.get("foreground_max_score")
+            ),
+            foreground_detection_schema=str(
+                evidence.get("foreground_detection_schema") or ""
+            ),
             crop_quality_accepted=quality,
             foreground_source=str(evidence.get("foreground_source") or ""),
             place_source=str(evidence.get("place_source") or ""),
@@ -191,6 +236,12 @@ class LocationSceneEvidenceProvider(Protocol):
 @dataclass(frozen=True, slots=True)
 class LocationSceneValidityPolicy:
     min_crop_area_fraction: float = 0.50
+    min_scene_context_fraction: float = 0.20
+    strong_scene_context_fraction: float = 0.90
+    foreground_review_threshold: float = 0.15
+    foreground_union_review_threshold: float = 0.25
+    foreground_significant_threshold: float = 0.35
+    foreground_union_significant_threshold: float = 0.40
     max_foreground_accept: float = 0.40
     max_foreground_union_accept: float = 0.55
     foreground_hard_reject: float = 0.60
@@ -251,12 +302,31 @@ def evaluate_location_scene(
             evidence,
         )
 
+    detailed_foreground_compatible = (
+        evidence.foreground_detection_schema == FOREGROUND_DETECTION_SCHEMA
+    )
+    critical_max = (
+        evidence.foreground_critical_max_coverage
+        if (
+            detailed_foreground_compatible
+            and evidence.foreground_critical_max_coverage is not None
+        )
+        else fg_max
+    )
+    critical_union = (
+        evidence.foreground_critical_union_coverage
+        if (
+            detailed_foreground_compatible
+            and evidence.foreground_critical_union_coverage is not None
+        )
+        else fg_union
+    )
     foreground_dominant = (
-        fg_max is not None
-        and fg_max >= pol.foreground_hard_reject
+        critical_max is not None
+        and critical_max >= pol.foreground_hard_reject
     ) or (
-        fg_union is not None
-        and fg_union >= pol.foreground_union_hard_reject
+        critical_union is not None
+        and critical_union >= pol.foreground_union_hard_reject
     )
     if foreground_dominant:
         return LocationSceneDecision(
@@ -267,11 +337,11 @@ def evaluate_location_scene(
         )
 
     foreground_ambiguous = (
-        fg_max is not None
-        and fg_max >= pol.max_foreground_accept
+        critical_max is not None
+        and critical_max >= pol.max_foreground_accept
     ) or (
-        fg_union is not None
-        and fg_union >= pol.max_foreground_union_accept
+        critical_union is not None
+        and critical_union >= pol.max_foreground_union_accept
     )
     if foreground_ambiguous:
         return LocationSceneDecision(
@@ -294,6 +364,57 @@ def evaluate_location_scene(
         if evidence.content_area_fraction is not None
         else evidence.crop_area_fraction
     )
+    if (
+        effective_area is None
+        or effective_area < pol.min_scene_context_fraction
+    ):
+        return LocationSceneDecision(
+            SceneValidityStatus.QUARANTINE,
+            False,
+            ("insufficient_candidate_scene_context",),
+            evidence,
+        )
+
+    foreground_significant = (
+        critical_max is not None
+        and critical_max >= pol.foreground_significant_threshold
+    ) or (
+        critical_union is not None
+        and critical_union >= pol.foreground_union_significant_threshold
+    )
+    if foreground_significant:
+        return LocationSceneDecision(
+            SceneValidityStatus.QUARANTINE,
+            False,
+            ("significant_foreground_subject",),
+            evidence,
+        )
+
+    foreground_needs_local_support = (
+        critical_max is not None
+        and critical_max >= pol.foreground_review_threshold
+    ) or (
+        critical_union is not None
+        and critical_union >= pol.foreground_union_review_threshold
+    )
+    strong_context = effective_area >= pol.strong_scene_context_fraction
+    structured_context = (
+        evidence.candidate_local_scene_support == "wide_shot"
+        and evidence.candidate_local_scene_support_version
+        == "crop_attributes.shot_size.v1"
+    )
+    if (
+        foreground_needs_local_support
+        and not strong_context
+        and not structured_context
+    ):
+        return LocationSceneDecision(
+            SceneValidityStatus.QUARANTINE,
+            False,
+            ("foreground_requires_candidate_scene_support",),
+            evidence,
+        )
+
     area_support = (
         effective_area is not None
         and effective_area >= pol.min_crop_area_fraction
@@ -355,6 +476,7 @@ __all__ = [
     "COVERAGE_COMPLETE",
     "COVERAGE_LOWER_BOUND",
     "COVERAGE_MISSING",
+    "FOREGROUND_DETECTION_SCHEMA",
     "LocationSceneDecision",
     "LocationSceneEvidence",
     "LocationSceneEvidenceProvider",

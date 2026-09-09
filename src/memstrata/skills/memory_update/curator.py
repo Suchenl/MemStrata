@@ -195,6 +195,12 @@ class MemoryPolicy:
     # never from the character/prop ``identity_visible`` field.
     location_scene_validity_enabled: bool = False
     location_scene_min_crop_area_fraction: float = 0.50
+    location_scene_min_context_fraction: float = 0.20
+    location_scene_strong_context_fraction: float = 0.90
+    location_scene_foreground_review: float = 0.15
+    location_scene_foreground_union_review: float = 0.25
+    location_scene_foreground_significant: float = 0.35
+    location_scene_foreground_union_significant: float = 0.40
     location_scene_max_foreground_accept: float = 0.40
     location_scene_max_foreground_union_accept: float = 0.55
     location_scene_foreground_hard_reject: float = 0.60
@@ -613,6 +619,24 @@ class MemoryUpdater:
         self.location_scene_validity_policy = LocationSceneValidityPolicy(
             min_crop_area_fraction=float(
                 pol.location_scene_min_crop_area_fraction
+            ),
+            min_scene_context_fraction=float(
+                pol.location_scene_min_context_fraction
+            ),
+            strong_scene_context_fraction=float(
+                pol.location_scene_strong_context_fraction
+            ),
+            foreground_review_threshold=float(
+                pol.location_scene_foreground_review
+            ),
+            foreground_union_review_threshold=float(
+                pol.location_scene_foreground_union_review
+            ),
+            foreground_significant_threshold=float(
+                pol.location_scene_foreground_significant
+            ),
+            foreground_union_significant_threshold=float(
+                pol.location_scene_foreground_union_significant
             ),
             max_foreground_accept=float(
                 pol.location_scene_max_foreground_accept

@@ -19,11 +19,15 @@ from memstrata.skills.location_scene_validity import (
     COVERAGE_COMPLETE,
     COVERAGE_LOWER_BOUND,
     COVERAGE_MISSING,
+    FOREGROUND_DETECTION_SCHEMA,
     SCENE_EVIDENCE_SCHEMA_VERSION,
 )
 
 SUBJECT_PROMPT_VERSION = "dynamic-subject-v1"
 SUBJECT_PROMPT = "person. human body. legs. feet. animal. bird."
+_CRITICAL_SUBJECT_CATEGORIES = frozenset(
+    {"person", "human_body", "body_part", "animal", "bird", "subject_unknown"}
+)
 
 
 def normalized_bbox_area(bbox: Sequence[int | float] | None) -> float | None:
@@ -166,7 +170,13 @@ class CachedSegmentSceneEvidenceProducer:
                 continue
 
             frame_fg = foreground[frame_index]
-            detector_boxes = list(frame_fg.get("boxes") or [])
+            detections = list(frame_fg.get("detections") or [])
+            detector_boxes = [
+                detection["bbox"]
+                for detection in detections
+                if isinstance(detection, Mapping)
+                and _valid_box(detection.get("bbox")) is not None
+            ]
             lower_rows = lower.get(
                 frame_index,
                 lower.get(str(frame_index), ()),
@@ -199,10 +209,33 @@ class CachedSegmentSceneEvidenceProducer:
             content_box, content_status = content_box_normalized(paths[frame_index])
             if semantics == COVERAGE_MISSING:
                 maximum = union = None
+                critical_maximum = critical_union = None
+                local_detections: list[dict[str, Any]] = []
             else:
                 maximum, union = bbox_coverage(
                     bbox,
                     subject_boxes,
+                    content_bbox=content_box,
+                )
+                local_detections = _candidate_local_detections(
+                    bbox,
+                    detections,
+                    content_bbox=content_box,
+                )
+                critical_boxes = [
+                    detection["bbox"]
+                    for detection in detections
+                    if (
+                        isinstance(detection, Mapping)
+                        and str(detection.get("category") or "")
+                        in _CRITICAL_SUBJECT_CATEGORIES
+                        and float(detection.get("score") or 0.0) >= 0.30
+                    )
+                ]
+                critical_boxes.extend(known_boxes)
+                critical_maximum, critical_union = bbox_coverage(
+                    bbox,
+                    critical_boxes,
                     content_bbox=content_box,
                 )
             exact_area = normalized_bbox_area(bbox)
@@ -213,6 +246,22 @@ class CachedSegmentSceneEvidenceProducer:
                 "coverage_geometry": "bbox",
                 "foreground_max_coverage": maximum,
                 "foreground_union_coverage": union,
+                "foreground_critical_max_coverage": critical_maximum,
+                "foreground_critical_union_coverage": critical_union,
+                "foreground_max_score": (
+                    max(
+                        (
+                            float(detection.get("score") or 0.0)
+                            for detection in local_detections
+                        ),
+                        default=0.0,
+                    )
+                    if semantics == COVERAGE_COMPLETE
+                    else None
+                ),
+                "foreground_detection_count": len(local_detections),
+                "foreground_detections": local_detections,
+                "foreground_detection_schema": FOREGROUND_DETECTION_SCHEMA,
                 "foreground_source": source,
                 "foreground_prompt_version": self.subject_prompt_version,
                 "foreground_detector_status": detector_status,
@@ -273,7 +322,13 @@ class CachedSegmentSceneEvidenceProducer:
             if keys[index] not in self._foreground_cache
         ]
         if missing and self.detector is not None:
-            detect_batch = getattr(self.detector, "detect_batch", None)
+            detect_batch = getattr(
+                self.detector,
+                "detect_batch_detailed",
+                None,
+            )
+            if not callable(detect_batch):
+                detect_batch = getattr(self.detector, "detect_batch", None)
             if callable(detect_batch):
                 self.detector_batch_calls += 1
                 self.detector_frame_calls += len(missing)
@@ -282,15 +337,16 @@ class CachedSegmentSceneEvidenceProducer:
                     if not isinstance(rows, Sequence) or len(rows) != len(missing):
                         raise ValueError("detector batch result length mismatch")
                     for (_, _, key), row in zip(missing, rows):
+                        detections = _detections_from_hits(row)
                         self._foreground_cache[key] = {
                             "status": "success",
-                            "boxes": _boxes_from_hits(row),
+                            "detections": detections,
                         }
                 except Exception as exc:  # noqa: BLE001 - missing must remain distinguishable
                     for _, _, key in missing:
                         self._foreground_cache[key] = {
                             "status": "missing",
-                            "boxes": [],
+                            "detections": [],
                             "error": repr(exc),
                         }
             else:
@@ -298,21 +354,22 @@ class CachedSegmentSceneEvidenceProducer:
                     self.detector_frame_calls += 1
                     try:
                         hits = self.detector.detect_all(path, self.subject_prompt)
+                        detections = _detections_from_hits(hits)
                         self._foreground_cache[key] = {
                             "status": "success",
-                            "boxes": _boxes_from_hits(hits),
+                            "detections": detections,
                         }
                     except Exception as exc:  # noqa: BLE001
                         self._foreground_cache[key] = {
                             "status": "missing",
-                            "boxes": [],
+                            "detections": [],
                             "error": repr(exc),
                         }
         elif missing:
             for _, _, key in missing:
                 self._foreground_cache[key] = {
                     "status": "missing",
-                    "boxes": [],
+                    "detections": [],
                     "error": "detector_unavailable",
                 }
         return [self._foreground_cache[key] for key in keys]
@@ -378,6 +435,12 @@ class CachedSegmentSceneEvidenceProducer:
             "coverage_geometry": "bbox",
             "foreground_max_coverage": None,
             "foreground_union_coverage": None,
+            "foreground_critical_max_coverage": None,
+            "foreground_critical_union_coverage": None,
+            "foreground_max_score": None,
+            "foreground_detection_count": 0,
+            "foreground_detections": [],
+            "foreground_detection_schema": FOREGROUND_DETECTION_SCHEMA,
             "foreground_source": "",
             "foreground_prompt_version": self.subject_prompt_version,
             "foreground_detector_status": "missing",
@@ -450,16 +513,81 @@ def _unit(vector: Sequence[float]) -> np.ndarray | None:
     return arr / norm if arr.ndim == 1 and arr.size and norm > 1e-12 else None
 
 
-def _boxes_from_hits(hits: Any) -> list[list[float]]:
-    boxes: list[list[float]] = []
+def _detections_from_hits(hits: Any) -> list[dict[str, Any]]:
+    detections: list[dict[str, Any]] = []
     if not isinstance(hits, Sequence):
-        return boxes
+        return detections
     for hit in hits:
-        raw = hit[0] if isinstance(hit, Sequence) and len(hit) >= 1 else None
+        if isinstance(hit, Mapping):
+            raw = hit.get("bbox")
+            score = _optional_float(hit.get("score"))
+            label = str(hit.get("label") or "")
+        else:
+            raw = hit[0] if isinstance(hit, Sequence) and len(hit) >= 1 else None
+            score = (
+                _optional_float(hit[1])
+                if isinstance(hit, Sequence) and len(hit) >= 2
+                else None
+            )
+            label = ""
         box = _valid_box(raw)
         if box is not None:
-            boxes.append(box)
-    return boxes
+            detections.append(
+                {
+                    "bbox": box,
+                    "score": score,
+                    "label": label,
+                    "category": _normalize_subject_category(label),
+                }
+            )
+    return detections
+
+
+def _candidate_local_detections(
+    candidate_bbox: Sequence[int | float],
+    detections: Sequence[Mapping[str, Any]],
+    *,
+    content_bbox: Sequence[int | float] | None,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for detection in detections:
+        box = _valid_box(detection.get("bbox"))
+        if box is None:
+            continue
+        coverage, _ = bbox_coverage(
+            candidate_bbox,
+            [box],
+            content_bbox=content_bbox,
+        )
+        if coverage <= 0.0:
+            continue
+        out.append(
+            {
+                "bbox": box,
+                "score": _optional_float(detection.get("score")),
+                "label": str(detection.get("label") or ""),
+                "category": str(
+                    detection.get("category") or "subject_unknown"
+                ),
+                "candidate_coverage": coverage,
+            }
+        )
+    return out
+
+
+def _normalize_subject_category(label: str) -> str:
+    normalized = " ".join(str(label).lower().replace("_", " ").split())
+    if "human body" in normalized:
+        return "human_body"
+    if "leg" in normalized or "feet" in normalized or "foot" in normalized:
+        return "body_part"
+    if "person" in normalized or "people" in normalized or "human" in normalized:
+        return "person"
+    if "bird" in normalized:
+        return "bird"
+    if "animal" in normalized:
+        return "animal"
+    return "subject_unknown"
 
 
 def _content_area_fraction(
@@ -557,6 +685,7 @@ __all__ = [
     "COVERAGE_LOWER_BOUND",
     "COVERAGE_MISSING",
     "CachedSegmentSceneEvidenceProducer",
+    "FOREGROUND_DETECTION_SCHEMA",
     "SCENE_EVIDENCE_SCHEMA_VERSION",
     "SUBJECT_PROMPT",
     "SUBJECT_PROMPT_VERSION",

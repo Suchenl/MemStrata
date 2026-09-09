@@ -59,7 +59,7 @@ def build_realized_segment_pipeline(
     seed_screenplay: dict[str, Any] | None = None,
     location_scene_validity_enabled: bool | None = None,
     location_resolver_shadow_enabled: bool = False,
-    location_scene_plate_candidates: bool = False,
+    location_scene_plate_candidates: bool | None = None,
     location_scene_evidence_enabled: bool | None = None,
     location_adaptive_enabled: bool | None = None,
     location_storage_cap: int | None = None,
@@ -92,6 +92,10 @@ def build_realized_segment_pipeline(
             "location_adaptive_enabled": (location_adaptive_enabled, False),
             "location_scene_evidence_enabled": (
                 location_scene_evidence_enabled,
+                False,
+            ),
+            "location_scene_plate_candidates": (
+                location_scene_plate_candidates,
                 False,
             ),
         }
@@ -131,6 +135,11 @@ def build_realized_segment_pipeline(
         adaptive_location
         if location_scene_evidence_enabled is None
         else bool(location_scene_evidence_enabled)
+    )
+    scene_plate_candidates = (
+        adaptive_location
+        if location_scene_plate_candidates is None
+        else bool(location_scene_plate_candidates)
     )
     read_budget = (
         selected.read_context_rep_budget
@@ -232,7 +241,7 @@ def build_realized_segment_pipeline(
     }
     verify_crop_identity = naming == "mllm"
     extra_acquire_kwargs: dict[str, Any] = {}
-    if location_scene_plate_candidates:
+    if scene_plate_candidates:
         extra_acquire_kwargs["location_scene_plate_candidates"] = True
     if scene_evidence:
         extra_acquire_kwargs["location_scene_evidence_enabled"] = True
@@ -306,7 +315,7 @@ def build_realized_segment_pipeline(
                             location_resolver_shadow_enabled
                         ),
                         "scene_plate_candidates": bool(
-                            location_scene_plate_candidates
+                            scene_plate_candidates
                         ),
                         "scene_evidence_enabled": scene_evidence,
                         "adaptive_storage_read": adaptive_location,
@@ -320,7 +329,7 @@ def build_realized_segment_pipeline(
                 if (
                     scene_validity
                     or location_resolver_shadow_enabled
-                    or location_scene_plate_candidates
+                    or scene_plate_candidates
                     or scene_evidence
                     or adaptive_location
                 )

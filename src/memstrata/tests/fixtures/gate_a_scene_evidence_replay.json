@@ -1,0 +1,106 @@
+{
+  "schema": "memstrata.location_scene_evidence.replay.v1",
+  "source": "archived_gate_a_20260909_decision_fields_only",
+  "must_not_accept": [
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.25152439024390244,
+      "foreground_union_coverage": 0.25152439024390244,
+      "crop_area_fraction": 0.04316,
+      "content_area_fraction": 0.06461144489313503,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 3,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.924197,
+      "temporal_semantics": "generic_visual_not_vpr"
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.16745710429920957,
+      "foreground_union_coverage": 0.2981795147208681,
+      "crop_area_fraction": 0.72618,
+      "content_area_fraction": 0.7758333333333334,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 1,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.716268,
+      "temporal_semantics": "generic_visual_not_vpr"
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.3802124248496994,
+      "foreground_union_coverage": 0.44707815631262526,
+      "crop_area_fraction": 0.998,
+      "content_area_fraction": 0.998,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 3,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.950885,
+      "temporal_semantics": "generic_visual_not_vpr"
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.144783003579506,
+      "foreground_union_coverage": 0.144783003579506,
+      "crop_area_fraction": 0.449224,
+      "content_area_fraction": 0.449224,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 1,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.77337,
+      "temporal_semantics": "generic_visual_not_vpr"
+    }
+  ],
+  "must_accept": [
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.0,
+      "foreground_union_coverage": 0.0,
+      "crop_area_fraction": 0.253215,
+      "content_area_fraction": 0.27052884615384615,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 2,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.651766,
+      "temporal_semantics": "generic_visual_not_vpr"
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.1591128781627426,
+      "foreground_union_coverage": 0.28690428986314875,
+      "crop_area_fraction": 0.934128,
+      "content_area_fraction": 0.9969337606837607,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 3,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.918499,
+      "temporal_semantics": "generic_visual_not_vpr"
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.059742739858013635,
+      "foreground_union_coverage": 0.10352283118853724,
+      "crop_area_fraction": 0.693306,
+      "content_area_fraction": 0.693306,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 2,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.843209,
+      "temporal_semantics": "generic_visual_not_vpr"
+    }
+  ]
+}

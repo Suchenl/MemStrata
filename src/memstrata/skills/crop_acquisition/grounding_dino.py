@@ -70,6 +70,21 @@ class GroundingDinoProposer:
     ) -> list[list[tuple[list[int], float]]]:
         """Detect one versioned phrase across several frames in one model forward."""
 
+        return [
+            [
+                (list(item["bbox"]), float(item["score"]))
+                for item in row
+            ]
+            for row in self.detect_batch_detailed(images, phrase)
+        ]
+
+    def detect_batch_detailed(
+        self,
+        images: list[Path],
+        phrase: str,
+    ) -> list[list[dict[str, object]]]:
+        """Batch detection preserving model-provided text labels and scores."""
+
         if not images:
             return []
         self._ensure_loaded()
@@ -92,11 +107,17 @@ class GroundingDinoProposer:
                 text_threshold=self.text_threshold,
                 target_sizes=[pil.size[::-1] for pil in pils],
             )
-        batches: list[list[tuple[list[int], float]]] = []
+        batches: list[list[dict[str, object]]] = []
         for pil, result in zip(pils, results):
             width, height = pil.size
-            found: list[tuple[list[int], float]] = []
-            for score, box in zip(result["scores"], result["boxes"]):
+            labels = result.get("text_labels")
+            if labels is None:
+                labels = result.get("labels")
+            labels = labels if labels is not None else []
+            found: list[dict[str, object]] = []
+            for index, (score, box) in enumerate(
+                zip(result["scores"], result["boxes"])
+            ):
                 x0, y0, x1, y1 = (float(v) for v in box)
                 bbox = [
                     int(round(y0 / height * 1000)),
@@ -104,7 +125,15 @@ class GroundingDinoProposer:
                     int(round(y1 / height * 1000)),
                     int(round(x1 / width * 1000)),
                 ]
-                found.append((bbox, float(score)))
-            found.sort(key=lambda item: item[1], reverse=True)
+                raw_label = labels[index] if index < len(labels) else ""
+                label = raw_label if isinstance(raw_label, str) else ""
+                found.append(
+                    {
+                        "bbox": bbox,
+                        "score": float(score),
+                        "label": label,
+                    }
+                )
+            found.sort(key=lambda item: float(item["score"]), reverse=True)
             batches.append(found)
         return batches
