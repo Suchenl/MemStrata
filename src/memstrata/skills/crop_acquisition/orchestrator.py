@@ -273,11 +273,12 @@ def _propose_candidates(
     pil = Image.open(frame_path).convert("RGB")
     width, height = pil.size
     raw: list[dict[str, Any]] = []
+    scene_plates: list[dict[str, Any]] = []
     if entity_kind == "location" and location_scene_plate_candidates:
         # A whole frame is only another candidate. It carries no scene-admission
         # authority; the curator's independent location scene predicate must still
         # accept detector/place evidence before it becomes a scene reference.
-        raw.append(
+        scene_plates.append(
             {
                 "bbox_norm": [0, 0, 1000, 1000],
                 "score": 0.0,
@@ -334,7 +335,12 @@ def _propose_candidates(
         if g_raw:
             # Description-grounded boxes win: do NOT also run the salience-ranked SAM3 path,
             # whose most-salient proposal would re-introduce the wrong-entity crop.
-            return dedup_by_iou([*g_raw, *raw], iou_threshold=iou_threshold)
+            # Scene plates are intentionally outside bbox IoU dedup: a nearly-full
+            # referring box must not erase the independent whole-frame candidate.
+            return [
+                *dedup_by_iou(g_raw, iou_threshold=iou_threshold),
+                *scene_plates,
+            ]
         fallback_from = "no_hit"
 
     # --- SAM3 concept proposals (masked) ---
@@ -413,7 +419,10 @@ def _propose_candidates(
                     "mask_quality": {"available": False, "reason": "gdino_bbox_only"},
                 })
 
-    return dedup_by_iou(raw, iou_threshold=iou_threshold)
+    return [
+        *dedup_by_iou(raw, iou_threshold=iou_threshold),
+        *scene_plates,
+    ]
 
 
 def acquire_entity_crop(
@@ -444,6 +453,9 @@ def acquire_entity_crop(
     min_side_px: int = _MIN_SIDE_PX,
     iou_threshold: float = _IOU_DEDUP,
     location_scene_plate_candidates: bool = False,
+    location_scene_evidence_enabled: bool = False,
+    scene_evidence_provider: Any | None = None,
+    scene_subject_lower_bound_bboxes: dict[int, list[list[int]]] | None = None,
 ) -> dict[str, Any] | None:
     """Acquire the most NOVEL identity-correct crop for one named entity.
 
@@ -488,8 +500,45 @@ def acquire_entity_crop(
     if not candidates:
         return None
     candidate_budget = max(1, max_candidates) * max(1, len(resolved_frame_paths))
-    candidates = sorted(candidates, key=lambda c: float(c.get("score") or 0.0), reverse=True)
-    candidates = candidates[:candidate_budget]
+    candidates = sorted(
+        candidates,
+        key=lambda c: float(c.get("score") or 0.0),
+        reverse=True,
+    )
+    if entity_kind == "location" and location_scene_plate_candidates:
+        scene_plates = [
+            candidate
+            for candidate in candidates
+            if candidate.get("source") == "whole_frame_location_candidate"
+        ]
+        regular = [
+            candidate
+            for candidate in candidates
+            if candidate.get("source") != "whole_frame_location_candidate"
+        ]
+        # Reserve every sampled frame's plate. The candidate budget still bounds
+        # ordinary proposals, but can never silently remove scene-decision inputs.
+        regular_budget = max(0, candidate_budget - len(scene_plates))
+        candidates = [*regular[:regular_budget], *scene_plates]
+    else:
+        candidates = candidates[:candidate_budget]
+
+    if (
+        entity_kind == "location"
+        and location_scene_evidence_enabled
+        and scene_evidence_provider is not None
+    ):
+        try:
+            evidence_rows = scene_evidence_provider.collect_candidates(
+                frame_paths=resolved_frame_paths,
+                candidates=candidates,
+                lower_bound_bboxes=scene_subject_lower_bound_bboxes,
+            )
+        except Exception:  # noqa: BLE001 - invalid evidence must fail closed downstream
+            evidence_rows = []
+        if len(evidence_rows) == len(candidates):
+            for candidate, evidence in zip(candidates, evidence_rows):
+                candidate["scene_validity_evidence"] = dict(evidence)
 
     # DINOv3-embed each masked candidate crop (white-composited internally).
     vecs: list[list[float]] = []
@@ -502,14 +551,22 @@ def acquire_entity_crop(
         for cand, vec in zip(candidates, vecs):
             cand["_vec"] = vec
 
+    # A location scene is authorized by scene evidence, not by the character-style
+    # exemplar identity gate. This opt-in leaves legacy and character/prop behavior
+    # unchanged while ensuring whole-frame plates reach the scene decision.
+    location_scene_mode = (
+        entity_kind == "location" and location_scene_evidence_enabled
+    )
     have_embeddings = all("_vec" in c for c in candidates) and len(candidates) > 0
-    if exemplar_vectors and not have_embeddings:
+    if exemplar_vectors and not have_embeddings and not location_scene_mode:
         return None
-    use_identity_gate = bool(exemplar_vectors)
+    use_identity_gate = bool(exemplar_vectors) and not location_scene_mode
 
     # 3) IDENTITY GATE — confirm "this is our entity" (correctness only). If exemplars
     # exist and nothing clears the floor, this segment is a miss; recording a stranger is worse.
-    identity_gate: str = "off"
+    identity_gate: str = (
+        "off_location_scene" if location_scene_mode else "off"
+    )
     kept: list[dict[str, Any]] = []
     below: list[dict[str, Any]] = []
     for cand in candidates:
@@ -544,6 +601,28 @@ def acquire_entity_crop(
     # Sort by identity desc first; visual novelty chooses among identity-compatible
     # crops, and state novelty is a tie-breaker that prefers an un-banked state.
     ranked = rank_acquisition_candidates(kept, banked_states=banked_states)
+    if entity_kind == "location" and location_scene_evidence_enabled:
+        from memstrata.skills.location_scene_validity import (
+            LocationSceneEvidence,
+            SceneValidityStatus,
+            evaluate_location_scene,
+        )
+
+        priority = {
+            SceneValidityStatus.REJECT: 0,
+            SceneValidityStatus.QUARANTINE: 1,
+            SceneValidityStatus.ACCEPT: 2,
+        }
+
+        def _scene_priority(candidate: dict[str, Any]) -> int:
+            evidence = candidate.get("scene_validity_evidence")
+            parsed = LocationSceneEvidence.from_annotations(
+                {"scene_validity_evidence": evidence}
+            )
+            return priority[evaluate_location_scene(parsed).status]
+
+        # Stable sort preserves identity/novelty order inside each scene tier.
+        ranked = sorted(ranked, key=_scene_priority, reverse=True)
 
     # 5) crop QA (dark / low-information) as a final guard; walk best→worst.
     reference_paths = [
@@ -559,6 +638,16 @@ def acquire_entity_crop(
         qa = audit_crop(crop=crop_path, bbox_norm=cand["bbox_norm"], kind=entity_kind)
         if not qa.accepted:
             continue
+        scene_evidence = cand.get("scene_validity_evidence")
+        if isinstance(scene_evidence, dict):
+            scene_evidence = {
+                **scene_evidence,
+                "crop_quality_accepted": bool(qa.accepted),
+            }
+        scene_cache_stats = None
+        cache_stats = getattr(scene_evidence_provider, "cache_stats", None)
+        if location_scene_mode and callable(cache_stats):
+            scene_cache_stats = cache_stats()
 
         verification: dict[str, Any] = {
             "gate": "off_first_sighting" if not use_identity_gate else "not_required",
@@ -613,10 +702,24 @@ def acquire_entity_crop(
             saved = _save_mask_png(cand["mask"], cand["bbox_norm"], out_dir / f"crop_{slug}_mask.png")
             mask_path = str(saved) if saved is not None else None
 
+        record_subject_bbox = getattr(
+            scene_evidence_provider,
+            "record_subject_bbox",
+            None,
+        )
+        if entity_kind == "character" and callable(record_subject_bbox):
+            record_subject_bbox(
+                frame_path=Path(
+                    cand.get("frame_path") or resolved_frame_paths[0]
+                ),
+                bbox_norm=cand["bbox_norm"],
+            )
+
         return {
             "crop_path": str(final_crop),
             "bbox": list(cand["bbox_norm"]),
             "mask_path": mask_path,
+            "selected_score": float(cand.get("score") or 0.0),
             "identity_sim": cand.get("identity_sim"),
             "identity_gate": identity_gate,
             "identity_verification": verification,
@@ -641,6 +744,16 @@ def acquire_entity_crop(
             "max_character_bbox_area": float(max_character_bbox_area),
             "min_mask_fill": float(min_mask_fill),
             "qa": qa.to_dict(),
+            **(
+                {"scene_validity_evidence": scene_evidence}
+                if isinstance(scene_evidence, dict)
+                else {}
+            ),
+            **(
+                {"scene_evidence_cache_stats": scene_cache_stats}
+                if isinstance(scene_cache_stats, dict)
+                else {}
+            ),
             **(
                 {"scene_candidate_only": True}
                 if cand["source"] == "whole_frame_location_candidate"

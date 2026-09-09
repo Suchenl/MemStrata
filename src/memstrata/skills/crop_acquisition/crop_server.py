@@ -123,6 +123,14 @@ class _Models:
         logging.info("[crop_acq] loading DINOv3 embedder ...")
         self.embedder = DinoV3Embedder(device=device)
         self.embedder._ensure_loaded()
+        from memstrata.skills.crop_acquisition.scene_evidence import (
+            CachedSegmentSceneEvidenceProducer,
+        )
+
+        self.scene_evidence = CachedSegmentSceneEvidenceProducer(
+            detector=self.detector,
+            embedder=self.embedder,
+        )
 
     def _ensure_segmenter(self) -> None:
         if self.segmenter is not None:
@@ -180,6 +188,8 @@ def _run_job(models: _Models, request: dict[str, Any]) -> dict[str, Any] | None:
         "identity_verification_required",
         "identity_verification_threshold",
         "location_scene_plate_candidates",
+        "location_scene_evidence_enabled",
+        "scene_subject_lower_bound_bboxes",
     ):
         if key in request:
             extra[key] = request[key]
@@ -213,6 +223,7 @@ def _run_job(models: _Models, request: dict[str, Any]) -> dict[str, Any] | None:
         grounder=models.grounder,
         embedder=models.embedder,
         identity_verifier=models.identity_verifier,
+        scene_evidence_provider=models.scene_evidence,
         **extra,
     )
 

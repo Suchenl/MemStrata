@@ -522,8 +522,26 @@ class ProposeIdentifyCropper:
             "max_character_bbox_area": payload.get("max_character_bbox_area"),
             "min_mask_fill": payload.get("min_mask_fill"),
         }
+        is_location = str(getattr(entity.kind, "value", entity.kind)) == "location"
+        if is_location:
+            acquisition_meta.update(
+                {
+                    "mask_path": payload.get("mask_path"),
+                    "source_frame_path": payload.get("frame_path"),
+                    "frame_index": (
+                        (payload.get("source_detail") or {}).get("frame_index")
+                        if isinstance(payload.get("source_detail"), dict)
+                        else None
+                    ),
+                    "selected_score": payload.get("selected_score"),
+                    "server_crop_qa": payload.get("qa"),
+                    "scene_evidence_cache_stats": payload.get(
+                        "scene_evidence_cache_stats"
+                    ),
+                }
+            )
         scene_evidence = payload.get("scene_validity_evidence")
-        if isinstance(scene_evidence, dict):
+        if is_location and isinstance(scene_evidence, dict):
             # Optional seam for an existing detector/place-encoder adapter. No
             # evidence is synthesized from a location mask or identity score.
             acquisition_meta["scene_validity_evidence"] = dict(scene_evidence)
@@ -531,13 +549,23 @@ class ProposeIdentifyCropper:
             acquisition_meta["scene_candidate_only"] = True
         # Report the bbox too: discovery needs it to tell "region already acquired for a
         # named entity" from "genuinely new region".
-        return {
+        output = {
             "crop_path": str(crop_path),
             "bbox": payload.get("bbox"),
             "meta": {
                 "crop_acquisition": acquisition_meta,
             },
         }
+        if is_location:
+            output.update(
+                {
+                    "mask_path": payload.get("mask_path"),
+                    "source_frame_path": payload.get("frame_path"),
+                    "frame_index": acquisition_meta.get("frame_index"),
+                    "selected_score": payload.get("selected_score"),
+                }
+            )
+        return output
 
     def submit(self, request: dict[str, Any]) -> dict[str, Any]:
         """Submit an arbitrary job to this cropper's server (used by discovery)."""

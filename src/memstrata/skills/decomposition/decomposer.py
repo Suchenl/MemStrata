@@ -350,9 +350,14 @@ class RoleAwareDecomposer:
         crop = entity.crop_path
         bbox: list[int] | None = None
         acquisition_meta: dict[str, Any] = {}
+        source_frame_path = ""
         if crop is None and segment_video and self.cropper is not None:
             acquired = self.cropper.crop(segment_video, entity, segment_id=segment_id)
             crop, bbox, acquisition_meta = _crop_path_bbox_meta(acquired)
+            if isinstance(acquired, dict):
+                source_frame_path = str(
+                    acquired.get("source_frame_path") or ""
+                )
         if not crop:
             return None
         quality_meta: dict[str, Any] = {}
@@ -402,6 +407,7 @@ class RoleAwareDecomposer:
             description=description,
             source=source,
             bbox_norm=bbox,
+            source_frame_path=source_frame_path,
         )
 
     def _decompose_named(

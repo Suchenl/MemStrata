@@ -60,6 +60,7 @@ def build_realized_segment_pipeline(
     location_scene_validity_enabled: bool | None = None,
     location_resolver_shadow_enabled: bool = False,
     location_scene_plate_candidates: bool = False,
+    location_scene_evidence_enabled: bool | None = None,
     location_adaptive_enabled: bool | None = None,
     location_storage_cap: int | None = None,
     location_read_max_refs: int | None = None,
@@ -89,6 +90,10 @@ def build_realized_segment_pipeline(
             "mllm_model": (mllm_model, selected.mllm_model),
             "require_mllm": (require_mllm, selected.require_mllm),
             "location_adaptive_enabled": (location_adaptive_enabled, False),
+            "location_scene_evidence_enabled": (
+                location_scene_evidence_enabled,
+                False,
+            ),
         }
         invalid = [
             f"{name}={actual!r}"
@@ -121,6 +126,11 @@ def build_realized_segment_pipeline(
         adaptive_location
         if location_scene_validity_enabled is None
         else bool(location_scene_validity_enabled)
+    )
+    scene_evidence = (
+        adaptive_location
+        if location_scene_evidence_enabled is None
+        else bool(location_scene_evidence_enabled)
     )
     read_budget = (
         selected.read_context_rep_budget
@@ -221,11 +231,11 @@ def build_realized_segment_pipeline(
         "MEMSTRATA_CROP_IDENTITY_MODEL": configured_mllm_model,
     }
     verify_crop_identity = naming == "mllm"
-    extra_acquire_kwargs = (
-        {"location_scene_plate_candidates": True}
-        if location_scene_plate_candidates
-        else None
-    )
+    extra_acquire_kwargs: dict[str, Any] = {}
+    if location_scene_plate_candidates:
+        extra_acquire_kwargs["location_scene_plate_candidates"] = True
+    if scene_evidence:
+        extra_acquire_kwargs["location_scene_evidence_enabled"] = True
     cropper = ProposeIdentifyCropper(
         bank=bank,
         server_dir=root / "crop_acq_server",
@@ -234,7 +244,7 @@ def build_realized_segment_pipeline(
         identity_threshold=float(identity_threshold),
         identity_verification_required=verify_crop_identity,
         frame_pos=float(frame_pos),
-        extra_acquire_kwargs=extra_acquire_kwargs,
+        extra_acquire_kwargs=extra_acquire_kwargs or None,
         server_env=server_env,
         grounding_backend="wedetect_ref",
         require_wedetect=strict_wedetect,
@@ -298,6 +308,7 @@ def build_realized_segment_pipeline(
                         "scene_plate_candidates": bool(
                             location_scene_plate_candidates
                         ),
+                        "scene_evidence_enabled": scene_evidence,
                         "adaptive_storage_read": adaptive_location,
                         "storage_cap_guardrail": storage_cap,
                         "read_max_refs": read_location_max,
@@ -310,6 +321,7 @@ def build_realized_segment_pipeline(
                     scene_validity
                     or location_resolver_shadow_enabled
                     or location_scene_plate_candidates
+                    or scene_evidence
                     or adaptive_location
                 )
                 else {}

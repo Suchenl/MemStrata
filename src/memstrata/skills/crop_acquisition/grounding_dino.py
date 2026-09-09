@@ -61,13 +61,28 @@ class GroundingDinoProposer:
 
     def detect_all(self, image: Path, phrase: str) -> list[tuple[list[int], float]]:
         """All boxes for ``phrase`` above threshold, score-desc."""
+        return self.detect_batch([image], phrase)[0]
+
+    def detect_batch(
+        self,
+        images: list[Path],
+        phrase: str,
+    ) -> list[list[tuple[list[int], float]]]:
+        """Detect one versioned phrase across several frames in one model forward."""
+
+        if not images:
+            return []
         self._ensure_loaded()
         from PIL import Image
 
-        pil = Image.open(image).convert("RGB")
+        pils = [Image.open(image).convert("RGB") for image in images]
         text = phrase.strip().lower().rstrip(".") + "."
         with self._lock:
-            inputs = self._processor(images=pil, text=text, return_tensors="pt").to(self._device)
+            inputs = self._processor(
+                images=pils,
+                text=[text] * len(pils),
+                return_tensors="pt",
+            ).to(self._device)
             with self._torch.no_grad():
                 outputs = self._model(**inputs)
             results = self._processor.post_process_grounded_object_detection(
@@ -75,18 +90,21 @@ class GroundingDinoProposer:
                 inputs.input_ids,
                 threshold=self.box_threshold,
                 text_threshold=self.text_threshold,
-                target_sizes=[pil.size[::-1]],
-            )[0]
-        width, height = pil.size
-        out: list[tuple[list[int], float]] = []
-        for score, box in zip(results["scores"], results["boxes"]):
-            x0, y0, x1, y1 = (float(v) for v in box)
-            bbox = [
-                int(round(y0 / height * 1000)),
-                int(round(x0 / width * 1000)),
-                int(round(y1 / height * 1000)),
-                int(round(x1 / width * 1000)),
-            ]
-            out.append((bbox, float(score)))
-        out.sort(key=lambda item: item[1], reverse=True)
-        return out
+                target_sizes=[pil.size[::-1] for pil in pils],
+            )
+        batches: list[list[tuple[list[int], float]]] = []
+        for pil, result in zip(pils, results):
+            width, height = pil.size
+            found: list[tuple[list[int], float]] = []
+            for score, box in zip(result["scores"], result["boxes"]):
+                x0, y0, x1, y1 = (float(v) for v in box)
+                bbox = [
+                    int(round(y0 / height * 1000)),
+                    int(round(x0 / width * 1000)),
+                    int(round(y1 / height * 1000)),
+                    int(round(x1 / width * 1000)),
+                ]
+                found.append((bbox, float(score)))
+            found.sort(key=lambda item: item[1], reverse=True)
+            batches.append(found)
+        return batches
