@@ -1,6 +1,6 @@
 {
   "schema": "memstrata.location_scene_evidence.replay.v1",
-  "source": "archived_gate_a_20260909_decision_fields_only",
+  "source": "archived_gate_a_20260909_decision_and_detection_fields",
   "must_not_accept": [
     {
       "schema_version": "memstrata.location_scene_evidence.v1",
@@ -101,6 +101,155 @@
       "temporal_visual_observation_count": 3,
       "temporal_visual_consistency": 0.843209,
       "temporal_semantics": "generic_visual_not_vpr"
+    }
+  ],
+  "heldout_must_not_accept": [
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.10553920082680104,
+      "foreground_union_coverage": 0.10553920082680104,
+      "foreground_critical_max_coverage": 0.10553920082680104,
+      "foreground_critical_union_coverage": 0.10553920082680104,
+      "foreground_max_score": 0.5808262825012207,
+      "foreground_detection_schema": "memstrata.foreground_detection.v1",
+      "foreground_detections": [
+        {
+          "bbox": [436.0, 345.0, 829.0, 609.0],
+          "score": 0.5808262825012207,
+          "label": "animal",
+          "category": "animal",
+          "candidate_coverage": 0.10553920082680104
+        }
+      ],
+      "crop_area_fraction": 0.983066,
+      "content_area_fraction": 0.983066,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 1,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.782765,
+      "temporal_semantics": "generic_visual_not_vpr"
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.1442113208806149,
+      "foreground_union_coverage": 0.14436145412386828,
+      "foreground_critical_max_coverage": 0.1442113208806149,
+      "foreground_critical_union_coverage": 0.14436145412386828,
+      "foreground_max_score": 0.5149701833724976,
+      "foreground_detection_schema": "memstrata.foreground_detection.v1",
+      "foreground_detections": [
+        {
+          "bbox": [38.0, 275.0, 673.0, 522.0],
+          "score": 0.5149701833724976,
+          "label": "animal",
+          "category": "animal",
+          "candidate_coverage": 0.1442113208806149
+        },
+        {
+          "bbox": [627.0, 370.0, 675.0, 424.0],
+          "score": 0.3322243094444275,
+          "label": "feet",
+          "category": "body_part",
+          "candidate_coverage": 0.0036031978380812973
+        }
+      ],
+      "crop_area_fraction": 0.719361,
+      "content_area_fraction": 0.719361,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 1,
+      "temporal_visual_observation_count": 3,
+      "temporal_visual_consistency": 0.758627,
+      "temporal_semantics": "generic_visual_not_vpr"
+    }
+  ],
+  "category_controls_must_accept": [
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.03323956442831216,
+      "foreground_union_coverage": 0.03323956442831216,
+      "foreground_critical_max_coverage": 0.03323956442831216,
+      "foreground_critical_union_coverage": 0.03323956442831216,
+      "foreground_max_score": 0.5825304388999939,
+      "foreground_detection_schema": "memstrata.foreground_detection.v1",
+      "foreground_detections": [
+        {
+          "bbox": [650.0, 637.0, 864.0, 711.0],
+          "score": 0.5825304388999939,
+          "label": "animal",
+          "category": "animal",
+          "candidate_coverage": 0.03323956442831216
+        }
+      ],
+      "crop_area_fraction": 0.2204,
+      "content_area_fraction": 0.2204,
+      "shot_size": "wide",
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 1,
+      "temporal_visual_observation_count": 3
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.059742739858013635,
+      "foreground_union_coverage": 0.10352283118853724,
+      "foreground_critical_max_coverage": 0.059742739858013635,
+      "foreground_critical_union_coverage": 0.10352283118853724,
+      "foreground_max_score": 0.5012164115905762,
+      "foreground_detection_schema": "memstrata.foreground_detection.v1",
+      "foreground_detections": [
+        {
+          "bbox": [346.0, 563.0, 726.0, 672.0],
+          "score": 0.5012164115905762,
+          "label": "animal",
+          "category": "animal",
+          "candidate_coverage": 0.059742739858013635
+        }
+      ],
+      "crop_area_fraction": 0.693306,
+      "content_area_fraction": 0.693306,
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 2,
+      "temporal_visual_observation_count": 3
+    },
+    {
+      "schema_version": "memstrata.location_scene_evidence.v1",
+      "coverage_semantics": "complete_estimate",
+      "coverage_geometry": "bbox",
+      "foreground_max_coverage": 0.1591128781627426,
+      "foreground_union_coverage": 0.28690428986314875,
+      "foreground_critical_max_coverage": 0.1591128781627426,
+      "foreground_critical_union_coverage": 0.28690428986314875,
+      "foreground_max_score": 0.5383362770080566,
+      "foreground_detection_schema": "memstrata.foreground_detection.v1",
+      "foreground_detections": [
+        {
+          "bbox": [253.0, 306.0, 796.0, 536.0],
+          "score": 0.5160434246063232,
+          "label": "person",
+          "category": "person",
+          "candidate_coverage": 0.13383987225788474
+        },
+        {
+          "bbox": [245.0, 522.0, 856.0, 765.0],
+          "score": 0.48045507073402405,
+          "label": "person",
+          "category": "person",
+          "candidate_coverage": 0.1591128781627426
+        }
+      ],
+      "crop_area_fraction": 0.934128,
+      "content_area_fraction": 0.9969337606837607,
+      "shot_size": "wide",
+      "temporal_visual_status": "available",
+      "temporal_visual_support_count": 3,
+      "temporal_visual_observation_count": 3
     }
   ]
 }

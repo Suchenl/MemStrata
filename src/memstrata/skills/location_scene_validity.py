@@ -51,6 +51,17 @@ def _optional_int(value: Any, *, minimum: int = 0) -> int | None:
 
 
 @dataclass(frozen=True, slots=True)
+class ForegroundDetectionEvidence:
+    """Validated candidate-local detector record retained for policy audit."""
+
+    bbox: tuple[float, float, float, float]
+    score: float
+    label: str
+    category: str
+    candidate_coverage: float
+
+
+@dataclass(frozen=True, slots=True)
 class LocationSceneEvidence:
     """Model-agnostic evidence attached by an upstream detector/place encoder.
 
@@ -78,6 +89,7 @@ class LocationSceneEvidence:
     foreground_critical_max_coverage: float | None = None
     foreground_critical_union_coverage: float | None = None
     foreground_max_score: float | None = None
+    foreground_detections: tuple[ForegroundDetectionEvidence, ...] = ()
     foreground_detection_schema: str = ""
     crop_quality_accepted: bool | None = None
     foreground_source: str = ""
@@ -206,6 +218,7 @@ class LocationSceneEvidence:
             foreground_max_score=_optional_float(
                 evidence.get("foreground_max_score")
             ),
+            foreground_detections=_parse_foreground_detections(evidence),
             foreground_detection_schema=str(
                 evidence.get("foreground_detection_schema") or ""
             ),
@@ -248,6 +261,15 @@ class LocationSceneValidityPolicy:
     foreground_union_hard_reject: float = 0.70
     min_place_support_count: int = 2
     min_place_support_ratio: float = 0.60
+    subject_review_detection_schema: str = FOREGROUND_DETECTION_SCHEMA
+    subject_review_min_candidate_coverage: float = 0.10
+    subject_review_score_thresholds: tuple[tuple[str, float], ...] = (
+        ("animal", 0.50),
+        ("bird", 0.50),
+        ("person", 0.60),
+        ("human_body", 0.60),
+        ("body_part", 0.60),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -390,6 +412,22 @@ def evaluate_location_scene(
             evidence,
         )
 
+    place_support = _has_place_specific_support(evidence, pol)
+    if (
+        _has_high_confidence_subject_alert(evidence, pol)
+        and not place_support
+    ):
+        # Wide/whole-frame geometry and generic temporal DINO consistency do
+        # not establish that the candidate is place-dominant. Quarantine lets
+        # acquisition prefer another plate without rejecting scenes that
+        # legitimately contain a small dynamic subject.
+        return LocationSceneDecision(
+            SceneValidityStatus.QUARANTINE,
+            False,
+            ("high_confidence_dynamic_subject_review",),
+            evidence,
+        )
+
     foreground_needs_local_support = (
         critical_max is not None
         and critical_max >= pol.foreground_review_threshold
@@ -420,17 +458,6 @@ def evaluate_location_scene(
         and effective_area >= pol.min_crop_area_fraction
     )
     wide_support = evidence.shot_size == "wide"
-    place_support = False
-    if (
-        evidence.place_support_count is not None
-        and evidence.place_observation_count is not None
-        and evidence.place_observation_count > 0
-    ):
-        ratio = evidence.place_support_count / evidence.place_observation_count
-        place_support = (
-            evidence.place_support_count >= pol.min_place_support_count
-            and ratio >= pol.min_place_support_ratio
-        )
     temporal_support = False
     if (
         evidence.temporal_visual_status == "available"
@@ -472,11 +499,91 @@ def evaluate_location_scene(
     )
 
 
+def _parse_foreground_detections(
+    evidence: Mapping[str, Any],
+) -> tuple[ForegroundDetectionEvidence, ...]:
+    if evidence.get("foreground_detection_schema") != FOREGROUND_DETECTION_SCHEMA:
+        return ()
+    raw_rows = evidence.get("foreground_detections")
+    if not isinstance(raw_rows, (list, tuple)):
+        return ()
+    parsed: list[ForegroundDetectionEvidence] = []
+    for raw in raw_rows:
+        if not isinstance(raw, Mapping):
+            continue
+        bbox = raw.get("bbox")
+        score = _optional_float(raw.get("score"))
+        coverage = _optional_float(raw.get("candidate_coverage"))
+        if (
+            not isinstance(bbox, (list, tuple))
+            or len(bbox) != 4
+            or score is None
+            or coverage is None
+        ):
+            continue
+        try:
+            parsed_bbox = tuple(float(value) for value in bbox)
+        except (TypeError, ValueError):
+            continue
+        parsed.append(
+            ForegroundDetectionEvidence(
+                bbox=parsed_bbox,
+                score=score,
+                label=str(raw.get("label") or "")[:80],
+                category=str(raw.get("category") or "subject_unknown"),
+                candidate_coverage=coverage,
+            )
+        )
+    return tuple(parsed)
+
+
+def _has_place_specific_support(
+    evidence: LocationSceneEvidence,
+    policy: LocationSceneValidityPolicy,
+) -> bool:
+    if (
+        evidence.place_support_count is None
+        or evidence.place_observation_count is None
+        or evidence.place_observation_count <= 0
+        or not evidence.place_source
+    ):
+        return False
+    ratio = evidence.place_support_count / evidence.place_observation_count
+    return (
+        evidence.place_support_count >= policy.min_place_support_count
+        and ratio >= policy.min_place_support_ratio
+    )
+
+
+def _has_high_confidence_subject_alert(
+    evidence: LocationSceneEvidence,
+    policy: LocationSceneValidityPolicy,
+) -> bool:
+    if (
+        evidence.foreground_detection_schema
+        != policy.subject_review_detection_schema
+    ):
+        return False
+    thresholds = dict(policy.subject_review_score_thresholds)
+    for detection in evidence.foreground_detections:
+        score_threshold = thresholds.get(detection.category)
+        if score_threshold is None:
+            continue
+        if (
+            detection.score >= score_threshold
+            and detection.candidate_coverage
+            >= policy.subject_review_min_candidate_coverage
+        ):
+            return True
+    return False
+
+
 __all__ = [
     "COVERAGE_COMPLETE",
     "COVERAGE_LOWER_BOUND",
     "COVERAGE_MISSING",
     "FOREGROUND_DETECTION_SCHEMA",
+    "ForegroundDetectionEvidence",
     "LocationSceneDecision",
     "LocationSceneEvidence",
     "LocationSceneEvidenceProvider",

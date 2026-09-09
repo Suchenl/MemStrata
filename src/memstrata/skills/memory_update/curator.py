@@ -58,6 +58,7 @@ from memstrata.lib.dedup import (
     text_similarity,
 )
 from memstrata.skills.location_scene_validity import (
+    FOREGROUND_DETECTION_SCHEMA,
     LocationSceneEvidence,
     LocationSceneValidityPolicy,
     SceneValidityStatus,
@@ -207,6 +208,19 @@ class MemoryPolicy:
     location_scene_foreground_union_hard_reject: float = 0.70
     location_scene_min_place_support_count: int = 2
     location_scene_min_place_support_ratio: float = 0.60
+    location_scene_subject_review_detection_schema: str = (
+        FOREGROUND_DETECTION_SCHEMA
+    )
+    location_scene_subject_review_min_coverage: float = 0.10
+    location_scene_subject_review_score_thresholds: tuple[
+        tuple[str, float], ...
+    ] = (
+        ("animal", 0.50),
+        ("bird", 0.50),
+        ("person", 0.60),
+        ("human_body", 0.60),
+        ("body_part", 0.60),
+    )
 
     # --- conservative location identity seam ------------------------------------
     # First stage is shadow-only: produce an auditable proposal without changing
@@ -655,6 +669,25 @@ class MemoryUpdater:
             ),
             min_place_support_ratio=min(
                 1.0, max(0.0, float(pol.location_scene_min_place_support_ratio))
+            ),
+            subject_review_detection_schema=str(
+                pol.location_scene_subject_review_detection_schema
+            ),
+            subject_review_min_candidate_coverage=min(
+                1.0,
+                max(
+                    0.0,
+                    float(pol.location_scene_subject_review_min_coverage),
+                ),
+            ),
+            subject_review_score_thresholds=tuple(
+                (
+                    str(category),
+                    min(1.0, max(0.0, float(threshold))),
+                )
+                for category, threshold in (
+                    pol.location_scene_subject_review_score_thresholds
+                )
             ),
         )
         self.location_resolver_shadow_enabled = bool(

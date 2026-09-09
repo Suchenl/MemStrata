@@ -19,12 +19,14 @@ from memstrata.skills.crop_acquisition.scene_evidence import (
     COVERAGE_LOWER_BOUND,
     COVERAGE_MISSING,
     CachedSegmentSceneEvidenceProducer,
+    FOREGROUND_DETECTION_SCHEMA,
     SCENE_EVIDENCE_SCHEMA_VERSION,
     bbox_coverage,
     normalized_bbox_area,
 )
 from memstrata.skills.location_scene_validity import (
     LocationSceneEvidence,
+    LocationSceneValidityPolicy,
     SceneValidityStatus,
     evaluate_location_scene,
 )
@@ -368,6 +370,167 @@ def test_existing_structured_wide_attribute_can_resolve_moderate_foreground() ->
     )
 
 
+def _subject_scene_evidence(
+    *,
+    category: str,
+    score: float,
+    coverage: float,
+    place_specific: bool = False,
+) -> dict:
+    evidence = {
+        "schema_version": SCENE_EVIDENCE_SCHEMA_VERSION,
+        "coverage_semantics": COVERAGE_COMPLETE,
+        "coverage_geometry": "bbox",
+        "foreground_max_coverage": coverage,
+        "foreground_union_coverage": coverage,
+        "foreground_critical_max_coverage": coverage,
+        "foreground_critical_union_coverage": coverage,
+        "foreground_max_score": score,
+        "foreground_detection_schema": FOREGROUND_DETECTION_SCHEMA,
+        "foreground_detections": [
+            {
+                "bbox": [100, 200, 500, 700],
+                "score": score,
+                "label": category,
+                "category": category,
+                "candidate_coverage": coverage,
+            }
+        ],
+        "content_area_fraction": 1.0,
+        "temporal_visual_status": "available",
+        "temporal_visual_support_count": 3,
+        "temporal_visual_observation_count": 3,
+        "temporal_source": "dinov3:generic",
+    }
+    if place_specific:
+        evidence.update(
+            {
+                "place_support_count": 3,
+                "place_observation_count": 3,
+                "place_source": "cached_vpr",
+            }
+        )
+    return evidence
+
+
+@pytest.mark.parametrize(
+    ("category", "score"),
+    [
+        ("animal", 0.55),
+        ("bird", 0.55),
+        ("person", 0.65),
+        ("human_body", 0.65),
+        ("body_part", 0.65),
+    ],
+)
+def test_high_confidence_small_subject_requires_review_despite_scene_context(
+    category: str,
+    score: float,
+) -> None:
+    decision = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {
+                "scene_validity_evidence": _subject_scene_evidence(
+                    category=category,
+                    score=score,
+                    coverage=0.11,
+                ),
+                "crop_attributes": {"shot_size": "wide"},
+            }
+        )
+    )
+
+    assert decision.status is SceneValidityStatus.QUARANTINE
+    assert decision.reasons == (
+        "high_confidence_dynamic_subject_review",
+    )
+    audited = decision.to_annotations()["evidence"][
+        "foreground_detections"
+    ][0]
+    assert audited["category"] == category
+    assert audited["score"] == pytest.approx(score)
+    assert audited["bbox"] == (100.0, 200.0, 500.0, 700.0)
+
+
+@pytest.mark.parametrize(
+    ("score", "coverage"),
+    [(0.49, 0.12), (0.58, 0.03)],
+)
+def test_weak_or_tiny_animal_alert_does_not_force_rejection(
+    score: float,
+    coverage: float,
+) -> None:
+    decision = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {
+                "scene_validity_evidence": _subject_scene_evidence(
+                    category="animal",
+                    score=score,
+                    coverage=coverage,
+                ),
+                "crop_attributes": {"shot_size": "wide"},
+            }
+        )
+    )
+
+    assert decision.status is SceneValidityStatus.ACCEPT
+
+
+def test_only_place_specific_support_can_clear_subject_review() -> None:
+    generic = _subject_scene_evidence(
+        category="animal",
+        score=0.55,
+        coverage=0.11,
+    )
+    place_specific = _subject_scene_evidence(
+        category="animal",
+        score=0.55,
+        coverage=0.11,
+        place_specific=True,
+    )
+
+    generic_decision = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {
+                "scene_validity_evidence": generic,
+                "crop_attributes": {"shot_size": "wide"},
+            }
+        )
+    )
+    place_decision = evaluate_location_scene(
+        LocationSceneEvidence.from_annotations(
+            {
+                "scene_validity_evidence": place_specific,
+                "crop_attributes": {"shot_size": "wide"},
+            }
+        )
+    )
+
+    assert generic_decision.status is SceneValidityStatus.QUARANTINE
+    assert place_decision.status is SceneValidityStatus.ACCEPT
+    assert "temporal_place_support" in place_decision.reasons
+
+
+def test_subject_review_categories_and_scores_are_configurable() -> None:
+    evidence = LocationSceneEvidence.from_annotations(
+        {
+            "scene_validity_evidence": _subject_scene_evidence(
+                category="animal",
+                score=0.55,
+                coverage=0.11,
+            )
+        }
+    )
+    policy = LocationSceneValidityPolicy(
+        subject_review_score_thresholds=(("animal", 0.70),),
+    )
+
+    assert (
+        evaluate_location_scene(evidence, policy=policy).status
+        is SceneValidityStatus.ACCEPT
+    )
+
+
 def test_archived_gate_a_schema_replay() -> None:
     replay = json.loads(_GATE_A_REPLAY.read_text())
     negative_decisions = [
@@ -386,6 +549,22 @@ def test_archived_gate_a_schema_replay() -> None:
         )
         for evidence in replay["must_accept"]
     ]
+    heldout_negative_decisions = [
+        evaluate_location_scene(
+            LocationSceneEvidence.from_annotations(
+                {"scene_validity_evidence": evidence}
+            )
+        )
+        for evidence in replay["heldout_must_not_accept"]
+    ]
+    category_control_decisions = [
+        evaluate_location_scene(
+            LocationSceneEvidence.from_annotations(
+                {"scene_validity_evidence": evidence}
+            )
+        )
+        for evidence in replay["category_controls_must_accept"]
+    ]
 
     assert all(
         decision.status is not SceneValidityStatus.ACCEPT
@@ -394,6 +573,14 @@ def test_archived_gate_a_schema_replay() -> None:
     assert all(
         decision.status is SceneValidityStatus.ACCEPT
         for decision in positive_decisions
+    )
+    assert all(
+        decision.status is not SceneValidityStatus.ACCEPT
+        for decision in heldout_negative_decisions
+    )
+    assert all(
+        decision.status is SceneValidityStatus.ACCEPT
+        for decision in category_control_decisions
     )
 
 
@@ -454,6 +641,24 @@ class _AreaAwareProvider:
         ]
 
 
+class _SubjectAlertProvider:
+    def collect_candidates(self, *, frame_paths, candidates, lower_bound_bboxes=None):
+        del frame_paths, lower_bound_bboxes
+        rows = []
+        for candidate in candidates:
+            is_plate = (
+                candidate["source"] == "whole_frame_location_candidate"
+            )
+            rows.append(
+                _subject_scene_evidence(
+                    category="animal",
+                    score=0.55,
+                    coverage=0.03 if is_plate else 0.11,
+                )
+            )
+        return rows
+
+
 def test_whole_frame_survives_iou_and_text_score_but_needs_scene_decision(
     tmp_path: Path,
 ) -> None:
@@ -508,6 +713,31 @@ def test_tiny_temporally_stable_crop_defers_to_whole_frame_context(
         )
     )
     assert decision.status is SceneValidityStatus.ACCEPT
+
+
+def test_subject_review_candidate_defers_to_clean_alternate_plate(
+    tmp_path: Path,
+) -> None:
+    frame = _frame(tmp_path / "frame.png")
+    result = acquire_entity_crop(
+        frame,
+        entity_name="Any location",
+        entity_kind="location",
+        exemplar_vectors=[[1.0, 0.0]],
+        existing_rep_vectors=[],
+        out_dir=tmp_path / "out",
+        grounder=_Grounder(),
+        location_scene_plate_candidates=True,
+        location_scene_evidence_enabled=True,
+        scene_evidence_provider=_SubjectAlertProvider(),
+    )
+
+    assert result is not None
+    assert result["source"] == "whole_frame_location_candidate"
+    assert (
+        result["scene_validity_evidence"]["foreground_max_coverage"]
+        == pytest.approx(0.03)
+    )
 
 
 class _Bank:
